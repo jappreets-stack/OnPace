@@ -121,13 +121,9 @@ struct ContentView: View {
     private var progress: Double { min(Double(store.today) / Double(goal), 1) }
     private var hitGoal: Bool { store.today >= goal }
 
-    // Pace: assumes you walk evenly between 7am and 10pm.
-    private var expectedByNow: Int {
-        let start = Calendar.current.date(bySettingHour: 7, minute: 0, second: 0, of: .now)!
-        let fraction = min(max(Date.now.timeIntervalSince(start) / (15 * 3600), 0), 1)
-        return Int(Double(goal) * fraction)
-    }
-    private var onPace: Bool { store.today >= expectedByNow }
+    // Pace: assumes you walk evenly between 7am and 10pm (see Pace.swift).
+    private var pace: Pace { Pace(steps: store.today, goal: goal) }
+    private var onPace: Bool { pace.onPace }
 
     // Celebrate at goal, walk on pace, slump behind.
     private var mood: Mood {
@@ -179,14 +175,21 @@ struct ContentView: View {
                         .font(.system(size: d * 0.17, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .minimumScaleFactor(0.6)
-                    // Pace: goal hit, on pace, or how far behind.
+                    // Pace: goal hit, on pace, or how far behind + how long to walk.
                     Text(hitGoal ? "🎉 Goal hit"
                          : onPace ? "✅ On pace"
-                         : "⏳ \((expectedByNow - store.today).formatted()) behind")
+                         : "⏳ \(pace.behindText)")
                         .font(.system(size: d * 0.075, weight: .semibold, design: .rounded))
                         .foregroundStyle(hitGoal || onPace ? color : .orange)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
+                    if !hitGoal && !onPace {
+                        Text(pace.walkText)
+                            .font(.system(size: d * 0.06, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                    }
                     if let error = store.error {
                         Text(error).font(.caption2).foregroundStyle(.red).lineLimit(2)
                     }
@@ -202,13 +205,16 @@ struct ContentView: View {
 
     private var screen: CGRect { WKInterfaceDevice.current().screenBounds }
 
-    // Page 2: streak, pace, holes walked.
+    // Page 2: streak, pace, finish forecast, holes walked.
     private var statsPage: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 5) {
             StatRow(icon: "🔥", title: "Streak",
                     value: "\(store.streak) \(store.streak == 1 ? "day" : "days")")
-            StatRow(icon: onPace ? "✅" : "⏳", title: "Pace",
-                    value: onPace ? "On pace" : "\((expectedByNow - store.today).formatted()) behind")
+            StatRow(icon: onPace ? "✅" : "⏳",
+                    title: onPace ? "Pace" : "Pace · \(pace.behindText)",
+                    value: hitGoal ? "Goal hit" : onPace ? "On pace" : "Walk \(pace.catchUpMinutes) min")
+            StatRow(icon: "🏁", title: "At this pace",
+                    value: pace.forecastShort ?? (hitGoal ? "Goal hit 🎉" : "Too early to tell"))
             StatRow(icon: "⛳️", title: "Holes walked",
                     value: (Double(store.today) / 1300).formatted(.number.precision(.fractionLength(1))))
         }
@@ -296,7 +302,7 @@ struct StatRow: View {
             }
             Spacer()
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 4)
         .padding(.horizontal, 10)
         .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
     }

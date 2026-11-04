@@ -13,17 +13,13 @@ struct StepsEntry: TimelineEntry {
     var progress: Double { min(Double(steps) / Double(goal), 1) }
     var hitGoal: Bool { steps >= goal }
 
-    // Pace: assumes you walk evenly between 7am and 10pm (same as the app).
-    var expectedByNow: Int {
-        let start = Calendar.current.date(bySettingHour: 7, minute: 0, second: 0, of: date)!
-        let fraction = min(max(date.timeIntervalSince(start) / (15 * 3600), 0), 1)
-        return Int(Double(goal) * fraction)
-    }
-    var onPace: Bool { steps >= expectedByNow }
+    // Pace: assumes you walk evenly between 7am and 10pm (see Pace.swift).
+    var pace: Pace { Pace(steps: steps, goal: goal, now: date) }
+    var onPace: Bool { pace.onPace }
 
     var paceText: String {
         if hitGoal { return "🎉 Goal hit" }
-        return onPace ? "✅ On pace" : "⏳ \((expectedByNow - steps).formatted()) behind"
+        return onPace ? "✅ On pace" : "⏳ \(pace.statusLine)"
     }
 
     // 6,214 → "6.2K", 850 → "850"
@@ -168,10 +164,7 @@ struct StepsComplicationView: View {
 extension StepsEntry {
     var leftText: String { hitGoal ? "Goal hit" : "\((goal - steps).formatted()) to go" }
     // Plain text (no emoji) so it reads well curved around a corner.
-    var paceLine: String {
-        if hitGoal { return "Goal hit" }
-        return onPace ? "On pace" : "\((expectedByNow - steps).formatted()) behind"
-    }
+    var paceLine: String { pace.statusLine }
 }
 
 // Full step count, with a small line under it (round) or curved along the edge (corner).
@@ -197,7 +190,8 @@ struct NumberWithLineView: View {
                     Text(entry.steps.formatted())
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.5)
-                    Text(line)
+                    // Round slots are tiny: keep only the first part ("784 behind").
+                    Text(line.components(separatedBy: " · ").first ?? line)
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(lineColor)
                         .minimumScaleFactor(0.6)

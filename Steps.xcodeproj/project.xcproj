@@ -23,6 +23,12 @@
           "target": "StepsWatch Watch App",
           "inclusions": [
             "Characters.swift",
+            "Pace.swift",
+          ],
+        }, {
+          "target": "StepsComplicationExtension",
+          "inclusions": [
+            "Pace.swift",
           ],
         },
       ],

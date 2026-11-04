@@ -158,13 +158,9 @@ struct ContentView: View {
     private var progress: Double { min(Double(store.today) / Double(goal), 1) }
     private var hitGoal: Bool { store.today >= goal }
 
-    // Pace: assumes you walk between 7am and 10pm.
-    private var expectedByNow: Int {
-        let start = Calendar.current.date(bySettingHour: 7, minute: 0, second: 0, of: .now)!
-        let fraction = min(max(Date.now.timeIntervalSince(start) / (15 * 3600), 0), 1)
-        return Int(Double(goal) * fraction)
-    }
-    private var onPace: Bool { store.today >= expectedByNow }
+    // Pace: assumes you walk between 7am and 10pm (see Pace.swift).
+    private var pace: Pace { Pace(steps: store.today, goal: goal) }
+    private var onPace: Bool { pace.onPace }
 
     // What your character does: swing in a round, celebrate at goal, walk on pace, slump behind.
     private var mood: Mood {
@@ -185,16 +181,25 @@ struct ContentView: View {
                         }
                     }
                     ring
-                    Text(hitGoal ? "Goal hit 🎉" : "\((goal - store.today).formatted()) to go")
-                        .font(.title2.weight(.semibold))
+                    VStack(spacing: 4) {
+                        Text(hitGoal ? "Goal hit 🎉" : "\((goal - store.today).formatted()) to go")
+                            .font(.title2.weight(.semibold))
+                        // At today's speed: when you'll finish.
+                        if let forecast = pace.forecastSentence {
+                            Text("🏁 \(forecast)")
+                                .font(.subheadline)
+                                .foregroundStyle(Color.primary.opacity(0.7))
+                                .multilineTextAlignment(.center)
+                        }
+                    }
                     HStack(spacing: 12) {
                         StatTile(title: "Streak", value: "🔥 \(store.streak)",
                                  detail: store.streak == 1 ? "day" : "days")
                         StatTile(title: "Golf", value: "⛳️ \(holesWalked(store.today))", detail: "holes walked")
                         StatTile(title: "Pace", value: onPace ? "✅" : "⏳",
-                                 detail: onPace ? "on pace"
-                                     : "\((expectedByNow - store.today).formatted()) behind")
+                                 detail: onPace ? "on pace" : "\(pace.behindText)\nwalk \(pace.catchUpMinutes) min")
                     }
+                    .fixedSize(horizontal: false, vertical: true)   // all tiles as tall as the tallest
                     GolfCard(store: store, theme: theme)
                     weekTable
                     if let error = store.error {
@@ -325,10 +330,11 @@ struct StatTile: View {
             Text(title).font(.caption).foregroundStyle(Color.primary.opacity(0.7))
             Text(value).font(.title3.weight(.bold))
             Text(detail).font(.caption2).foregroundStyle(Color.primary.opacity(0.7))
-                .lineLimit(1).minimumScaleFactor(0.7)
+                .lineLimit(2).minimumScaleFactor(0.7).multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.vertical, 12)
+        .padding(.horizontal, 4)
         .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
     }
 }
