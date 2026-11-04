@@ -16,7 +16,8 @@ a hand-drawn animated character that reacts to how your day is going.
 - Daily goal ring (2,000–30,000, default 10,000) with today's steps and steps to go
 - Streak of consecutive days at goal, pace check, and "holes walked" (~1,300 steps per hole)
 - Golf mode: start/end a 9- or 18-hole round and track steps between two times; saved round history
-- Last 7 days table: days at goal, daily average, best day, per-day bars with ✅ or how many steps short
+- Last 7 days table: days at goal, daily average, best day, and a segmented bar per day with a tiny
+  animated you on it: celebrating at ⛳ on goal days, slumped where you stopped (and steps short) on missed days
 - Themes: Auto (system), Dark, Purple & gold, Golf green
 
 **Apple Watch**

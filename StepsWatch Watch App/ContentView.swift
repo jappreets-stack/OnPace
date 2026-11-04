@@ -235,7 +235,8 @@ struct ContentView: View {
                 ForEach(store.week) { day in
                     let hit = day.steps >= goal
                     VStack(spacing: 3) {
-                        Text(hit ? "✅" : " ").font(.system(size: 9))
+                        // Flag in the hole on goal days.
+                        Text(hit ? "⛳️" : " ").font(.system(size: 11))
                         Capsule()
                             .fill(hit ? style.done : style.ring.opacity(0.6))
                             .frame(width: 14,

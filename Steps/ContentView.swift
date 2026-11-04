@@ -290,9 +290,14 @@ struct ContentView: View {
                         }
                         Text(day.steps.formatted())
                             .font(.subheadline.weight(.semibold).monospacedDigit())
+                        // A tiny you: celebrating at the flag on goal days, slumped where you
+                        // stopped on missed days (still walking today).
                         MiniBar(fraction: min(Double(day.steps) / Double(goal), 1),
-                                color: hit ? theme.done : theme.ring.opacity(0.6))
-                        Text(hit ? "✅" : "−\((goal - day.steps).formatted())")
+                                color: hit ? theme.done : theme.ring.opacity(0.6),
+                                avatar: avatar,
+                                mood: hit ? .celebrate
+                                    : Calendar.current.isDateInToday(day.date) ? .walk : .slump)
+                        Text(hit ? "⛳️" : "−\((goal - day.steps).formatted())")
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(hit ? Color.primary : Color.orange)
                     }
@@ -304,21 +309,50 @@ struct ContentView: View {
     }
 }
 
-// A small progress bar for each day in the table.
+// A segmented progress bar for each day in the table: 10 blocks, each 10% of the goal,
+// with an optional tiny character standing where the filled part ends.
 struct MiniBar: View {
     let fraction: Double
     let color: Color
+    var avatar: Avatar? = nil
+    var mood: Mood = .walk
+
+    private let blocks = 10
+    private let gap: CGFloat = 2
 
     var body: some View {
-        Capsule()
-            .fill(Color.primary.opacity(0.12))
-            .frame(height: 8)
-            .frame(maxWidth: .infinity)
-            .overlay(alignment: .leading) {
-                GeometryReader { g in
-                    Capsule().fill(color).frame(width: g.size.width * fraction)
+        GeometryReader { g in
+            let blockWidth = (g.size.width - gap * CGFloat(blocks - 1)) / CGFloat(blocks)
+            let filled = fraction * Double(blocks)              // e.g. 6.4 blocks
+            let full = Int(filled)
+            let partial = filled - Double(full)
+            // Where the filled part ends, counting the gaps between blocks.
+            let end = CGFloat(full) * (blockWidth + gap) + CGFloat(partial) * blockWidth
+            ZStack(alignment: .leading) {
+                HStack(spacing: gap) {
+                    ForEach(0..<blocks, id: \.self) { i in
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.primary.opacity(0.12))
+                            .overlay(alignment: .leading) {
+                                // Full blocks fill all the way; the last one fills partly.
+                                let share = i < full ? 1 : (i == full ? partial : 0)
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(color)
+                                    .frame(width: blockWidth * CGFloat(share))
+                            }
+                            .frame(width: blockWidth, height: 8)
+                    }
+                }
+                if let avatar {
+                    CharacterView(avatar: avatar, mood: mood)
+                        .frame(width: 24, height: 34)
+                        .position(x: min(max(end, 12), g.size.width - 12),
+                                  y: g.size.height / 2 - 13)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(height: avatar == nil ? 8 : 40)
     }
 }
 
