@@ -41,8 +41,9 @@ a hand-drawn animated character that reacts to how your day is going.
   days, it falls back to walking evenly from 7am to 10pm.
 - **Catch-up:** when behind, it says how many steps and how many minutes of walking (~100 steps/min)
   it takes to catch up.
-- **Forecast:** scales today's steps by how much of your usual day is done to say when you'll reach
-  your goal, or how many steps you'll have today. One shared `Pace.swift` drives the phone, watch, and complications.
+- **Forecast:** scales today's steps by how much of your usual day is done to say what time you'll
+  reach your goal, or how many steps short you'll be by your usual end of day (and how many more
+  minutes of walking would close the gap). One shared `Pace.swift` drives the phone, watch, and complications.
 - **State:** settings and golf rounds are stored with `@AppStorage`; data refreshes whenever the app becomes active.
 - **Layout:** the watch ring is centered on the physical screen (`WKInterfaceDevice.screenBounds`)
   instead of the safe area, so it stays centered next to the clock and page indicator.

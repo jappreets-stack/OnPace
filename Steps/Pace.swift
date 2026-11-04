@@ -49,50 +49,67 @@ struct Pace {
         return onPace ? "On pace" : "\(behindText) · walk \(catchUpMinutes) min"
     }
 
-    // At today's speed: when you'll reach the goal, or how many steps you'll end up with.
-    private enum Outlook { case reachGoal(Date), byTen(Int), today(Int) }
+    // When your walking day usually ends: when you've done 98% of a usual day (10pm without a curve).
+    private var usualEndOfDay: Date {
+        guard isPersonal else { return dayEnd }
+        let midnight = Calendar.current.startOfDay(for: now).addingTimeInterval(24 * 3600)
+        var t = Calendar.current.startOfDay(for: now)
+        while t < midnight {
+            if dayFraction(at: t) >= 0.98 { return t }
+            t.addTimeInterval(5 * 60)
+        }
+        return midnight
+    }
+
+    // At today's speed: when you'll reach the goal, or how short you'll be by the end of your day.
+    private enum Outlook { case reachGoal(Date), short(Int, Date) }
     private var outlook: Outlook? {
         guard !hitGoal, steps > 0 else { return nil }
+        let end = usualEndOfDay
+        guard now < end else { return nil }
+        let total: Double
         if isPersonal {
             // Today so far, scaled up by how much of your usual day is done.
             let done = dayFraction(at: now)
-            guard done >= 0.1, done < 0.98 else { return nil }
-            let total = Double(steps) / done
+            guard done >= 0.1 else { return nil }
+            total = Double(steps) / done
             if total >= Double(goal) {
-                let midnight = Calendar.current.startOfDay(for: now).addingTimeInterval(24 * 3600)
                 var t = now
-                while t < midnight {
+                while t < end {
                     if dayFraction(at: t) * total >= Double(goal) { return .reachGoal(t) }
                     t.addTimeInterval(5 * 60)
                 }
             }
-            return .today(Int(total))
+        } else {
+            // Flat 7am–10pm: steps per hour since 7am.
+            let hours = now.timeIntervalSince(dayStart) / 3600
+            guard hours >= 0.5 else { return nil }
+            let perHour = Double(steps) / hours
+            let finish = now.addingTimeInterval(Double(goal - steps) / perHour * 3600)
+            if finish <= end { return .reachGoal(finish) }
+            total = Double(steps) + perHour * end.timeIntervalSince(now) / 3600
         }
-        // Flat 7am–10pm: steps per hour since 7am.
-        guard now < dayEnd else { return nil }
-        let hours = now.timeIntervalSince(dayStart) / 3600
-        guard hours >= 0.5 else { return nil }
-        let perHour = Double(steps) / hours
-        let finish = now.addingTimeInterval(Double(goal - steps) / perHour * 3600)
-        if finish <= dayEnd { return .reachGoal(finish) }
-        return .byTen(steps + Int(perHour * dayEnd.timeIntervalSince(now) / 3600))
+        return .short(max(goal - Int(total), 1), end)
     }
 
-    // Full sentence for the phone.
+    private func clock(_ t: Date) -> String { t.formatted(date: .omitted, time: .shortened) }
+    private func walkMinutes(_ n: Int) -> Int { Int((Double(n) / Self.stepsPerMinute).rounded(.up)) }
+
+    // Full sentence for the phone. Always ends with a time.
     var forecastSentence: String? {
         switch outlook {
-        case .reachGoal(let t): "At this pace you'll reach \(goal.formatted()) by \(t.formatted(date: .omitted, time: .shortened))"
-        case .byTen(let n): "At this pace you'll have about \(n.formatted()) steps by 10pm"
-        case .today(let n): "At this pace you'll have about \(n.formatted()) steps today"
+        case .reachGoal(let t):
+            "At this pace you'll reach \(goal.formatted()) by \(clock(t))"
+        case .short(let n, let t):
+            "At this pace you'll be \(n.formatted()) short by \(clock(t))\(isPersonal ? ", your usual end of day" : ""). Walk \(walkMinutes(n)) more min to reach \(goal.formatted())."
         case nil: nil
         }
     }
     // Short version for the watch, shown under the title "At this pace".
     var forecastShort: String? {
         switch outlook {
-        case .reachGoal(let t): "Goal by \(t.formatted(date: .omitted, time: .shortened))"
-        case .byTen(let n): "About \(n.formatted()) by 10pm"
-        case .today(let n): "About \(n.formatted()) today"
+        case .reachGoal(let t): "Goal by \(clock(t))"
+        case .short(let n, let t): "\(n.formatted()) short by \(clock(t))"
         case nil: nil
         }
     }
