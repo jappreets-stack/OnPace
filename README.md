@@ -23,6 +23,8 @@ a hand-drawn animated character that reacts to how your day is going.
 - Ring page centered for the Ultra 2 screen, with the animated character and step count
 - Stats page (streak, pace, holes walked) and a 7-day bar chart, paged with the Digital Crown
 - Pick your character and ring color on the watch
+- Watch face complications (WidgetKit): ring, steps left, and pace, for circle, corner, inline,
+  and rectangle slots; they read HealthKit directly and refresh when the app opens
 
 **Animated characters** (`Characters.swift`)
 - Three characters drawn entirely in code with SwiftUI `Canvas` + `TimelineView` on a 100×140 grid:

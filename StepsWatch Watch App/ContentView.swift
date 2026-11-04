@@ -2,6 +2,7 @@ import SwiftUI
 import HealthKit
 import Combine
 import WatchKit
+import WidgetKit
 
 struct WatchDay: Identifiable {
     let date: Date
@@ -67,6 +68,8 @@ final class WatchStepStore: ObservableObject {
             }
             streak = count
             error = nil
+            // Update the watch face complications with the fresh numbers.
+            WidgetCenter.shared.reloadAllTimelines()
         } catch {
             self.error = error.localizedDescription
         }
