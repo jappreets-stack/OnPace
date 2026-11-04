@@ -194,6 +194,8 @@ struct ContentView: View {
                         Text(error).font(.caption2).foregroundStyle(.red).lineLimit(2)
                     }
                 }
+                // Sit a little high so the pace lines clear the bottom of the ring.
+                .offset(y: -d * 0.06)
             }
             .frame(width: d, height: d)
             // Center on the physical screen, not the app area (the page dots shift that left).
