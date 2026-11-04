@@ -8,13 +8,14 @@ struct StepsEntry: TimelineEntry {
     let date: Date
     let steps: Int
     let streak: Int
+    var curve: [Double]? = nil
     var goal = 10_000
 
     var progress: Double { min(Double(steps) / Double(goal), 1) }
     var hitGoal: Bool { steps >= goal }
 
     // Pace: assumes you walk evenly between 7am and 10pm (see Pace.swift).
-    var pace: Pace { Pace(steps: steps, goal: goal, now: date) }
+    var pace: Pace { Pace(steps: steps, goal: goal, now: date, curve: curve) }
     var onPace: Bool { pace.onPace }
 
     var paceText: String {
@@ -83,7 +84,8 @@ struct StepsProvider: TimelineProvider {
         for d in past.reversed() {
             if d >= goal { streak += 1 } else { break }
         }
-        return StepsEntry(date: .now, steps: today, streak: streak)
+        let curve = await Pace.learnCurve(from: health)
+        return StepsEntry(date: .now, steps: today, streak: streak, curve: curve)
     }
 }
 

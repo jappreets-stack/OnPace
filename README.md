@@ -35,11 +35,14 @@ a hand-drawn animated character that reacts to how your day is going.
 
 - **HealthKit:** `HKStatisticsCollectionQueryDescriptor` sums steps per day for the last 61 days
   (for the streak and 7-day history); `HKStatisticsQueryDescriptor` sums steps between two times for golf rounds.
-- **Pace:** assumes walking evenly from 7am to 10pm, and compares today's steps with
-  `goal × (time elapsed ÷ 15 hours)`. When behind, it says how many steps and how many minutes
-  of walking (~100 steps/min) it takes to catch up.
-- **Forecast:** uses today's steps per hour since 7am to say when you'll reach your goal,
-  or how many steps you'll have by 10pm. One shared `Pace.swift` drives the phone, watch, and complications.
+- **Personal pace curve:** learns your usual day from the last 30 days of hourly HealthKit data
+  (the share of a day's steps you've usually done by each hour, averaged over days with 2,000+ steps).
+  "On pace" means on track compared with your own normal day, not a flat line. Until there are 7 such
+  days, it falls back to walking evenly from 7am to 10pm.
+- **Catch-up:** when behind, it says how many steps and how many minutes of walking (~100 steps/min)
+  it takes to catch up.
+- **Forecast:** scales today's steps by how much of your usual day is done to say when you'll reach
+  your goal, or how many steps you'll have today. One shared `Pace.swift` drives the phone, watch, and complications.
 - **State:** settings and golf rounds are stored with `@AppStorage`; data refreshes whenever the app becomes active.
 - **Layout:** the watch ring is centered on the physical screen (`WKInterfaceDevice.screenBounds`)
   instead of the safe area, so it stays centered next to the clock and page indicator.

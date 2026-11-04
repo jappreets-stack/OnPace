@@ -15,6 +15,7 @@ final class WatchStepStore: ObservableObject {
     @Published var today = 0
     @Published var week: [WatchDay] = []
     @Published var streak = 0
+    @Published var curve: [Double]?   // your usual day, learned from the last 30 days
     @Published var error: String?
 
     private let health = HKHealthStore()
@@ -67,6 +68,7 @@ final class WatchStepStore: ObservableObject {
                 if d.steps >= goal { count += 1 } else { break }
             }
             streak = count
+            curve = await Pace.learnCurve(from: health)
             error = nil
             // Update the watch face complications with the fresh numbers.
             WidgetCenter.shared.reloadAllTimelines()
@@ -122,7 +124,7 @@ struct ContentView: View {
     private var hitGoal: Bool { store.today >= goal }
 
     // Pace: assumes you walk evenly between 7am and 10pm (see Pace.swift).
-    private var pace: Pace { Pace(steps: store.today, goal: goal) }
+    private var pace: Pace { Pace(steps: store.today, goal: goal, curve: store.curve) }
     private var onPace: Bool { pace.onPace }
 
     // Celebrate at goal, walk on pace, slump behind.
@@ -213,7 +215,7 @@ struct ContentView: View {
             StatRow(icon: "🔥", title: "Streak",
                     value: "\(store.streak) \(store.streak == 1 ? "day" : "days")")
             StatRow(icon: onPace ? "✅" : "⏳",
-                    title: onPace ? "Pace" : "Pace · \(pace.behindText)",
+                    title: (pace.isPersonal ? "Your pace" : "Pace") + (onPace ? "" : " · \(pace.behindText)"),
                     value: hitGoal ? "Goal hit" : onPace ? "On pace" : "Walk \(pace.catchUpMinutes) min")
             StatRow(icon: "🏁", title: "At this pace",
                     value: pace.forecastShort ?? (hitGoal ? "Goal hit 🎉" : "Too early to tell"))

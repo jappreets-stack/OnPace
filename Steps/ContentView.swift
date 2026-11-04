@@ -29,6 +29,7 @@ final class StepStore: ObservableObject {
     @Published var today = 0
     @Published var week: [DaySteps] = []
     @Published var streak = 0
+    @Published var curve: [Double]?   // your usual day, learned from the last 30 days
     @Published var error: String?
 
     private let health = HKHealthStore()
@@ -81,6 +82,7 @@ final class StepStore: ObservableObject {
                 if d.steps >= goal { count += 1 } else { break }
             }
             streak = count
+            curve = await Pace.learnCurve(from: health)
             error = nil
         } catch {
             self.error = error.localizedDescription
@@ -159,7 +161,7 @@ struct ContentView: View {
     private var hitGoal: Bool { store.today >= goal }
 
     // Pace: assumes you walk between 7am and 10pm (see Pace.swift).
-    private var pace: Pace { Pace(steps: store.today, goal: goal) }
+    private var pace: Pace { Pace(steps: store.today, goal: goal, curve: store.curve) }
     private var onPace: Bool { pace.onPace }
 
     // What your character does: swing in a round, celebrate at goal, walk on pace, slump behind.
@@ -196,7 +198,7 @@ struct ContentView: View {
                         StatTile(title: "Streak", value: "🔥 \(store.streak)",
                                  detail: store.streak == 1 ? "day" : "days")
                         StatTile(title: "Golf", value: "⛳️ \(holesWalked(store.today))", detail: "holes walked")
-                        StatTile(title: "Pace", value: onPace ? "✅" : "⏳",
+                        StatTile(title: pace.isPersonal ? "Your pace" : "Pace", value: onPace ? "✅" : "⏳",
                                  detail: onPace ? "on pace" : "\(pace.behindText)\nwalk \(pace.catchUpMinutes) min")
                     }
                     .fixedSize(horizontal: false, vertical: true)   // all tiles as tall as the tallest
