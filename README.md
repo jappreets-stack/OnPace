@@ -1,6 +1,6 @@
-# Steps
+# OnPace
 
-A personal step tracker for **iPhone and Apple Watch**, built with **SwiftUI** and **HealthKit**.
+A step tracker for **iPhone and Apple Watch**, built with **SwiftUI** and **HealthKit**.
 It reads your step count from Apple Health and shows progress toward a daily goal, with
 a hand-drawn animated character that reacts to how your day is going.
 
