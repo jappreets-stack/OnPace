@@ -30,11 +30,11 @@ a hand-drawn animated character that reacts to how your day is going.
 - Themes: Auto (system), Dark, Purple & gold, Golf green
 
 **Apple Watch**
-- Ring page centered for the Ultra 2 screen, with the animated character and step count
-- Stats page (streak, pace, holes walked) and a 7-day bar chart, paged with the Digital Crown
-- Pick your character and ring color on the watch
+- Ring page centered for the Ultra 2 screen, with your mini-me, step count, and the same fun-unit scene as the phone
+- Stats page (streak, pace, forecast, your fun unit) and a 7-day bar chart, paged with the Digital Crown
+- **Synced from the iPhone:** goal, mini-me (outfit + whole look), and fun unit; pick the ring color on the watch
 - Watch face complications (WidgetKit): ring, steps left, and pace, for circle, corner, inline,
-  and rectangle slots; they read HealthKit directly and refresh when the app opens
+  and rectangle slots; they read HealthKit directly, use the goal synced from the phone, and refresh when the app opens
 
 **Animated characters** (`Characters.swift`, `CharacterBuilder.swift`)
 - Drawn entirely in code with SwiftUI `Canvas` + `TimelineView` on a 100×140 grid. No image assets.
@@ -71,6 +71,9 @@ a hand-drawn animated character that reacts to how your day is going.
   minutes of walking would close the gap). One shared `Pace.swift` drives the phone, watch, and complications.
 - **Your look:** one `Look` struct (Codable, saved as JSON in `@AppStorage`) drives every drawing.
   Missing fields fall back to defaults when decoding, so adding new options never resets a saved look.
+- **Phone → watch sync:** the iPhone is the source of truth. `PhoneSync` sends goal, mini-me, and fun unit with
+  WatchConnectivity's application context (the watch always gets the latest copy, even if it was asleep).
+  `WatchSync` saves them in an App Group, which both the watch app and its WidgetKit complications read.
 - **Sessions:** one `SessionRecord` list (stored under the original golf-rounds key; old rounds
   load as golf). `FunUnit` converts steps with rough averages (~0.76 m per step).
 - **State:** settings and sessions are stored with `@AppStorage`; data refreshes whenever the app becomes active.
@@ -79,7 +82,7 @@ a hand-drawn animated character that reacts to how your day is going.
 
 ## Tech
 
-Swift · SwiftUI · HealthKit · Combine · WatchKit · Xcode 27 · iOS 27 / watchOS 27
+Swift · SwiftUI · HealthKit · WidgetKit · WatchConnectivity · App Groups · Combine · WatchKit · Xcode 27 · iOS 27 / watchOS 27
 
 ## Run it
 

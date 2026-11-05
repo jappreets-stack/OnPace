@@ -24,11 +24,13 @@
           "inclusions": [
             "Characters.swift",
             "Pace.swift",
+            "SharedSettings.swift",
           ],
         }, {
           "target": "StepsComplicationExtension",
           "inclusions": [
             "Pace.swift",
+            "SharedSettings.swift",
           ],
         },
       ],
@@ -153,6 +155,7 @@
         "MARKETING_VERSION": "1.0",
         "PRODUCT_BUNDLE_IDENTIFIER": "com.js.personal.Steps.watchkitapp",
         "PRODUCT_NAME": "$(TARGET_NAME)",
+        "REGISTER_APP_GROUPS": "YES",
         "SDKROOT": "watchos",
         "SKIP_INSTALL": "YES",
         "STRING_CATALOG_GENERATE_SYMBOLS": "YES",
@@ -195,6 +198,7 @@
         "MARKETING_VERSION": "1.0",
         "PRODUCT_BUNDLE_IDENTIFIER": "com.js.personal.Steps.watchkitapp.StepsComplication",
         "PRODUCT_NAME": "$(TARGET_NAME)",
+        "REGISTER_APP_GROUPS": "YES",
         "SDKROOT": "watchos",
         "SKIP_INSTALL": "YES",
         "STRING_CATALOG_GENERATE_SYMBOLS": "YES",

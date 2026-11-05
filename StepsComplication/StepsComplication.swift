@@ -75,7 +75,7 @@ struct StepsProvider: TimelineProvider {
             days.append(Int(collection.statistics(for: day)?.sumQuantity()?.doubleValue(for: .count()) ?? 0))
         }
         let today = days.last ?? 0
-        let goal = StepsEntry.sample.goal
+        let goal = Shared.goal   // sent from the iPhone (see WatchSync)
 
         // Streak: days in a row at goal. Today only counts once you've hit it.
         var past = days
@@ -85,7 +85,7 @@ struct StepsProvider: TimelineProvider {
             if d >= goal { streak += 1 } else { break }
         }
         let curve = await Pace.learnCurve(from: health)
-        return StepsEntry(date: .now, steps: today, streak: streak, curve: curve)
+        return StepsEntry(date: .now, steps: today, streak: streak, curve: curve, goal: goal)
     }
 }
 

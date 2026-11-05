@@ -115,9 +115,12 @@ enum RingStyle: String, CaseIterable, Identifiable {
 struct ContentView: View {
     @StateObject private var store = WatchStepStore()
     @Environment(\.scenePhase) private var scenePhase
-    // Per device for now: same defaults as the phone.
-    @AppStorage("goal") private var goal = 10_000
-    @AppStorage("avatar") private var avatar: Avatar = .golfer
+    // Sent from the iPhone (see WatchSync), stored in the App Group the complications read too.
+    @AppStorage(Shared.goalKey, store: Shared.defaults) private var goal = 10_000
+    @AppStorage(Shared.avatarKey, store: Shared.defaults) private var avatar: Avatar = .golfer
+    @AppStorage(Shared.lookKey, store: Shared.defaults) private var look: Look = .original
+    @AppStorage(Shared.funUnitKey, store: Shared.defaults) private var funUnit: FunUnit = .holes
+    // Watch only.
     @AppStorage("ringStyle") private var style: RingStyle = .icon
 
     private var progress: Double { min(Double(store.today) / Double(goal), 1) }
@@ -147,6 +150,8 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await store.refresh(goal: goal) } }
         }
+        // A new goal from the phone changes the streak and bars.
+        .onChange(of: goal) { _, newGoal in Task { await store.refresh(goal: newGoal) } }
     }
 
     // Page 1: big ring, your character, and today's steps.
@@ -158,6 +163,9 @@ struct ContentView: View {
             let line = d * 0.08
             let color = hitGoal ? style.done : style.ring
             ZStack {
+                // Scene for your fun unit (soccer field, track, ...), same as the phone's ring.
+                UnitScene(unit: funUnit, horizon: 124, lowMarks: false)
+                    .clipShape(Circle().inset(by: line / 2))
                 Circle()
                     .stroke(color.opacity(0.18), lineWidth: line)
                 Circle()
@@ -171,7 +179,7 @@ struct ContentView: View {
                     .shadow(color: color.opacity(0.5), radius: 4)
                     .animation(.easeOut(duration: 0.6), value: progress)
                 VStack(spacing: 0) {
-                    CharacterView(avatar: avatar, mood: mood)
+                    CharacterView(avatar: avatar, mood: mood, look: look)
                         .frame(width: d * 0.38, height: d * 0.44)
                     Text(store.today, format: .number)
                         .font(.system(size: d * 0.17, weight: .bold, design: .rounded))
@@ -209,7 +217,7 @@ struct ContentView: View {
 
     private var screen: CGRect { WKInterfaceDevice.current().screenBounds }
 
-    // Page 2: streak, pace, finish forecast, holes walked.
+    // Page 2: streak, pace, finish forecast, fun unit (holes walked, soccer fields, ...).
     private var statsPage: some View {
         VStack(spacing: 5) {
             StatRow(icon: "🔥", title: "Streak",
@@ -219,8 +227,7 @@ struct ContentView: View {
                     value: hitGoal ? "Goal hit" : onPace ? "On pace" : "Walk \(pace.catchUpMinutes) min")
             StatRow(icon: "🏁", title: "At this pace",
                     value: pace.forecastShort ?? (hitGoal ? "Goal hit 🎉" : "Too early to tell"))
-            StatRow(icon: "⛳️", title: "Holes walked",
-                    value: (Double(store.today) / 1300).formatted(.number.precision(.fractionLength(1))))
+            StatRow(icon: funUnit.emoji, title: funUnit.title, value: funUnit.amount(store.today))
         }
         .padding(.horizontal, 4)
     }
@@ -236,7 +243,7 @@ struct ContentView: View {
                     let hit = day.steps >= goal
                     VStack(spacing: 3) {
                         // Flag in the hole on goal days.
-                        Text(hit ? "⛳️" : " ").font(.system(size: 11))
+                        Text(hit ? funUnit.goalFlag : " ").font(.system(size: 11))
                         Capsule()
                             .fill(hit ? style.done : style.ring.opacity(0.6))
                             .frame(width: 14,
@@ -255,22 +262,16 @@ struct ContentView: View {
         }
     }
 
-    // Page 4: pick your character and the ring color.
+    // Page 4: your mini-me (set on the iPhone) and the ring color (watch only).
     private var colorPage: some View {
         List {
-            Section("Character") {
-                ForEach(Avatar.allCases) { option in
-                    Button {
-                        avatar = option
-                    } label: {
-                        HStack {
-                            CharacterView(avatar: option, mood: .walk)
-                                .frame(width: 24, height: 34)
-                            Text(option.name)
-                            Spacer()
-                            if option == avatar { Image(systemName: "checkmark") }
-                        }
-                    }
+            Section("Your mini-me") {
+                HStack(spacing: 10) {
+                    CharacterView(avatar: avatar, mood: .walk, look: look)
+                        .frame(width: 30, height: 42)
+                    Text("Change your mini-me, goal and fun unit on your iPhone.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
             }
             Section("Ring color") {

@@ -9,6 +9,8 @@ import SwiftUI
 
 @main
 struct StepsWatch_Watch_AppApp: App {
+    init() { WatchSync.shared.start() }   // receives goal + mini-me from the iPhone
+
     var body: some Scene {
         WindowGroup {
             ContentView()
