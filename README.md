@@ -23,6 +23,8 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Sessions:** golf (9 or 18 holes), hike, dog walk, shopping, theme park, workout, or a custom one you name.
   Counts only the steps between Start and End, with saved history. During a session your mini-me swings
   (golf) or walks with a prop: hiking stick + backpack, a dog on a leash, shopping bags, a balloon, or dumbbells
+- **Apple Workout app:** when you end a Golf, Hike, Walk, Run, or Strength workout, it's saved as a session
+  with its steps automatically (golf guesses 9 or 18 holes from the length; press and hold to change it)
 - Last 7 days table: days at goal, daily average, best day, and a segmented bar per day with a tiny
   animated you on it: celebrating at ⛳ on goal days, slumped where you stopped (and steps short) on missed days
 - **Build your mini-me:** a character builder with a live animated preview in every pose
@@ -74,6 +76,9 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Phone → watch sync:** the iPhone is the source of truth. `PhoneSync` sends goal, mini-me, and fun unit with
   WatchConnectivity's application context (the watch always gets the latest copy, even if it was asleep).
   `WatchSync` saves them in an App Group, which both the watch app and its WidgetKit complications read.
+- **Workouts:** an `HKAnchoredObjectQueryDescriptor` picks up newly finished workouts each time the app refreshes.
+  The saved anchor means each workout is looked at once (a deleted session never comes back, and a workout that
+  syncs from the watch late still counts). Workouts that overlap a session you tracked in the app are skipped.
 - **Sessions:** one `SessionRecord` list (stored under the original golf-rounds key; old rounds
   load as golf). `FunUnit` converts steps with rough averages (~0.76 m per step).
 - **State:** settings and sessions are stored with `@AppStorage`; data refreshes whenever the app becomes active.

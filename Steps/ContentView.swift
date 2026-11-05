@@ -19,7 +19,7 @@ final class StepStore: ObservableObject {
     @Published var curve: [Double]?   // your usual day, learned from the last 30 days
     @Published var error: String?
 
-    private let health = HKHealthStore()
+    let health = HKHealthStore()
     private let stepType = HKQuantityType(.stepCount)
     private var ready = false
 
@@ -29,7 +29,7 @@ final class StepStore: ObservableObject {
             return
         }
         do {
-            try await health.requestAuthorization(toShare: [], read: [stepType])
+            try await health.requestAuthorization(toShare: [], read: [stepType, HKObjectType.workoutType()])
             ready = true
             await refresh(goal: goal)
         } catch {
@@ -71,6 +71,7 @@ final class StepStore: ObservableObject {
             streak = count
             curve = await Pace.learnCurve(from: health)
             error = nil
+            await importWorkouts()   // finished Apple workouts become sessions (Sessions.swift)
         } catch {
             self.error = error.localizedDescription
         }
@@ -381,6 +382,7 @@ struct SettingsView: View {
     @Binding var avatar: Avatar
     @Binding var look: Look
     @Binding var funUnit: FunUnit
+    @AppStorage("importWorkouts") private var importWorkouts = true
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -413,6 +415,13 @@ struct SettingsView: View {
                     Text("Fun unit")
                 } footer: {
                     Text("Turns your steps into something you can picture, like golf holes or soccer fields. Shown on the main screen and in sessions.")
+                }
+                Section {
+                    Toggle("Add workouts automatically", isOn: $importWorkouts)
+                } header: {
+                    Text("Apple Workout app")
+                } footer: {
+                    Text("When you end a Golf, Hike, Walk, Run or Strength workout in Apple's Workout app, it shows up here as a session with its steps.")
                 }
                 Section("Look") {
                     Picker("Theme", selection: $theme) {
