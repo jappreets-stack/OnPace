@@ -5,7 +5,7 @@ It reads your step count from Apple Health and shows progress toward a daily goa
 a hand-drawn animated character that reacts to how your day is going.
 
 <p align="center">
-  <img src="Screenshots/iphone-main.png" width="260" alt="iPhone main screen with goal ring, streak, golf mode">
+  <img src="Screenshots/iphone-main.png" width="260" alt="iPhone main screen with goal ring, golf scene, streak, sessions">
   &nbsp;&nbsp;&nbsp;
   <img src="Screenshots/watch-ring.png" width="220" alt="Apple Watch Ultra 2 ring screen">
   &nbsp;&nbsp;&nbsp;
@@ -16,8 +16,13 @@ a hand-drawn animated character that reacts to how your day is going.
 
 **iPhone**
 - Daily goal ring (2,000–30,000, default 10,000) with today's steps and steps to go
-- Streak of consecutive days at goal, pace check, and "holes walked" (~1,300 steps per hole)
-- Golf mode: start/end a 9- or 18-hole round and track steps between two times; saved round history
+- Streak of consecutive days at goal, pace check, and a **fun unit**: your steps shown as golf holes,
+  soccer fields, track laps, city blocks, km, or miles (picked in Settings)
+- The ring shows a scene for your fun unit behind your mini-me: golf green, soccer field, running track,
+  city skyline, or a road with a distance sign (light and dark mode)
+- **Sessions:** golf (9 or 18 holes), hike, dog walk, shopping, theme park, workout, or a custom one you name.
+  Counts only the steps between Start and End, with saved history. During a session your mini-me swings
+  (golf) or walks with a prop: hiking stick + backpack, a dog on a leash, shopping bags, a balloon, or dumbbells
 - Last 7 days table: days at goal, daily average, best day, and a segmented bar per day with a tiny
   animated you on it: celebrating at ⛳ on goal days, slumped where you stopped (and steps short) on missed days
 - **Build your mini-me:** a character builder with a live animated preview in every pose
@@ -44,6 +49,12 @@ a hand-drawn animated character that reacts to how your day is going.
 <p align="center">
   <img src="Screenshots/characters.png" width="100%" alt="All hair styles and outfits drawn by the character code">
 </p>
+<p align="center">
+  <img src="Screenshots/props.png" width="70%" alt="Session props: hiking stick, dog, shopping bags, balloon, dumbbells">
+</p>
+<p align="center">
+  <img src="Screenshots/scenes.png" width="100%" alt="Fun-unit scenes inside the ring, light and dark">
+</p>
 
 ## How it works
 
@@ -60,7 +71,9 @@ a hand-drawn animated character that reacts to how your day is going.
   minutes of walking would close the gap). One shared `Pace.swift` drives the phone, watch, and complications.
 - **Your look:** one `Look` struct (Codable, saved as JSON in `@AppStorage`) drives every drawing.
   Missing fields fall back to defaults when decoding, so adding new options never resets a saved look.
-- **State:** settings and golf rounds are stored with `@AppStorage`; data refreshes whenever the app becomes active.
+- **Sessions:** one `SessionRecord` list (stored under the original golf-rounds key; old rounds
+  load as golf). `FunUnit` converts steps with rough averages (~0.76 m per step).
+- **State:** settings and sessions are stored with `@AppStorage`; data refreshes whenever the app becomes active.
 - **Layout:** the watch ring is centered on the physical screen (`WKInterfaceDevice.screenBounds`)
   instead of the safe area, so it stays centered next to the clock and page indicator.
 

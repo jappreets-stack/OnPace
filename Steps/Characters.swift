@@ -3,6 +3,11 @@ import SwiftUI
 // What the character is doing.
 enum Mood { case slump, walk, celebrate, swing }
 
+// Something your mini-me carries while walking during a session (hike, dog walk, ...).
+nonisolated enum Prop: String, Codable {
+    case hikingStick, dog, bags, balloon, dumbbells
+}
+
 // Which character you picked in Settings.
 enum Avatar: String, CaseIterable, Identifiable {
     case golfer, baller, ripped
@@ -257,6 +262,7 @@ struct CharacterView: View {
     let avatar: Avatar
     let mood: Mood
     var look: Look? = nil   // nil = the classic look for this character (watch, for now)
+    var prop: Prop? = nil   // carried while walking
 
     var body: some View {
         TimelineView(.animation) { timeline in
@@ -268,9 +274,9 @@ struct CharacterView: View {
                 ctx.translateBy(x: (size.width - 100 * s) / 2, y: (size.height - 140 * s) / 2)
                 ctx.scaleBy(x: s, y: s)
                 switch avatar {
-                case .golfer: Golfer.draw(&ctx, mood: mood, t: t, look: look)
-                case .baller: Baller.draw(&ctx, mood: mood, t: t, look: look)
-                case .ripped: Ripped.draw(&ctx, mood: mood, t: t, look: look)
+                case .golfer: Golfer.draw(&ctx, mood: mood, t: t, look: look, prop: mood == .walk ? prop : nil)
+                case .baller: Baller.draw(&ctx, mood: mood, t: t, look: look, prop: mood == .walk ? prop : nil)
+                case .ripped: Ripped.draw(&ctx, mood: mood, t: t, look: look, prop: mood == .walk ? prop : nil)
                 }
             }
         }
@@ -499,7 +505,7 @@ enum Golfer {
         Pen.dot(&ctx, hand, 3.5, look.skin.color)
     }
 
-    static func draw(_ ctx: inout GraphicsContext, mood: Mood, t: Double, look: Look) {
+    static func draw(_ ctx: inout GraphicsContext, mood: Mood, t: Double, look: Look, prop: Prop? = nil) {
         Pen.shadow(&ctx)
 
         var bob = 0.0, spread = 5.0, liftL = 0.0, liftR = 0.0
@@ -559,6 +565,7 @@ enum Golfer {
             body.fill(skirt, with: .color(pants))
         }
 
+        Props.behind(&body, prop)
         let curvy = look.body == .female
         body.fill(curvy ? Pen.hourglass(top: 52, bottom: 92, shoulders: 12, waist: 5, hips: 15)
                         : Path(roundedRect: CGRect(x: 35, y: 52, width: 30, height: 40), cornerRadius: 9),
@@ -581,8 +588,10 @@ enum Golfer {
             arm(&body, shoulder: sL, hand: hands, look: look)
             arm(&body, shoulder: sR, hand: hands, look: look)
         } else {
-            arm(&body, shoulder: sL, hand: Pen.reach(sL, armL, 28), look: look)
-            arm(&body, shoulder: sR, hand: Pen.reach(sR, armR, 28), look: look)
+            let handL = Pen.reach(sL, armL, 28), handR = Pen.reach(sR, armR, 28)
+            arm(&body, shoulder: sL, hand: handL, look: look)
+            arm(&body, shoulder: sR, hand: handR, look: look)
+            Props.front(&body, ground: &ctx, prop, handL: handL, handR: handR, bob: bob, t: t, look: look)
         }
 
         Pen.head(body, look: look, tilt: headTilt, drop: headDrop, smile: smile)
@@ -607,7 +616,7 @@ enum Baller {
                  with: .color(.black.opacity(0.55)), lineWidth: 1)
     }
 
-    static func draw(_ ctx: inout GraphicsContext, mood: Mood, t: Double, look: Look) {
+    static func draw(_ ctx: inout GraphicsContext, mood: Mood, t: Double, look: Look, prop: Prop? = nil) {
         let skin = look.skin.color
         // Letter and trim in the main color, unless it matches the jersey.
         let trim = look.main == look.accent ? (look.accent == .white ? Color.black : Color.white) : look.main.color
@@ -621,6 +630,12 @@ enum Baller {
         var spin = 0.0
 
         switch mood {
+        case .walk where prop != nil:   // walking with a prop instead of the ball
+            let w = sin(t * 6)
+            bob = -abs(w) * 2
+            armL = -10 - 12 * w
+            armR = 10 - 12 * w
+            ballAt = CGPoint(x: -100, y: -100)   // ball stays home
         case .walk:   // dribbling
             let b = abs(sin(t * 3.5))
             let handY = 80 + 5 * (1 - b)
@@ -664,6 +679,7 @@ enum Baller {
         Pen.line(&body, CGPoint(x: 64, y: 86), CGPoint(x: 64, y: 104), look.accent.color, 1.5)
 
         // Jersey in your accent color with your letter
+        Props.behind(&body, prop)
         let curvy = look.body == .female
         body.fill(curvy ? Pen.hourglass(top: 52, bottom: 88, shoulders: 11, waist: 5, hips: 14)
                         : Path(roundedRect: CGRect(x: 37, y: 52, width: 26, height: 36), cornerRadius: 6),
@@ -683,6 +699,7 @@ enum Baller {
         Pen.line(&body, sR, handR, skin, 7)
         Pen.dot(&body, handL, 3.5, skin)
         Pen.dot(&body, handR, 3.5, skin)
+        Props.front(&body, ground: &ctx, prop, handL: handL, handR: handR, bob: bob, t: t, look: look)
 
         Pen.head(body, look: look, tilt: headTilt, drop: headDrop, smile: smile)
 
@@ -727,7 +744,7 @@ enum Ripped {
         ctx.fill(Path(CGRect(x: hand.x - 6, y: hand.y + 8, width: 12, height: 3)), with: .color(look.accent.color))
     }
 
-    static func draw(_ ctx: inout GraphicsContext, mood: Mood, t: Double, look: Look) {
+    static func draw(_ ctx: inout GraphicsContext, mood: Mood, t: Double, look: Look, prop: Prop? = nil) {
         let shorts = look.main.color
         Pen.shadow(&ctx)
 
@@ -737,6 +754,13 @@ enum Ripped {
         var seated = false, curling = false
 
         switch mood {
+        case .walk where prop != nil:   // brisk walk, arms low so the prop hangs
+            let w = sin(t * 6)
+            bob = -abs(w) * 2
+            liftL = max(0, w) * 7
+            liftR = max(0, -w) * 7
+            upL = -12 - 14 * w; foreL = upL + 6
+            upR = 12 - 14 * w; foreR = upR - 6
         case .walk:   // jogging
             let w = sin(t * 8)
             bob = -abs(w) * 4
@@ -795,6 +819,7 @@ enum Ripped {
                       with: .color(shorts))
         }
 
+        Props.behind(&body, prop)
         // Torso: V-shaped with big shoulders, or an hourglass for the curvy body
         let curvy = look.body == .female
         let shoulderX = curvy ? 13.0 : 17.0
@@ -852,14 +877,96 @@ enum Ripped {
 
         // Arms
         let sL = CGPoint(x: 50 - shoulderX, y: 59), sR = CGPoint(x: 50 + shoulderX, y: 59)
-        arm(&body, sL, look: look, upper: upL, fore: foreL, flex: curling ? 0 : flex)
+        let handL = arm(&body, sL, look: look, upper: upL, fore: foreL, flex: curling ? 0 : flex)
         if curling {
             let elbow = Pen.reach(sR, upR, 16)
             let hand = Pen.reach(elbow, foreR, 15)
             golfBag(&body, hangingFrom: hand, look: look)
         }
-        arm(&body, sR, look: look, upper: upR, fore: foreR, flex: flex)
+        let handR = arm(&body, sR, look: look, upper: upR, fore: foreR, flex: flex)
+        Props.front(&body, ground: &ctx, prop, handL: handL, handR: handR, bob: bob, t: t, look: look)
 
         Pen.head(body, look: look, tilt: headTilt, drop: headDrop, smile: smile)
+    }
+}
+
+
+// MARK: - Session props (hiking stick, dog, shopping bags, balloon, dumbbells)
+
+enum Props {
+    static let wood = Color(red: 0.55, green: 0.36, blue: 0.20)
+    static let pack = Color(red: 0.30, green: 0.45, blue: 0.25)
+
+    // Drawn before the torso, so it peeks out from behind (the hiking backpack).
+    static func behind(_ body: inout GraphicsContext, _ prop: Prop?) {
+        guard prop == .hikingStick else { return }
+        body.fill(Path(roundedRect: CGRect(x: 29, y: 51, width: 42, height: 32), cornerRadius: 8), with: .color(pack))
+    }
+
+    // Drawn on top, in the hands. `ground` is the unbouncing canvas (the dog walks on it).
+    static func front(_ body: inout GraphicsContext, ground: inout GraphicsContext, _ prop: Prop?,
+                      handL: CGPoint, handR: CGPoint, bob: Double, t: Double, look: Look) {
+        guard let prop else { return }
+        switch prop {
+        case .hikingStick:
+            Pen.line(&body, CGPoint(x: handR.x + 1, y: handR.y - 8), CGPoint(x: handR.x + 5, y: 134 - bob), wood, 2.2)
+            Pen.dot(&body, handR, 3.6, look.skin.color)   // hand over the stick
+
+        case .dog:
+            let trot = sin(t * 10)
+            let dogColor = Color(red: 0.72, green: 0.50, blue: 0.30)
+            let dark = Color(red: 0.40, green: 0.25, blue: 0.15)
+            // legs
+            for (x, phase) in [(75.0, 1.0), (79.0, -1.0), (85.0, -1.0), (89.0, 1.0)] {
+                Pen.line(&ground, CGPoint(x: x, y: 125), CGPoint(x: x + 2.5 * trot * phase, y: 134), dogColor, 2.6)
+            }
+            // tail (wagging), body, head, ear, nose, eye
+            Pen.line(&ground, CGPoint(x: 73, y: 121), CGPoint(x: 68 + 2 * sin(t * 14), y: 113), dogColor, 2.4)
+            ground.fill(Path(roundedRect: CGRect(x: 71, y: 118, width: 21, height: 9), cornerRadius: 4.5), with: .color(dogColor))
+            Pen.dot(&ground, CGPoint(x: 93, y: 115), 5, dogColor)
+            ground.fill(Path(ellipseIn: CGRect(x: 88.5, y: 111, width: 4, height: 8)), with: .color(dark))
+            Pen.dot(&ground, CGPoint(x: 98, y: 116), 1.4, .black)
+            Pen.dot(&ground, CGPoint(x: 94.5, y: 113.5), 0.9, .black)
+            // collar + leash from your hand (body coordinates are shifted by the bob)
+            Pen.line(&ground, CGPoint(x: 90, y: 118), CGPoint(x: 90, y: 121), look.accent.color, 2)
+            var leash = Path()
+            let hand = CGPoint(x: handR.x, y: handR.y + bob)
+            leash.move(to: hand)
+            leash.addQuadCurve(to: CGPoint(x: 90, y: 119),
+                               control: CGPoint(x: (hand.x + 90) / 2, y: max(hand.y, 119) + 6))
+            ground.stroke(leash, with: .color(.black.opacity(0.7)), lineWidth: 1)
+
+        case .bags:
+            for (hand, color) in [(handL, look.main.color), (handR, look.accent.color)] {
+                var handle = Path()
+                handle.move(to: CGPoint(x: hand.x - 3, y: hand.y + 4))
+                handle.addQuadCurve(to: CGPoint(x: hand.x + 3, y: hand.y + 4), control: CGPoint(x: hand.x, y: hand.y - 3))
+                body.stroke(handle, with: .color(.black.opacity(0.6)), lineWidth: 1)
+                body.fill(Path(roundedRect: CGRect(x: hand.x - 5.5, y: hand.y + 3, width: 11, height: 13), cornerRadius: 1.5),
+                          with: .color(color))
+                body.fill(Path(CGRect(x: hand.x - 5.5, y: hand.y + 3, width: 11, height: 2.5)), with: .color(.black.opacity(0.15)))
+                Pen.dot(&body, hand, 3.4, look.skin.color)
+            }
+
+        case .balloon:
+            let top = CGPoint(x: 84 + 2 * sin(t * 1.3), y: 22 + 2 * sin(t * 2))
+            var string = Path()
+            string.move(to: handR)
+            string.addQuadCurve(to: CGPoint(x: top.x, y: top.y + 9), control: CGPoint(x: handR.x + 14, y: (handR.y + top.y) / 2))
+            body.stroke(string, with: .color(.black.opacity(0.5)), lineWidth: 0.8)
+            body.fill(Path(ellipseIn: CGRect(x: top.x - 7, y: top.y - 8, width: 14, height: 17)), with: .color(Swatch.red.color))
+            body.fill(Path(ellipseIn: CGRect(x: top.x - 4, y: top.y - 5, width: 3, height: 5)), with: .color(.white.opacity(0.5)))
+            Pen.dot(&body, CGPoint(x: top.x, y: top.y + 9), 1.3, Swatch.red.color)
+
+        case .dumbbells:
+            for hand in [handL, handR] {
+                Pen.line(&body, CGPoint(x: hand.x - 6, y: hand.y), CGPoint(x: hand.x + 6, y: hand.y), Color(white: 0.6), 2.2)
+                for dx in [-6.0, 6.0] {
+                    body.fill(Path(roundedRect: CGRect(x: hand.x + dx - 2, y: hand.y - 4.5, width: 4, height: 9), cornerRadius: 1),
+                              with: .color(Color(white: 0.25)))
+                }
+                Pen.dot(&body, hand, 3.6, look.skin.color)
+            }
+        }
     }
 }

@@ -10,19 +10,6 @@ struct DaySteps: Identifiable {
     var id: Date { date }
 }
 
-struct GolfRound: Codable, Identifiable {
-    var id = UUID()
-    let start: Date
-    let end: Date
-    let holes: Int
-    let steps: Int
-}
-
-// About 1,300 steps per hole of golf.
-func holesWalked(_ steps: Int) -> String {
-    (Double(steps) / 1300).formatted(.number.precision(.fractionLength(1)))
-}
-
 // Reads steps from Apple Health: today, the last 7 days, and your streak.
 @MainActor
 final class StepStore: ObservableObject {
@@ -156,6 +143,8 @@ struct ContentView: View {
     @AppStorage("roundStart") private var roundStart: Double = 0
     @AppStorage("avatar") private var avatar: Avatar = .golfer
     @AppStorage("look") private var look: Look = .original
+    @AppStorage("sessionKind") private var sessionKind: SessionKind = .golf
+    @AppStorage("funUnit") private var funUnit: FunUnit = .holes
     @State private var showSettings = false
 
     private var progress: Double { min(Double(store.today) / Double(goal), 1) }
@@ -165,9 +154,10 @@ struct ContentView: View {
     private var pace: Pace { Pace(steps: store.today, goal: goal, curve: store.curve) }
     private var onPace: Bool { pace.onPace }
 
-    // What your character does: swing in a round, celebrate at goal, walk on pace, slump behind.
+    // What your character does: swing in a golf round, walk with a prop in other sessions,
+    // celebrate at goal, walk on pace, slump behind.
     private var mood: Mood {
-        if roundStart > 0 { return .swing }
+        if roundStart > 0 { return sessionKind == .golf ? .swing : .walk }
         if hitGoal { return .celebrate }
         return onPace ? .walk : .slump
     }
@@ -198,12 +188,13 @@ struct ContentView: View {
                     HStack(spacing: 12) {
                         StatTile(title: "Streak", value: "🔥 \(store.streak)",
                                  detail: store.streak == 1 ? "day" : "days")
-                        StatTile(title: "Golf", value: "⛳️ \(holesWalked(store.today))", detail: "holes walked")
+                        StatTile(title: funUnit.tileTitle, value: "\(funUnit.emoji) \(funUnit.amount(store.today))",
+                                 detail: funUnit.detail)
                         StatTile(title: pace.isPersonal ? "Your pace" : "Pace", value: onPace ? "✅" : "⏳",
                                  detail: onPace ? "on pace" : "\(pace.behindText)\nwalk \(pace.catchUpMinutes) min")
                     }
                     .fixedSize(horizontal: false, vertical: true)   // all tiles as tall as the tallest
-                    GolfCard(store: store, theme: theme)
+                    SessionCard(store: store, theme: theme)
                     weekTable
                     if let error = store.error {
                         Text(error).font(.footnote).foregroundStyle(.red)
@@ -215,7 +206,7 @@ struct ContentView: View {
         .tint(Color.primary)
         .preferredColorScheme(theme.scheme)
         .sheet(isPresented: $showSettings) {
-            SettingsView(goal: $goal, theme: $theme, avatar: $avatar, look: $look)
+            SettingsView(goal: $goal, theme: $theme, avatar: $avatar, look: $look, funUnit: $funUnit)
         }
         .task { await store.start(goal: goal) }
         // Re-read steps every time you come back to the app.
@@ -229,6 +220,9 @@ struct ContentView: View {
 
     private var ring: some View {
         ZStack {
+            // Scene for your fun unit (golf rounds always get the golf course).
+            UnitScene(unit: roundStart > 0 && sessionKind == .golf ? .holes : funUnit)
+                .clipShape(Circle().inset(by: 10))
             Circle()
                 .stroke(Color.primary.opacity(0.15), lineWidth: 20)
             Circle()
@@ -238,7 +232,8 @@ struct ContentView: View {
                 .rotationEffect(.degrees(-90))
                 .animation(.easeOut(duration: 0.6), value: progress)
             VStack(spacing: 0) {
-                CharacterView(avatar: avatar, mood: mood, look: look)
+                CharacterView(avatar: avatar, mood: mood, look: look,
+                              prop: roundStart > 0 ? sessionKind.prop : nil)
                     .frame(width: 110, height: 125)
                 Text(store.today, format: .number)
                     .font(.system(size: 36, weight: .bold, design: .rounded))
@@ -299,7 +294,7 @@ struct ContentView: View {
                                 look: look,
                                 mood: hit ? .celebrate
                                     : Calendar.current.isDateInToday(day.date) ? .walk : .slump)
-                        Text(hit ? "⛳️" : "−\((goal - day.steps).formatted())")
+                        Text(hit ? funUnit.goalFlag : "−\((goal - day.steps).formatted())")
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(hit ? Color.primary : Color.orange)
                     }
@@ -378,128 +373,6 @@ struct StatTile: View {
     }
 }
 
-// MARK: - Golf mode
-
-struct GolfCard: View {
-    @ObservedObject var store: StepStore
-    let theme: Theme
-    @AppStorage("roundStart") private var roundStart: Double = 0   // 0 = no round going
-    @AppStorage("roundHoles") private var holes = 18
-    @AppStorage("rounds") private var roundsData = Data()
-    @State private var roundSteps = 0
-    @State private var confirmEnd = false
-
-    private var inRound: Bool { roundStart > 0 }
-    private var startDate: Date { Date(timeIntervalSince1970: roundStart) }
-    private var rounds: [GolfRound] {
-        (try? JSONDecoder().decode([GolfRound].self, from: roundsData)) ?? []
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Golf mode").font(.headline)
-
-            if inRound {
-                HStack {
-                    Text("ROUND IN PROGRESS · \(holes) HOLES")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(theme.done)
-                    Spacer()
-                    Text(startDate, style: .timer)
-                        .font(.caption.monospacedDigit())
-                }
-                Text("\(roundSteps.formatted()) steps")
-                    .font(.title.weight(.bold))
-                Text("~\(holesWalked(roundSteps)) holes walked")
-                    .foregroundStyle(Color.primary.opacity(0.7))
-                Button { confirmEnd = true } label: {
-                    Text("End round").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
-            } else {
-                Picker("Holes", selection: $holes) {
-                    Text("9 holes").tag(9)
-                    Text("18 holes").tag(18)
-                }
-                .pickerStyle(.segmented)
-                Button {
-                    roundSteps = 0
-                    roundStart = Date.now.timeIntervalSince1970
-                } label: {
-                    Text("⛳️ Start round").frame(maxWidth: .infinity).foregroundStyle(.black)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(theme.done)
-            }
-
-            if !rounds.isEmpty {
-                Divider()
-                Text("Past rounds (press and hold to delete)")
-                    .font(.caption)
-                    .foregroundStyle(Color.primary.opacity(0.7))
-                ForEach(Array(rounds.reversed())) { r in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(r.start, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
-                            Text("\(r.holes) holes · \(duration(r))")
-                                .font(.caption)
-                                .foregroundStyle(Color.primary.opacity(0.7))
-                        }
-                        Spacer()
-                        Text("\(r.steps.formatted()) steps")
-                            .font(.subheadline.weight(.semibold))
-                    }
-                    .contentShape(Rectangle())
-                    .contextMenu {
-                        Button("Delete round", role: .destructive) { delete(r) }
-                    }
-                }
-            }
-        }
-        .padding()
-        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
-        .confirmationDialog("End this round?", isPresented: $confirmEnd, titleVisibility: .visible) {
-            Button("Save round") { Task { await endRound(save: true) } }
-            Button("Discard round", role: .destructive) { Task { await endRound(save: false) } }
-        }
-        // While a round is going, re-count its steps every 30 seconds.
-        .task(id: roundStart) {
-            while roundStart > 0 && !Task.isCancelled {
-                roundSteps = await store.steps(from: startDate)
-                try? await Task.sleep(for: .seconds(30))
-            }
-        }
-        .onChange(of: store.today) { _, _ in
-            guard inRound else { return }
-            Task { roundSteps = await store.steps(from: startDate) }
-        }
-    }
-
-    private func endRound(save: Bool) async {
-        if save {
-            let start = startDate
-            let end = Date.now
-            let steps = await store.steps(from: start, to: end)
-            var list = rounds
-            list.append(GolfRound(start: start, end: end, holes: holes, steps: steps))
-            roundsData = (try? JSONEncoder().encode(list)) ?? roundsData
-        }
-        roundStart = 0
-        roundSteps = 0
-    }
-
-    private func delete(_ round: GolfRound) {
-        let list = rounds.filter { $0.id != round.id }
-        roundsData = (try? JSONEncoder().encode(list)) ?? roundsData
-    }
-
-    private func duration(_ r: GolfRound) -> String {
-        let mins = Int(r.end.timeIntervalSince(r.start) / 60)
-        return "\(mins / 60)h \(String(format: "%02d", mins % 60))m"
-    }
-}
-
 // MARK: - Settings (tap the gear)
 
 struct SettingsView: View {
@@ -507,6 +380,7 @@ struct SettingsView: View {
     @Binding var theme: Theme
     @Binding var avatar: Avatar
     @Binding var look: Look
+    @Binding var funUnit: FunUnit
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -530,6 +404,15 @@ struct SettingsView: View {
                             }
                         }
                     }
+                }
+                Section {
+                    Picker("Show steps as", selection: $funUnit) {
+                        ForEach(FunUnit.allCases) { Text("\($0.emoji) \($0.name)").tag($0) }
+                    }
+                } header: {
+                    Text("Fun unit")
+                } footer: {
+                    Text("Turns your steps into something you can picture, like golf holes or soccer fields. Shown on the main screen and in sessions.")
                 }
                 Section("Look") {
                     Picker("Theme", selection: $theme) {
