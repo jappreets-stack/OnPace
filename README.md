@@ -8,6 +8,8 @@ a hand-drawn animated character that reacts to how your day is going.
   <img src="Screenshots/iphone-main.png" width="260" alt="iPhone main screen with goal ring, streak, golf mode">
   &nbsp;&nbsp;&nbsp;
   <img src="Screenshots/watch-ring.png" width="220" alt="Apple Watch Ultra 2 ring screen">
+  &nbsp;&nbsp;&nbsp;
+  <img src="Screenshots/iphone-builder.png" width="260" alt="Build your mini-me character builder">
 </p>
 
 ## Features
@@ -18,6 +20,8 @@ a hand-drawn animated character that reacts to how your day is going.
 - Golf mode: start/end a 9- or 18-hole round and track steps between two times; saved round history
 - Last 7 days table: days at goal, daily average, best day, and a segmented bar per day with a tiny
   animated you on it: celebrating at ⛳ on goal days, slumped where you stopped (and steps short) on missed days
+- **Build your mini-me:** a character builder with a live animated preview in every pose
+  (see below)
 - Themes: Auto (system), Dark, Purple & gold, Golf green
 
 **Apple Watch**
@@ -27,10 +31,19 @@ a hand-drawn animated character that reacts to how your day is going.
 - Watch face complications (WidgetKit): ring, steps left, and pace, for circle, corner, inline,
   and rectangle slots; they read HealthKit directly and refresh when the app opens
 
-**Animated characters** (`Characters.swift`)
-- Three characters drawn entirely in code with SwiftUI `Canvas` + `TimelineView` on a 100×140 grid:
-  a golfer, a basketball player, and a gym version
+**Animated characters** (`Characters.swift`, `CharacterBuilder.swift`)
+- Drawn entirely in code with SwiftUI `Canvas` + `TimelineView` on a 100×140 grid. No image assets.
+- Three outfits with the same poses: Golfer (pants or skort), Baller (jersey with your letter),
+  and Gym (tank or sports top)
+- Build your mini-me: male or female body, 6 skin tones, 10 hair styles and head coverings (turban, hijab,
+  short, long, ponytail, braids, curly, bun, bald, cap), beard, glasses, eyelashes, lip color, and
+  main / accent / headwear colors from a 12-color palette
+- Male / Female sets matching defaults (body, hair, outfit), and every option stays open to change
 - Mood follows your progress: swings during a golf round, celebrates at goal, walks when on pace, slumps when behind
+
+<p align="center">
+  <img src="Screenshots/characters.png" width="100%" alt="All hair styles and outfits drawn by the character code">
+</p>
 
 ## How it works
 
@@ -45,6 +58,8 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Forecast:** scales today's steps by how much of your usual day is done to say what time you'll
   reach your goal, or how many steps short you'll be by your usual end of day (and how many more
   minutes of walking would close the gap). One shared `Pace.swift` drives the phone, watch, and complications.
+- **Your look:** one `Look` struct (Codable, saved as JSON in `@AppStorage`) drives every drawing.
+  Missing fields fall back to defaults when decoding, so adding new options never resets a saved look.
 - **State:** settings and golf rounds are stored with `@AppStorage`; data refreshes whenever the app becomes active.
 - **Layout:** the watch ring is centered on the physical screen (`WKInterfaceDevice.screenBounds`)
   instead of the safe area, so it stays centered next to the clock and page indicator.

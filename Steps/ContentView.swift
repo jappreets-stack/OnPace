@@ -155,6 +155,7 @@ struct ContentView: View {
     @AppStorage("theme") private var theme: Theme = .system
     @AppStorage("roundStart") private var roundStart: Double = 0
     @AppStorage("avatar") private var avatar: Avatar = .golfer
+    @AppStorage("look") private var look: Look = .original
     @State private var showSettings = false
 
     private var progress: Double { min(Double(store.today) / Double(goal), 1) }
@@ -214,7 +215,7 @@ struct ContentView: View {
         .tint(Color.primary)
         .preferredColorScheme(theme.scheme)
         .sheet(isPresented: $showSettings) {
-            SettingsView(goal: $goal, theme: $theme, avatar: $avatar)
+            SettingsView(goal: $goal, theme: $theme, avatar: $avatar, look: $look)
         }
         .task { await store.start(goal: goal) }
         // Re-read steps every time you come back to the app.
@@ -237,7 +238,7 @@ struct ContentView: View {
                 .rotationEffect(.degrees(-90))
                 .animation(.easeOut(duration: 0.6), value: progress)
             VStack(spacing: 0) {
-                CharacterView(avatar: avatar, mood: mood)
+                CharacterView(avatar: avatar, mood: mood, look: look)
                     .frame(width: 110, height: 125)
                 Text(store.today, format: .number)
                     .font(.system(size: 36, weight: .bold, design: .rounded))
@@ -295,6 +296,7 @@ struct ContentView: View {
                         MiniBar(fraction: min(Double(day.steps) / Double(goal), 1),
                                 color: hit ? theme.done : theme.ring.opacity(0.6),
                                 avatar: avatar,
+                                look: look,
                                 mood: hit ? .celebrate
                                     : Calendar.current.isDateInToday(day.date) ? .walk : .slump)
                         Text(hit ? "⛳️" : "−\((goal - day.steps).formatted())")
@@ -315,6 +317,7 @@ struct MiniBar: View {
     let fraction: Double
     let color: Color
     var avatar: Avatar? = nil
+    var look: Look? = nil
     var mood: Mood = .walk
 
     private let blocks = 10
@@ -344,7 +347,7 @@ struct MiniBar: View {
                     }
                 }
                 if let avatar {
-                    CharacterView(avatar: avatar, mood: mood)
+                    CharacterView(avatar: avatar, mood: mood, look: look)
                         .frame(width: 24, height: 34)
                         .position(x: min(max(end, 12), g.size.width - 12),
                                   y: g.size.height / 2 - 13)
@@ -503,6 +506,7 @@ struct SettingsView: View {
     @Binding var goal: Int
     @Binding var theme: Theme
     @Binding var avatar: Avatar
+    @Binding var look: Look
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -512,10 +516,20 @@ struct SettingsView: View {
                     Stepper("\(goal.formatted()) steps", value: $goal, in: 2_000...30_000, step: 500)
                 }
                 Section("Character") {
-                    Picker("Character", selection: $avatar) {
-                        ForEach(Avatar.allCases) { Text($0.name).tag($0) }
+                    NavigationLink {
+                        CharacterBuilder(avatar: $avatar, look: $look)
+                    } label: {
+                        HStack(spacing: 12) {
+                            CharacterView(avatar: avatar, mood: .walk, look: look)
+                                .frame(width: 40, height: 56)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Build your mini-me")
+                                Text("Outfit, skin tone, hair, beard, glasses, colors")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
-                    .pickerStyle(.segmented)
                 }
                 Section("Look") {
                     Picker("Theme", selection: $theme) {
