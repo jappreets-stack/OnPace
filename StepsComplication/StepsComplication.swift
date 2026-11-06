@@ -74,8 +74,14 @@ struct StepsProvider: TimelineProvider {
             let day = cal.date(byAdding: .day, value: -offset, to: todayStart)!
             days.append(Int(collection.statistics(for: day)?.sumQuantity()?.doubleValue(for: .count()) ?? 0))
         }
-        let today = days.last ?? 0
+        var today = days.last ?? 0
         let goal = Shared.goal   // sent from the iPhone (see WatchSync)
+        // The iPhone sends its own numbers with every refresh; they include steps the watch's copy of
+        // Health doesn't have yet, so they win (same as the watch app).
+        let d = Shared.defaults
+        let fromPhoneToday = Double(d.string(forKey: Shared.stepsDateKey) ?? "")
+            .map { Calendar.current.isDateInToday(Date(timeIntervalSince1970: $0)) } ?? false
+        if fromPhoneToday, let phoneSteps = Int(d.string(forKey: Shared.stepsKey) ?? "") { today = max(today, phoneSteps) }
 
         // Streak: days in a row at goal. Today only counts once you've hit it.
         var past = days
@@ -84,7 +90,12 @@ struct StepsProvider: TimelineProvider {
         for d in past.reversed() {
             if d >= goal { streak += 1 } else { break }
         }
-        let curve = await Pace.learnCurve(from: health)
+        var curve = await Pace.learnCurve(from: health)
+        if fromPhoneToday {
+            if let phoneStreak = Int(d.string(forKey: Shared.streakKey) ?? "") { streak = phoneStreak }
+            let phoneCurve = (d.string(forKey: Shared.curveKey) ?? "").split(separator: ",").compactMap { Double($0) }
+            if phoneCurve.count == 24 { curve = phoneCurve }
+        }
         return StepsEntry(date: .now, steps: today, streak: streak, curve: curve, goal: goal)
     }
 }

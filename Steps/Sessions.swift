@@ -344,6 +344,24 @@ struct SessionHistory: View {
     }
 }
 
+// MARK: - Today's sessions for the watch
+
+extension StepStore {
+    // Saves today's sessions (yours and ones from the Workout app) where PhoneSync sends them to the watch.
+    func shareTodaysSessions() {
+        let d = UserDefaults.standard
+        let records = (try? JSONDecoder().decode([SessionRecord].self, from: d.data(forKey: "rounds") ?? Data())) ?? []
+        let unit = d.string(forKey: "funUnit").flatMap(FunUnit.init(rawValue:)) ?? .holes
+        let today = records.filter { Calendar.current.isDateInToday($0.start) }.map { r in
+            WatchSession(emoji: r.sessionKind.emoji, title: r.title, steps: r.steps,
+                         distance: (r.sessionKind == .golf ? FunUnit.holes : unit).phrase(r.steps, meters: r.meters))
+        }
+        if let data = try? JSONEncoder().encode(today), let text = String(data: data, encoding: .utf8) {
+            Shared.defaults.set(text, forKey: Shared.sessionsKey)
+        }
+    }
+}
+
 // MARK: - Workouts from Apple's Workout app
 
 // Apple only shares a workout once it has ended, so this runs whenever the app refreshes:

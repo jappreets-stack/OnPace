@@ -90,18 +90,24 @@ final class StepStore: ObservableObject {
             }
             streak = count
             todayMeters = await WalkDistance.meters(health, from: todayStart)
+            curve = await Pace.learnCurve(from: health)
             // For the home-screen widget: today's steps and the goal, in the shared App Group.
             let shared = Shared.defaults
             shared.set(today, forKey: Shared.stepsKey)
             shared.set(Date.now.timeIntervalSince1970, forKey: Shared.stepsDateKey)
+            if let todayMeters { shared.set(todayMeters, forKey: Shared.metersKey) }
+            // The watch shows the same streak, week and forecast as the phone.
+            shared.set(streak, forKey: Shared.streakKey)
+            shared.set(week.map { "\($0.steps)" }.joined(separator: ","), forKey: Shared.weekKey)
+            shared.set(curve.map { $0.map { "\($0)" }.joined(separator: ",") } ?? "", forKey: Shared.curveKey)
             shared.set(goal, forKey: Shared.goalKey)
             for key in [Shared.avatarKey, Shared.lookKey, Shared.funUnitKey] {   // the medium widget shows your mini-me
                 if let v = UserDefaults.standard.string(forKey: key) { shared.set(v, forKey: key) }
             }
             WidgetCenter.shared.reloadAllTimelines()
-            curve = await Pace.learnCurve(from: health)
             error = nil
             await importWorkouts()   // finished Apple workouts become sessions (Sessions.swift)
+            shareTodaysSessions()    // and the watch shows today's sessions too
         } catch {
             self.error = error.localizedDescription
         }

@@ -26,6 +26,10 @@ nonisolated final class PhoneSync: NSObject, WCSessionDelegate, @unchecked Senda
         for key in Shared.syncedKeys {
             if let v = d.object(forKey: key) { context[key] = "\(v)" }
         }
+        // Today's steps, distance and sessions as the phone sees them.
+        for key in Shared.liveKeys {
+            if let v = Shared.defaults.object(forKey: key) { context[key] = "\(v)" }
+        }
         guard context != lastSent else { return }
         do {
             try session.updateApplicationContext(context)

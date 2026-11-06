@@ -73,8 +73,13 @@ final class WatchStepStore: ObservableObject {
                 let n = collection.statistics(for: day)?.sumQuantity()?.doubleValue(for: .count()) ?? 0
                 days.append(WatchDay(date: day, steps: Int(n)))
             }
-            today = days.last?.steps ?? 0
             todayMeters = await WalkDistance.meters(health, from: todayStart)
+            // The iPhone often knows more of today's steps than the watch's copy of Health.
+            if let phone = Self.phoneToday() {
+                days[days.count - 1] = WatchDay(date: todayStart, steps: max(days.last?.steps ?? 0, phone.steps))
+                if let m = phone.meters, m > (todayMeters ?? 0) { todayMeters = m }
+            }
+            today = days.last?.steps ?? 0
             week = Array(days.suffix(7))
 
             // Streak: days in a row at goal. Today only counts once you've hit it.
@@ -86,12 +91,48 @@ final class WatchStepStore: ObservableObject {
             }
             streak = count
             curve = await Pace.learnCurve(from: health)
+            applyPhone()   // the phone's streak, week and usual day win: it has the full step history
             error = nil
             // Update the watch face complications with the fresh numbers.
             WidgetCenter.shared.reloadAllTimelines()
         } catch {
             self.error = error.localizedDescription
         }
+    }
+}
+
+extension WatchStepStore {
+    // Today's steps and distance the iPhone last sent (nil if it's from another day).
+    nonisolated static func phoneToday() -> (steps: Int, meters: Double?)? {
+        let d = Shared.defaults
+        guard let stamp = Double(d.string(forKey: Shared.stepsDateKey) ?? ""),
+              Calendar.current.isDateInToday(Date(timeIntervalSince1970: stamp)),
+              let steps = Int(d.string(forKey: Shared.stepsKey) ?? "") else { return nil }
+        return (steps, Double(d.string(forKey: Shared.metersKey) ?? ""))
+    }
+
+    // Use the phone's numbers right away when they arrive (no need to wait for the next Health read).
+    // The watch's own copy of Health is missing steps the iPhone counted, so for today's steps, the
+    // last 7 days, the streak and your usual day (which drives "At this pace"), the phone's version wins.
+    func applyPhone() {
+        guard let phone = Self.phoneToday() else { return }
+        let d = Shared.defaults
+        if phone.steps > today { today = phone.steps }
+        if let m = phone.meters, m > (todayMeters ?? 0) { todayMeters = m }
+        if let s = Int(d.string(forKey: Shared.streakKey) ?? "") { streak = s }
+        let phoneWeek = (d.string(forKey: Shared.weekKey) ?? "").split(separator: ",").compactMap { Int($0) }
+        if phoneWeek.count == 7 {
+            let start = Calendar.current.startOfDay(for: .now)
+            week = phoneWeek.enumerated().map { i, steps in
+                let day = Calendar.current.date(byAdding: .day, value: i - 6, to: start)!
+                let own = week.first { Calendar.current.isDate($0.date, inSameDayAs: day) }?.steps ?? 0
+                return WatchDay(date: day, steps: max(own, i == 6 ? today : steps))
+            }
+        } else if let last = week.indices.last {
+            week[last] = WatchDay(date: week[last].date, steps: today)
+        }
+        let phoneCurve = (d.string(forKey: Shared.curveKey) ?? "").split(separator: ",").compactMap { Double($0) }
+        if phoneCurve.count == 24 { curve = phoneCurve }
     }
 }
 
@@ -146,6 +187,12 @@ struct ContentView: View {
     @State private var flight: (play: WatchPlay, start: Date)?
     @State private var cheer: String?
     @State private var dayLine = ""
+    // Sent by the iPhone with every refresh (see PhoneSync): today's steps and sessions.
+    @AppStorage(Shared.stepsKey, store: Shared.defaults) private var phoneSteps = ""
+    @AppStorage(Shared.sessionsKey, store: Shared.defaults) private var sessionsJSON = ""
+    private var sessions: [WatchSession] {
+        (try? JSONDecoder().decode([WatchSession].self, from: Data(sessionsJSON.utf8))) ?? []
+    }
 
     private var progress: Double { min(Double(store.today) / Double(goal), 1) }
     private var hitGoal: Bool { store.today >= goal }
@@ -165,6 +212,7 @@ struct ContentView: View {
         TabView {
             ringPage
             statsPage
+            if !sessions.isEmpty { sessionsPage }
             weekPage
             colorPage
         }
@@ -174,6 +222,8 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await store.refresh(goal: goal) } }
         }
+        // The phone's latest steps show up right away.
+        .onChange(of: phoneSteps) { _, _ in store.applyPhone() }
         // A new goal from the phone changes the streak and bars.
         .onChange(of: goal) { _, newGoal in Task { await store.refresh(goal: newGoal) } }
     }
@@ -331,6 +381,31 @@ struct ContentView: View {
     }
 
     // Page 3: last 7 days as little bars, ✅ on goal days.
+    // Today's sessions (yours and finished workouts from the Workout app), sent by the iPhone.
+    private var sessionsPage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Today's sessions").font(.headline)
+                ForEach(sessions, id: \.self) { s in
+                    HStack(spacing: 8) {
+                        Text(s.emoji).font(.title3)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(s.title).font(.body.weight(.semibold)).lineLimit(1)
+                            Text("\(s.steps.formatted()) steps · \(s.distance)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
+        }
+    }
+
     private var weekPage: some View {
         let daysHit = store.week.filter { $0.steps >= goal }.count
         let average = store.week.isEmpty ? 0 : store.week.map(\.steps).reduce(0, +) / store.week.count

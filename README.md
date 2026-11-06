@@ -55,7 +55,10 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Tap the watch ring:** your mini-me does the same sport move as on the phone, the ball flies to the goal in the
   ring's scene, a short cheer pops up ("Swish!") and the watch taps your wrist
 - Stats page (streak, pace, forecast, your fun unit) and a 7-day bar chart, paged with the Digital Crown
-- **Synced from the iPhone:** goal, mini-me (outfit + whole look), and fun unit; pick the ring color on the watch
+- **Synced from the iPhone:** goal, mini-me (outfit + whole look), fun unit, and with every refresh today's steps,
+  distance, streak, last 7 days, your usual-day pace pattern, and today's sessions (the watch's own copy of Apple Health
+  is missing steps the iPhone counted, so the watch and its complications use the phone's numbers when they're newer)
+- **Today's sessions** page: sessions you tracked and workouts from the Workout app; pick the ring color on the watch
 - Watch face complications (WidgetKit): ring, steps left, and pace, for circle, corner, inline,
   and rectangle slots; they read HealthKit directly, use the goal synced from the phone, and refresh when the app opens
 

@@ -17,6 +17,14 @@ nonisolated enum Shared {
     // The iPhone app saves today's steps here for its home-screen widget (used when Health is locked).
     static let stepsKey = "todaySteps"
     static let stepsDateKey = "todayStepsDate"
+    static let metersKey = "todayMeters"
+    static let sessionsKey = "sessionsToday"   // JSON list of today's sessions, for the watch
+    // Sent to the watch with every refresh: the phone usually knows more steps than the watch's own
+    // copy of Health (steps the iPhone counts reach the watch late).
+    static let streakKey = "phoneStreak"
+    static let curveKey = "phoneCurve"     // your usual day (24 numbers), so the watch's forecast matches
+    static let weekKey = "phoneWeek"       // last 7 days of steps, oldest first, ending today
+    static let liveKeys = [stepsKey, stepsDateKey, metersKey, sessionsKey, streakKey, curveKey, weekKey]
     static let syncedKeys = [goalKey, avatarKey, lookKey, funUnitKey, placeKey]
 
     // On the watch: the App Group storage both the app and the complications read.
@@ -160,6 +168,14 @@ nonisolated enum FunUnit: String, CaseIterable, Identifiable {
     }
 }
 
+
+// Today's sessions sent from the iPhone to the watch. One line per session, ready to show: "⛳️", "9 holes", "5,517 steps", "4.2 holes walked".
+nonisolated struct WatchSession: Codable, Hashable {
+    let emoji: String
+    let title: String
+    let steps: Int
+    let distance: String
+}
 
 // Where you walk when you count km or miles: changes the scene, not the math.
 nonisolated enum DistancePlace: String, CaseIterable, Identifiable {

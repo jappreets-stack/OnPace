@@ -17,7 +17,7 @@ nonisolated final class WatchSync: NSObject, WCSessionDelegate {
         guard !context.isEmpty else { return }
         DispatchQueue.main.async {
             let d = Shared.defaults
-            for key in Shared.syncedKeys {
+            for key in Shared.syncedKeys + Shared.liveKeys {
                 guard let text = context[key] as? String else { continue }
                 if key == Shared.goalKey, let goal = Int(text) {
                     if d.integer(forKey: key) != goal { d.set(goal, forKey: key) }
