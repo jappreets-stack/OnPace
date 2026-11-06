@@ -1,4 +1,5 @@
 import SwiftUI
+import HealthKit
 
 // Settings the iPhone shares with the watch and its watch-face complications.
 // The iPhone is the boss: it sends goal, mini-me and fun unit to the watch (WatchConnectivity),
@@ -24,7 +25,22 @@ nonisolated enum Shared {
     }
 }
 
-// Steps turned into something you can picture. Rough averages (about 0.76 m per step).
+// How far you really walked, measured by your iPhone / watch with your own stride
+// (Apple Health "Walking + Running Distance"). nil if there's no data or no permission.
+nonisolated enum WalkDistance {
+    static let type = HKQuantityType(.distanceWalkingRunning)
+
+    static func meters(_ health: HKHealthStore, from start: Date, to end: Date = .now) async -> Double? {
+        let query = HKStatisticsQueryDescriptor(
+            predicate: .quantitySample(type: type,
+                                       predicate: HKQuery.predicateForSamples(withStart: start, end: end)),
+            options: .cumulativeSum)
+        return (try? await query.result(for: health))?.sumQuantity()?.doubleValue(for: .meter())
+    }
+}
+
+// Steps turned into something you can picture. Uses the real distance you walked when Apple Health
+// has it; golf holes always count steps (a hole is about walking, not a straight line).
 nonisolated enum FunUnit: String, CaseIterable, Identifiable {
     case holes, soccerFields, laps, blocks, km, mi
     var id: String { rawValue }
@@ -48,6 +64,18 @@ nonisolated enum FunUnit: String, CaseIterable, Identifiable {
         case .blocks: 105        // a ~80 m city block
         case .km: 1320
         case .mi: 2125
+        }
+    }
+
+    // Real size of one unit. nil for holes (counted in steps).
+    var metersPerUnit: Double? {
+        switch self {
+        case .holes: nil
+        case .soccerFields: 105
+        case .laps: 400
+        case .blocks: 80
+        case .km: 1000
+        case .mi: 1609.344
         }
     }
 
@@ -85,8 +113,11 @@ nonisolated enum FunUnit: String, CaseIterable, Identifiable {
     // Shown at the end of goal days in the Last 7 days table.
     var goalFlag: String { self == .holes ? "⛳️" : "🏁" }
 
-    func amount(_ steps: Int) -> String {
-        let value = Double(steps) / stepsPerUnit
+    // meters = real distance walked (from Health); without it, a step-based estimate.
+    func amount(_ steps: Int, meters: Double? = nil) -> String {
+        let value: Double
+        if let per = metersPerUnit, let meters { value = meters / per }
+        else { value = Double(steps) / stepsPerUnit }
         let decimals = (self == .soccerFields || self == .blocks) ? 0 : 1
         return value.formatted(.number.precision(.fractionLength(decimals)))
     }
@@ -94,8 +125,11 @@ nonisolated enum FunUnit: String, CaseIterable, Identifiable {
     // "Holes walked" (for a row title on the watch)
     var title: String { detail.prefix(1).uppercased() + detail.dropFirst() }
 
-    // "~3.2 holes walked"
-    func phrase(_ steps: Int) -> String { "~\(amount(steps)) \(detail)" }
+    // "3.2 km walked" (measured) or "~3.2 holes walked" (estimated from steps)
+    func phrase(_ steps: Int, meters: Double? = nil) -> String {
+        let measured = metersPerUnit != nil && meters != nil
+        return "\(measured ? "" : "~")\(amount(steps, meters: meters)) \(detail)"
+    }
 }
 
 

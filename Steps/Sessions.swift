@@ -57,6 +57,7 @@ struct SessionRecord: Codable, Identifiable {
     var kind: SessionKind? = nil
     var name: String? = nil // custom sessions
     var fromWorkout: Bool? = nil  // added from Apple's Workout app
+    var meters: Double? = nil     // real distance walked (Health); nil on older sessions
 
     var sessionKind: SessionKind { kind ?? .golf }
     var title: String {
@@ -80,7 +81,9 @@ struct SessionCard: View {
     @AppStorage("sessionName") private var customName = ""
     @AppStorage("funUnit") private var funUnit: FunUnit = .holes
     @State private var sessionSteps = 0
+    @State private var sessionMeters: Double?
     @State private var confirmEnd = false
+    @State private var showPicker = false
 
     private var inSession: Bool { roundStart > 0 }
     private var startDate: Date { Date(timeIntervalSince1970: roundStart) }
@@ -98,110 +101,60 @@ struct SessionCard: View {
     }
 
     // Golf always counts holes; other sessions use your fun unit.
-    private func distance(_ steps: Int, kind: SessionKind) -> String {
-        (kind == .golf ? FunUnit.holes : funUnit).phrase(steps)
+    private func distance(_ steps: Int, meters: Double?, kind: SessionKind) -> String {
+        (kind == .golf ? FunUnit.holes : funUnit).phrase(steps, meters: meters)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Sessions").font(.headline)
-
+        Group {
             if inSession {
-                HStack {
-                    Text(kind == .golf ? "ROUND IN PROGRESS · \(holes) HOLES"
-                                       : "\(kind.emoji) \(noun.uppercased()) IN PROGRESS")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(theme.done)
-                    Spacer()
-                    Text(startDate, style: .timer)
-                        .font(.caption.monospacedDigit())
-                }
-                Text("\(sessionSteps.formatted()) steps")
-                    .font(.title.weight(.bold))
-                Text(distance(sessionSteps, kind: kind))
-                    .foregroundStyle(Color.primary.opacity(0.7))
-                Button { confirmEnd = true } label: {
-                    Text("End \(noun)").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(SessionKind.allCases) { option in
-                            Button { kind = option } label: {
-                                Text("\(option.emoji) \(option.name)")
-                                    .font(.subheadline.weight(option == kind ? .semibold : .regular))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .foregroundStyle(option == kind ? Color.black : Color.primary)
-                                    .background(option == kind ? theme.done : Color.primary.opacity(0.08),
-                                                in: Capsule())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityAddTraits(option == kind ? .isSelected : [])
-                        }
-                    }
-                }
-                if kind == .golf {
-                    Picker("Holes", selection: $holes) {
-                        Text("9 holes").tag(9)
-                        Text("18 holes").tag(18)
-                    }
-                    .pickerStyle(.segmented)
-                }
-                if kind == .custom {
-                    TextField("Name it (e.g. Beach walk)", text: $customName)
-                        .textFieldStyle(.roundedBorder)
-                }
-                Button {
-                    sessionSteps = 0
-                    roundStart = Date.now.timeIntervalSince1970
-                } label: {
-                    Text("\(kind.emoji) Start \(noun)").frame(maxWidth: .infinity).foregroundStyle(.black)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(theme.done)
-                Text("Counts only the steps you take until you tap End.")
-                    .font(.caption)
-                    .foregroundStyle(Color.primary.opacity(0.6))
-            }
-
-            if !records.isEmpty {
-                Divider()
-                Text("Past sessions (press and hold to delete)")
-                    .font(.caption)
-                    .foregroundStyle(Color.primary.opacity(0.7))
-                ForEach(Array(records.reversed())) { r in
+                // A session is going: live steps and distance, and an End button.
+                VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(r.start, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
-                            Text("\(r.sessionKind.emoji) \(r.title) · \(duration(r))"
-                                 + (r.fromWorkout == true ? " · from Workout app" : ""))
-                                .font(.caption)
-                                .foregroundStyle(Color.primary.opacity(0.7))
-                        }
+                        Text(kind == .golf ? "⛳️ ROUND IN PROGRESS · \(holes) HOLES"
+                                           : "\(kind.emoji) \(noun.uppercased()) IN PROGRESS")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(theme.done)
                         Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("\(r.steps.formatted()) steps")
-                                .font(.subheadline.weight(.semibold))
-                            Text(distance(r.steps, kind: r.sessionKind))
-                                .font(.caption)
-                                .foregroundStyle(Color.primary.opacity(0.7))
-                        }
+                        Text(startDate, style: .timer)
+                            .font(.subheadline.monospacedDigit())
                     }
-                    .contentShape(Rectangle())
-                    .contextMenu {
-                        if r.sessionKind == .golf {
-                            Button("Change to \(r.holes == 9 ? 18 : 9) holes") { toggleHoles(r) }
-                        }
-                        Button("Delete session", role: .destructive) { delete(r) }
+                    Text("\(sessionSteps.formatted()) steps")
+                        .font(.largeTitle.weight(.bold))
+                    Text(distance(sessionSteps, meters: sessionMeters, kind: kind))
+                        .font(.title3)
+                        .foregroundStyle(Color.primary.opacity(0.7))
+                    Button { confirmEnd = true } label: {
+                        Text("End \(noun)").font(.title3.weight(.semibold)).frame(maxWidth: .infinity)
                     }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(.red)
                 }
+                .padding()
+                .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+            } else {
+                // Not in a session: one big button; the choices are in a sheet.
+                Button { showPicker = true } label: {
+                    Label("Start a session", systemImage: "play.fill")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(theme.done)
             }
         }
-        .padding()
-        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+        .sheet(isPresented: $showPicker) {
+            SessionPicker(theme: theme) {
+                sessionSteps = 0
+                sessionMeters = nil
+                roundStart = Date.now.timeIntervalSince1970
+                showPicker = false
+            }
+        }
         .confirmationDialog("End this \(noun)?", isPresented: $confirmEnd, titleVisibility: .visible) {
             Button("Save \(noun)") { Task { await endSession(save: true) } }
             Button("Discard \(noun)", role: .destructive) { Task { await endSession(save: false) } }
@@ -210,6 +163,7 @@ struct SessionCard: View {
         .task(id: roundStart) {
             while roundStart > 0 && !Task.isCancelled {
                 sessionSteps = await store.steps(from: startDate)
+                sessionMeters = await WalkDistance.meters(store.health, from: startDate)
                 try? await Task.sleep(for: .seconds(30))
             }
         }
@@ -224,13 +178,152 @@ struct SessionCard: View {
             let start = startDate
             let end = Date.now
             let steps = await store.steps(from: start, to: end)
+            let meters = await WalkDistance.meters(store.health, from: start, to: end)
             var list = records
             list.append(SessionRecord(start: start, end: end, holes: kind == .golf ? holes : 0, steps: steps,
-                                      kind: kind, name: kind == .custom ? customName : nil))
+                                      kind: kind, name: kind == .custom ? customName : nil, meters: meters))
             recordsData = (try? JSONEncoder().encode(list)) ?? recordsData
         }
         roundStart = 0
         sessionSteps = 0
+        sessionMeters = nil
+    }
+
+
+
+}
+
+// MARK: - "What are you doing?" sheet
+
+struct SessionPicker: View {
+    let theme: Theme
+    let start: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("roundHoles") private var holes = 18
+    @AppStorage("sessionKind") private var kind: SessionKind = .golf
+    @AppStorage("sessionName") private var customName = ""
+
+    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 18) {
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(SessionKind.allCases) { option in
+                            Button { kind = option } label: {
+                                VStack(spacing: 6) {
+                                    Text(option.emoji).font(.system(size: 38))
+                                    Text(option.name).font(.headline)
+                                }
+                                .frame(maxWidth: .infinity, minHeight: 96)
+                                .foregroundStyle(Color.primary)
+                                .background(Color.primary.opacity(option == kind ? 0.14 : 0.06),
+                                            in: RoundedRectangle(cornerRadius: 18))
+                                .overlay(RoundedRectangle(cornerRadius: 18)
+                                    .stroke(theme.done, lineWidth: option == kind ? 3 : 0))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(option == kind ? .isSelected : [])
+                        }
+                    }
+                    if kind == .golf {
+                        Picker("Holes", selection: $holes) {
+                            Text("9 holes").tag(9)
+                            Text("18 holes").tag(18)
+                        }
+                        .pickerStyle(.segmented)
+                        .controlSize(.large)
+                    }
+                    if kind == .custom {
+                        TextField("Name it (e.g. Beach walk)", text: $customName)
+                            .font(.title3)
+                            .padding(12)
+                            .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    Button(action: start) {
+                        Text("\(kind.emoji) Start \(kind == .golf ? "round" : kind == .custom ? (customName.isEmpty ? "session" : customName.lowercased()) : kind.name.lowercased())")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(theme.done)
+                    Text("Counts only the steps you take until you tap End.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.primary.opacity(0.6))
+                }
+                .padding()
+            }
+            .navigationTitle("What are you doing?")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { Button("Cancel") { dismiss() } }
+        }
+        .presentationDetents([.large])
+    }
+}
+
+// MARK: - Past sessions (History tab)
+
+struct SessionHistory: View {
+    let theme: Theme
+    @AppStorage("rounds") private var recordsData = Data()
+    @AppStorage("funUnit") private var funUnit: FunUnit = .holes
+
+    private var records: [SessionRecord] {
+        (try? JSONDecoder().decode([SessionRecord].self, from: recordsData)) ?? []
+    }
+
+    private func distance(_ r: SessionRecord) -> String {
+        (r.sessionKind == .golf ? FunUnit.holes : funUnit).phrase(r.steps, meters: r.meters)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Past sessions").font(.title2.weight(.bold))
+            if records.isEmpty {
+                Text("Sessions you start in OnPace, or finish in Apple's Workout app, show up here.")
+                    .font(.body)
+                    .foregroundStyle(Color.primary.opacity(0.6))
+            } else {
+                Text("Press and hold one to change or delete it.")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.primary.opacity(0.6))
+                ForEach(Array(records.reversed())) { r in
+                    Divider()
+                    HStack(spacing: 12) {
+                        Text(r.sessionKind.emoji).font(.title2)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(r.title).font(.body.weight(.semibold))
+                            Text(r.start.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
+                                 + " · \(duration(r))" + (r.fromWorkout == true ? " · Workout app" : ""))
+                                .font(.subheadline)
+                                .foregroundStyle(Color.primary.opacity(0.6))
+                        }
+                        Spacer(minLength: 8)
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(r.steps.formatted())
+                                .font(.title3.weight(.semibold).monospacedDigit())
+                            Text(distance(r))
+                                .font(.subheadline)
+                                .foregroundStyle(Color.primary.opacity(0.6))
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        if r.sessionKind == .golf {
+                            Button("Change to \(r.holes == 9 ? 18 : 9) holes") { toggleHoles(r) }
+                        }
+                        Button("Delete session", role: .destructive) { delete(r) }
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
     }
 
     private func delete(_ record: SessionRecord) {
@@ -247,7 +340,7 @@ struct SessionCard: View {
 
     private func duration(_ r: SessionRecord) -> String {
         let mins = Int(r.end.timeIntervalSince(r.start) / 60)
-        return "\(mins / 60)h \(String(format: "%02d", mins % 60))m"
+        return mins < 60 ? "\(mins) min" : "\(mins / 60)h \(String(format: "%02d", mins % 60))m"
     }
 }
 
@@ -291,6 +384,14 @@ extension StepStore {
         let liveStart = d.double(forKey: "roundStart")
         var added = 0
 
+        // Sessions saved before distance was measured: look up how far you really walked.
+        for i in list.indices where list[i].meters == nil {
+            if let m = await WalkDistance.meters(health, from: list[i].start, to: list[i].end) {
+                list[i].meters = m
+                added += 1
+            }
+        }
+
         if d.object(forKey: "importWorkouts") as? Bool ?? true {
             for w in result.addedSamples.sorted(by: { $0.startDate < $1.startDate }) {
                 guard let (kind, name) = Self.session(for: w.workoutActivityType) else { continue }
@@ -301,10 +402,12 @@ extension StepStore {
                 if liveStart > 0 && liveStart < w.endDate.timeIntervalSince1970 { continue }
 
                 let steps = await self.steps(from: w.startDate, to: w.endDate)
+                let meters = await WalkDistance.meters(health, from: w.startDate, to: w.endDate)
                 let hours = w.endDate.timeIntervalSince(w.startDate) / 3600
                 list.append(SessionRecord(id: w.uuid, start: w.startDate, end: w.endDate,
                                           holes: kind == .golf ? (hours < 2.5 ? 9 : 18) : 0,
-                                          steps: steps, kind: kind, name: name, fromWorkout: true))
+                                          steps: steps, kind: kind, name: name, fromWorkout: true,
+                                          meters: meters))
                 added += 1
             }
         }

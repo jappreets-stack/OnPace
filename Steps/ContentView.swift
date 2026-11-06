@@ -14,6 +14,7 @@ struct DaySteps: Identifiable {
 @MainActor
 final class StepStore: ObservableObject {
     @Published var today = 0
+    @Published var todayMeters: Double?   // real distance walked today (Health)
     @Published var week: [DaySteps] = []
     @Published var streak = 0
     @Published var curve: [Double]?   // your usual day, learned from the last 30 days
@@ -29,7 +30,7 @@ final class StepStore: ObservableObject {
             return
         }
         do {
-            try await health.requestAuthorization(toShare: [], read: [stepType, HKObjectType.workoutType()])
+            try await health.requestAuthorization(toShare: [], read: [stepType, WalkDistance.type, HKObjectType.workoutType()])
             ready = true
             await refresh(goal: goal)
         } catch {
@@ -69,6 +70,7 @@ final class StepStore: ObservableObject {
                 if d.steps >= goal { count += 1 } else { break }
             }
             streak = count
+            todayMeters = await WalkDistance.meters(health, from: todayStart)
             curve = await Pace.learnCurve(from: health)
             error = nil
             await importWorkouts()   // finished Apple workouts become sessions (Sessions.swift)
@@ -164,45 +166,9 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ZStack {
-            theme.background.ignoresSafeArea()
-            ScrollView {
-                VStack(spacing: 24) {
-                    HStack {
-                        Spacer()
-                        Button { showSettings = true } label: {
-                            Image(systemName: "gearshape.fill").font(.title2)
-                        }
-                    }
-                    ring
-                    VStack(spacing: 4) {
-                        Text(hitGoal ? "Goal hit 🎉" : "\((goal - store.today).formatted()) to go")
-                            .font(.title2.weight(.semibold))
-                        // At today's speed: when you'll finish.
-                        if let forecast = pace.forecastSentence {
-                            Text("🏁 \(forecast)")
-                                .font(.subheadline)
-                                .foregroundStyle(Color.primary.opacity(0.7))
-                                .multilineTextAlignment(.center)
-                        }
-                    }
-                    HStack(spacing: 12) {
-                        StatTile(title: "Streak", value: "🔥 \(store.streak)",
-                                 detail: store.streak == 1 ? "day" : "days")
-                        StatTile(title: funUnit.tileTitle, value: "\(funUnit.emoji) \(funUnit.amount(store.today))",
-                                 detail: funUnit.detail)
-                        StatTile(title: pace.isPersonal ? "Your pace" : "Pace", value: onPace ? "✅" : "⏳",
-                                 detail: onPace ? "on pace" : "\(pace.behindText)\nwalk \(pace.catchUpMinutes) min")
-                    }
-                    .fixedSize(horizontal: false, vertical: true)   // all tiles as tall as the tallest
-                    SessionCard(store: store, theme: theme)
-                    weekTable
-                    if let error = store.error {
-                        Text(error).font(.footnote).foregroundStyle(.red)
-                    }
-                }
-                .padding()
-            }
+        TabView {
+            Tab("Today", systemImage: "figure.walk") { today }
+            Tab("History", systemImage: "calendar") { history }
         }
         .tint(Color.primary)
         .preferredColorScheme(theme.scheme)
@@ -216,6 +182,70 @@ struct ContentView: View {
         }
         .onChange(of: goal) { _, newGoal in
             Task { await store.refresh(goal: newGoal) }
+        }
+    }
+
+    // Today: the ring, what's left, whether you're on pace, and sessions. Nothing else.
+    private var today: some View {
+        ZStack {
+            theme.background.ignoresSafeArea()
+            ScrollView {
+                VStack(spacing: 22) {
+                    HStack {
+                        Spacer()
+                        Button { showSettings = true } label: {
+                            Image(systemName: "gearshape.fill").font(.title2)
+                        }
+                        .accessibilityLabel("Settings")
+                    }
+                    ring
+                    // One card of plain rows: label on the left, number on the right.
+                    VStack(spacing: 0) {
+                        InfoRow(icon: "👟", label: hitGoal ? "Goal hit 🎉" : "Left to reach goal",
+                                value: hitGoal ? "+\((store.today - goal).formatted())"
+                                               : (goal - store.today).formatted())
+                        if !hitGoal {
+                            Divider().padding(.leading, 52)
+                            InfoRow(icon: onPace ? "✅" : "⏳", label: onPace ? "On pace" : "Behind pace",
+                                    detail: onPace ? nil : "walk \(pace.catchUpMinutes) min to catch up",
+                                    value: onPace ? "" : pace.behind.formatted(),
+                                    valueColor: .orange)
+                        }
+                        if let f = pace.forecastRow {
+                            Divider().padding(.leading, 52)
+                            InfoRow(icon: "🏁", label: "At this pace", detail: f.detail, value: f.value)
+                        }
+                        Divider().padding(.leading, 52)
+                        InfoRow(icon: "🔥", label: "Streak", value: "\(store.streak) \(store.streak == 1 ? "day" : "days")")
+                        Divider().padding(.leading, 52)
+                        InfoRow(icon: funUnit.emoji, label: funUnit.title, value: funUnit.amount(store.today, meters: store.todayMeters))
+                    }
+                    .padding(.horizontal)
+                    .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+                    SessionCard(store: store, theme: theme)
+                    if let error = store.error {
+                        Text(error).font(.footnote).foregroundStyle(.red)
+                    }
+                }
+                .padding()
+            }
+        }
+    }
+
+    // History: the last 7 days, then every saved session.
+    private var history: some View {
+        NavigationStack {
+            ZStack {
+                theme.background.ignoresSafeArea()
+                ScrollView {
+                    VStack(spacing: 20) {
+                        weekTable
+                        SessionHistory(theme: theme)
+                    }
+                    .padding()
+                }
+            }
+            .navigationTitle("History")
         }
     }
 
@@ -235,11 +265,11 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 CharacterView(avatar: avatar, mood: mood, look: look,
                               prop: roundStart > 0 ? sessionKind.prop : nil)
-                    .frame(width: 110, height: 125)
+                    .frame(width: 120, height: 136)
                 Text(store.today, format: .number)
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                    .font(.system(size: 44, weight: .bold, design: .rounded))
                 Text("of \(goal.formatted()) steps")
-                    .font(.footnote)
+                    .font(.subheadline)
                     .foregroundStyle(Color.primary.opacity(0.7))
             }
         }
@@ -251,59 +281,91 @@ struct ContentView: View {
         let days = Array(store.week.reversed())
         let daysHit = store.week.filter { $0.steps >= goal }.count
         let average = store.week.isEmpty ? 0 : store.week.map(\.steps).reduce(0, +) / store.week.count
-        let best = store.week.max { $0.steps < $1.steps }
 
         return VStack(alignment: .leading, spacing: 14) {
-            Text("Last 7 days").font(.headline)
+            Text("Last 7 days").font(.title2.weight(.bold))
 
-            HStack(spacing: 10) {
-                StatTile(title: "Days hit", value: "\(daysHit)/\(store.week.count)",
-                         detail: daysHit == store.week.count ? "perfect week 🔥" : "at goal")
-                StatTile(title: "Daily avg", value: average.formatted(), detail: "steps")
-                StatTile(title: "Best day", value: (best?.steps ?? 0).formatted(),
-                         detail: best.map { $0.date.formatted(.dateTime.weekday(.wide)) } ?? "–")
+            HStack(spacing: 0) {
+                BigNumber(value: average.formatted(), label: "Daily average", color: theme.ring)
+                Divider().frame(height: 60)
+                BigNumber(value: "\(daysHit) of \(store.week.count)", label: "Days at goal", color: theme.done)
             }
+            .padding(.vertical, 8)
 
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 12) {
-                GridRow {
-                    Text("Day")
-                    Text("Steps").gridColumnAlignment(.trailing)
-                    Text("vs goal")
-                    Text("")
-                }
-                .font(.caption)
-                .foregroundStyle(Color.primary.opacity(0.6))
-
-                ForEach(days) { day in
-                    let hit = day.steps >= goal
-                    GridRow {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(Calendar.current.isDateInToday(day.date)
-                                 ? "Today" : day.date.formatted(.dateTime.weekday(.abbreviated)))
-                                .font(.subheadline.weight(.semibold))
-                            Text(day.date, format: .dateTime.month(.abbreviated).day())
-                                .font(.caption2)
-                                .foregroundStyle(Color.primary.opacity(0.6))
-                        }
-                        Text(day.steps.formatted())
-                            .font(.subheadline.weight(.semibold).monospacedDigit())
-                        // A tiny you: celebrating at the flag on goal days, slumped where you
-                        // stopped on missed days (still walking today).
-                        MiniBar(fraction: min(Double(day.steps) / Double(goal), 1),
-                                color: hit ? theme.done : theme.ring.opacity(0.6),
-                                avatar: avatar,
-                                look: look,
-                                mood: hit ? .celebrate
-                                    : Calendar.current.isDateInToday(day.date) ? .walk : .slump)
-                        Text(hit ? funUnit.goalFlag : "−\((goal - day.steps).formatted())")
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(hit ? Color.primary : Color.orange)
+            // One row per day: date, a bar with a tiny you on it, and the steps.
+            ForEach(days) { day in
+                let hit = day.steps >= goal
+                let isToday = Calendar.current.isDateInToday(day.date)
+                Divider()
+                HStack(spacing: 14) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(isToday ? "Today" : day.date.formatted(.dateTime.weekday(.abbreviated)))
+                            .font(.body.weight(.semibold))
+                        Text(day.date, format: .dateTime.month(.abbreviated).day())
+                            .font(.subheadline)
+                            .foregroundStyle(Color.primary.opacity(0.6))
                     }
+                    .frame(width: 64, alignment: .leading)
+                    MiniBar(fraction: min(Double(day.steps) / Double(goal), 1),
+                            color: hit ? theme.done : theme.ring.opacity(0.6),
+                            avatar: avatar, look: look,
+                            mood: hit ? .celebrate : isToday ? .walk : .slump)
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(day.steps.formatted())
+                            .font(.title3.weight(.semibold).monospacedDigit())
+                        Text(hit ? "\(funUnit.goalFlag) goal" : "\((goal - day.steps).formatted()) short")
+                            .font(.subheadline)
+                            .foregroundStyle(hit ? Color.primary.opacity(0.6) : Color.orange)
+                    }
+                    .frame(width: 92, alignment: .trailing)
                 }
             }
         }
         .padding()
-        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+    }
+}
+
+// A label on the left and a number on the right (main screen card).
+struct InfoRow: View {
+    let icon: String
+    let label: String
+    var detail: String? = nil
+    let value: String
+    var valueColor: Color = .primary
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Text(icon).font(.title2).frame(width: 38)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).font(.title3)
+                if let detail {
+                    Text(detail).font(.subheadline).foregroundStyle(Color.primary.opacity(0.6))
+                }
+            }
+            Spacer(minLength: 8)
+            Text(value)
+                .font(.title2.weight(.bold).monospacedDigit())
+                .foregroundStyle(valueColor)
+                .multilineTextAlignment(.trailing)
+        }
+        .padding(.vertical, 14)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+// A big colored number with a small label under it (history header).
+struct BigNumber: View {
+    let value: String
+    let label: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value).font(.system(size: 34, weight: .bold, design: .rounded)).foregroundStyle(color)
+            Text(label).font(.subheadline).foregroundStyle(Color.primary.opacity(0.6))
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -362,9 +424,9 @@ struct StatTile: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Text(title).font(.caption).foregroundStyle(Color.primary.opacity(0.7))
-            Text(value).font(.title3.weight(.bold))
-            Text(detail).font(.caption2).foregroundStyle(Color.primary.opacity(0.7))
+            Text(title).font(.subheadline).foregroundStyle(Color.primary.opacity(0.7))
+            Text(value).font(.title.weight(.bold))
+            Text(detail).font(.subheadline).foregroundStyle(Color.primary.opacity(0.7))
                 .lineLimit(2).minimumScaleFactor(0.7).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

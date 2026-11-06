@@ -9,15 +9,19 @@ a hand-drawn animated character that reacts to how your day is going.
   &nbsp;&nbsp;&nbsp;
   <img src="Screenshots/watch-ring.png" width="220" alt="Apple Watch Ultra 2 ring screen">
   &nbsp;&nbsp;&nbsp;
+  <img src="Screenshots/iphone-history.png" width="260" alt="History tab: last 7 days with a tiny you on each bar">
+  &nbsp;&nbsp;&nbsp;
   <img src="Screenshots/iphone-builder.png" width="260" alt="Build your mini-me character builder">
 </p>
 
 ## Features
 
-**iPhone**
-- Daily goal ring (2,000–30,000, default 10,000) with today's steps and steps to go
-- Streak of consecutive days at goal, pace check, and a **fun unit**: your steps shown as golf holes,
-  soccer fields, track laps, city blocks, km, or miles (picked in Settings)
+**iPhone** (two tabs, Today and History, with big type and one idea per row)
+- **Today:** the goal ring (2,000–30,000, default 10,000), then one card of rows: steps left, how far behind
+  pace you are and the minutes of walking to catch up, the time you'll finish at this pace, your streak, and your
+  **fun unit**: golf holes, soccer fields, track laps, city blocks, km, or miles (picked in Settings).
+  Distances use the real distance Apple Health measured with your own stride; golf holes count steps
+- One **Start a session** button opens a "What are you doing?" sheet
 - The ring shows a scene for your fun unit behind your mini-me: golf green, soccer field, running track,
   city skyline, or a road with a distance sign (light and dark mode)
 - **Sessions:** golf (9 or 18 holes), hike, dog walk, shopping, theme park, workout, or a custom one you name.
@@ -25,8 +29,8 @@ a hand-drawn animated character that reacts to how your day is going.
   (golf) or walks with a prop: hiking stick + backpack, a dog on a leash, shopping bags, a balloon, or dumbbells
 - **Apple Workout app:** when you end a Golf, Hike, Walk, Run, or Strength workout, it's saved as a session
   with its steps automatically (golf guesses 9 or 18 holes from the length; press and hold to change it)
-- Last 7 days table: days at goal, daily average, best day, and a segmented bar per day with a tiny
-  animated you on it: celebrating at ⛳ on goal days, slumped where you stopped (and steps short) on missed days
+- **History:** last 7 days (daily average, days at goal, and a segmented bar per day with a tiny
+  animated you on it: celebrating on goal days, slumped where you stopped on missed days), then every past session
 - **Build your mini-me:** a character builder with a live animated preview in every pose
   (see below)
 - Themes: Auto (system), Dark, Purple & gold, Golf green
@@ -80,7 +84,8 @@ a hand-drawn animated character that reacts to how your day is going.
   The saved anchor means each workout is looked at once (a deleted session never comes back, and a workout that
   syncs from the watch late still counts). Workouts that overlap a session you tracked in the app are skipped.
 - **Sessions:** one `SessionRecord` list (stored under the original golf-rounds key; old rounds
-  load as golf). `FunUnit` converts steps with rough averages (~0.76 m per step).
+  load as golf). `FunUnit` converts the measured walking + running distance (HealthKit
+  `distanceWalkingRunning`) into fields, laps, blocks, km, or miles; it falls back to ~0.76 m per step without it.
 - **State:** settings and sessions are stored with `@AppStorage`; data refreshes whenever the app becomes active.
 - **Layout:** the watch ring is centered on the physical screen (`WKInterfaceDevice.screenBounds`)
   instead of the safe area, so it stays centered next to the clock and page indicator.

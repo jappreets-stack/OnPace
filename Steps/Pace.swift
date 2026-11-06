@@ -105,6 +105,14 @@ struct Pace {
         case nil: nil
         }
     }
+    // For the phone's row: a time on the right, what happens then underneath.
+    var forecastRow: (value: String, detail: String)? {
+        switch outlook {
+        case .reachGoal(let t): (clock(t), "you'll reach \(goal.formatted()) steps")
+        case .short(let n, let t): (clock(t), "\(n.formatted()) short by then · walk \(walkMinutes(n)) more min")
+        case nil: nil
+        }
+    }
     // Short version for the watch, shown under the title "At this pace".
     var forecastShort: String? {
         switch outlook {

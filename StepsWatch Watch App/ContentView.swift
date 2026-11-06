@@ -13,6 +13,7 @@ struct WatchDay: Identifiable {
 // Reads steps from Apple Health on the watch: today, the last 7 days, and your streak.
 final class WatchStepStore: ObservableObject {
     @Published var today = 0
+    @Published var todayMeters: Double?   // real distance walked today (Health)
     @Published var week: [WatchDay] = []
     @Published var streak = 0
     @Published var curve: [Double]?   // your usual day, learned from the last 30 days
@@ -28,7 +29,7 @@ final class WatchStepStore: ObservableObject {
             return
         }
         do {
-            try await health.requestAuthorization(toShare: [], read: [stepType])
+            try await health.requestAuthorization(toShare: [], read: [stepType, WalkDistance.type])
             ready = true
             await refresh(goal: goal)
         } catch {
@@ -58,6 +59,7 @@ final class WatchStepStore: ObservableObject {
                 days.append(WatchDay(date: day, steps: Int(n)))
             }
             today = days.last?.steps ?? 0
+            todayMeters = await WalkDistance.meters(health, from: todayStart)
             week = Array(days.suffix(7))
 
             // Streak: days in a row at goal. Today only counts once you've hit it.
@@ -227,7 +229,7 @@ struct ContentView: View {
                     value: hitGoal ? "Goal hit" : onPace ? "On pace" : "Walk \(pace.catchUpMinutes) min")
             StatRow(icon: "🏁", title: "At this pace",
                     value: pace.forecastShort ?? (hitGoal ? "Goal hit 🎉" : "Too early to tell"))
-            StatRow(icon: funUnit.emoji, title: funUnit.title, value: funUnit.amount(store.today))
+            StatRow(icon: funUnit.emoji, title: funUnit.title, value: funUnit.amount(store.today, meters: store.todayMeters))
         }
         .padding(.horizontal, 4)
     }
