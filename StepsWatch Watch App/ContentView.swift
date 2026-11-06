@@ -188,7 +188,7 @@ struct ContentView: View {
     @State private var cheer: String?
     @State private var dayLine = ""
     // Sent by the iPhone with every refresh (see PhoneSync): today's steps and sessions.
-    @AppStorage(Shared.stepsKey, store: Shared.defaults) private var phoneSteps = ""
+    @AppStorage(Shared.stepsDateKey, store: Shared.defaults) private var phoneStamp = ""   // changes with every phone refresh
     @AppStorage(Shared.sessionsKey, store: Shared.defaults) private var sessionsJSON = ""
     private var sessions: [WatchSession] {
         (try? JSONDecoder().decode([WatchSession].self, from: Data(sessionsJSON.utf8))) ?? []
@@ -223,7 +223,7 @@ struct ContentView: View {
             if phase == .active { Task { await store.refresh(goal: goal) } }
         }
         // The phone's latest steps show up right away.
-        .onChange(of: phoneSteps) { _, _ in store.applyPhone() }
+        .onChange(of: phoneStamp) { _, _ in store.applyPhone() }
         // A new goal from the phone changes the streak and bars.
         .onChange(of: goal) { _, newGoal in Task { await store.refresh(goal: newGoal) } }
     }
@@ -365,7 +365,7 @@ struct ContentView: View {
         }
     }
 
-    // Page 2: streak, pace, finish forecast, fun unit (holes walked, soccer fields, ...).
+    // Page 2: streak, pace, finish forecast, steps left to reach the goal.
     private var statsPage: some View {
         VStack(spacing: 5) {
             StatRow(icon: "🔥", title: "Streak",
@@ -375,7 +375,9 @@ struct ContentView: View {
                     value: hitGoal ? "Goal hit" : onPace ? "On pace" : "Walk \(pace.catchUpMinutes) min")
             StatRow(icon: "🏁", title: "At this pace",
                     value: pace.forecastShort ?? (hitGoal ? "Goal hit 🎉" : "Too early to tell"))
-            StatRow(icon: funUnit.emoji, title: funUnit.title, value: funUnit.amount(store.today, meters: store.todayMeters))
+            // Your distance is already on the ring page; here, how many steps are left.
+            StatRow(icon: "👟", title: hitGoal ? "Goal hit" : "Left to reach goal",
+                    value: hitGoal ? "+\((store.today - goal).formatted())" : (goal - store.today).formatted())
         }
         .padding(.horizontal, 4)
     }
