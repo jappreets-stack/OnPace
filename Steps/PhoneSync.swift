@@ -4,7 +4,8 @@ import WatchConnectivity
 // Sends your goal, mini-me and fun unit to the watch whenever they change on the iPhone.
 // Uses the "application context": the watch always gets the latest copy, even if it was
 // asleep or out of range when you changed something.
-nonisolated final class PhoneSync: NSObject, WCSessionDelegate {
+// @unchecked Sendable: all work happens on the main queue (see the DispatchQueue.main calls).
+nonisolated final class PhoneSync: NSObject, WCSessionDelegate, @unchecked Sendable {
     static let shared = PhoneSync()
     private var lastSent: [String: String] = [:]
 

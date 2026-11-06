@@ -447,7 +447,6 @@ struct WatchPlay {
         case .jog: ["Another marker!", "Mile down!", "Cruising!", "Nice pace!"]
         case .throwDisc: ["Nice throw!", "Caught it!", "Long toss!", "Beach legend!"]
         case .plantFlag: ["Summit!", "Top of the world!", "Peak bagged!", "Made it up!"]
-        default: [cheer]
         }
     }
 

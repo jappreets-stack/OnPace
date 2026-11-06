@@ -14,6 +14,9 @@ nonisolated enum Shared {
     static let lookKey = "look"
     static let funUnitKey = "funUnit"
     static let placeKey = "distancePlace"   // road / beach / trail, for km and mi
+    // The iPhone app saves today's steps here for its home-screen widget (used when Health is locked).
+    static let stepsKey = "todaySteps"
+    static let stepsDateKey = "todayStepsDate"
     static let syncedKeys = [goalKey, avatarKey, lookKey, funUnitKey, placeKey]
 
     // On the watch: the App Group storage both the app and the complications read.
@@ -324,7 +327,7 @@ struct UnitScene: View {
                 fill(ground, Color(red: 0.75, green: 0.55, blue: 0.35).opacity(0.45))
                 ctx.fill(Path(CGRect(x: 196, y: horizon + 4, width: 14, height: 7)), with: .color(.white.opacity(0.9)))
 
-            case .km, .mi where place == .beach:   // sea, sand, sun
+            case .km where place == .beach, .mi where place == .beach:   // sea, sand, sun
                 fill(CGRect(x: 0, y: horizon - 34, width: 270, height: 34), Color(red: 0.20, green: 0.55, blue: 0.80).opacity(0.55))
                 for i in 0..<5 {
                     let y = horizon - 30 + Double(i) * 7
@@ -334,7 +337,7 @@ struct UnitScene: View {
                 ctx.fill(Path(ellipseIn: CGRect(x: 205, y: horizon - 80, width: 26, height: 26)),
                          with: .color(Color(red: 1.0, green: 0.80, blue: 0.30).opacity(0.85)))
 
-            case .km, .mi where place == .trail:   // mountains, pines, trail
+            case .km where place == .trail, .mi where place == .trail:   // mountains, pines, trail
                 var far = Path()
                 far.move(to: CGPoint(x: 0, y: horizon))
                 far.addLine(to: CGPoint(x: 70, y: horizon - 60)); far.addLine(to: CGPoint(x: 120, y: horizon - 30))

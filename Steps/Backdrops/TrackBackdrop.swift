@@ -76,7 +76,7 @@ enum TrackBackdrop {
 
         // Near straight: inner curb, 8 lanes, apron, then grass down to the bottom.
         let curb = c.y(farEdge + 0.25)
-        let edgeIn = c.y(farEdge), edgeOut = c.y(nearEdge), apron = c.y(nearEdge - 1.6)
+        let edgeIn = c.y(farEdge), apron = c.y(nearEdge - 1.6)
         Sketch.fill(&ctx, CGRect(x: 0, y: curb, width: f.width, height: edgeIn - curb + 0.5), dk ? rgb(0.75, 0.78, 0.85) : .white)
         Sketch.gradient(&ctx, CGRect(x: 0, y: edgeIn, width: f.width, height: apron - edgeIn), [redFar, redNear])
         Sketch.gradient(&ctx, CGRect(x: 0, y: apron, width: f.width, height: f.height - apron),

@@ -11,6 +11,7 @@
     ],
   },
   "files": [
+    { "path": "OnPaceWidgetExtension.entitlements" },
     { "path": "StepsComplicationExtension.entitlements" },
     {
       "kind": "folder",
@@ -28,6 +29,12 @@
           ],
         }, {
           "target": "StepsComplicationExtension",
+          "inclusions": [
+            "Pace.swift",
+            "SharedSettings.swift",
+          ],
+        }, {
+          "target": "OnPaceWidgetExtension",
           "inclusions": [
             "Pace.swift",
             "SharedSettings.swift",
@@ -51,11 +58,36 @@
         },
       ],
     }, {
+      "kind": "folder",
+      "path": "OnPaceWidget",
+      "target-membership": [
+        "OnPaceWidgetExtension",
+      ],
+      "membership-exceptions": [
+        {
+          "target": "OnPaceWidgetExtension",
+          "exclusions": [
+            "Info.plist",
+          ],
+        },
+      ],
+    }, {
       "kind": "group",
       "name": "Frameworks",
       "children": [
-        { "path": "<SDK>/System/Library/Frameworks/WidgetKit.framework", "target-membership": [ "StepsComplicationExtension/frameworks" ] },
-        { "path": "<SDK>/System/Library/Frameworks/SwiftUI.framework", "target-membership": [ "StepsComplicationExtension/frameworks" ] },
+        {
+          "path": "<SDK>/System/Library/Frameworks/WidgetKit.framework",
+          "target-membership": [
+            "StepsComplicationExtension/frameworks",
+            "OnPaceWidgetExtension/frameworks",
+          ],
+        }, {
+          "path": "<SDK>/System/Library/Frameworks/SwiftUI.framework",
+          "target-membership": [
+            "StepsComplicationExtension/frameworks",
+            "OnPaceWidgetExtension/frameworks",
+          ],
+        },
       ],
     }, {
       "kind": "group",
@@ -64,6 +96,7 @@
         { "path": "<PRODUCTS>/Steps.app", "id": "4BB33F003099881E005BDE55", "type": "wrapper.application", "index": false },
         { "path": "<PRODUCTS>/StepsWatch Watch App.app", "id": "4B045C1E309A5BB5000EBB92", "type": "wrapper.application", "index": false, "target-membership": [ { "build-phase": "Steps/copy/Embed Watch Content", "header-preservation": "remove-on-copy" } ] },
         { "path": "<PRODUCTS>/StepsComplicationExtension.appex", "id": "4B1214C0309BD4B500D04435", "type": "wrapper.app-extension", "index": false, "target-membership": [ { "build-phase": "StepsWatch Watch App/copy/Embed Foundation Extensions", "header-preservation": "remove-on-copy" } ] },
+        { "path": "<PRODUCTS>/OnPaceWidgetExtension.appex", "id": "4B12150C309E398000D04435", "type": "wrapper.app-extension", "index": false, "target-membership": [ { "build-phase": "Steps/copy/Embed Foundation Extensions", "header-preservation": "remove-on-copy" } ] },
       ],
     },
   ],
@@ -75,6 +108,7 @@
       "product-type": "application",
       "dependencies": [
         "StepsWatch Watch App",
+        "OnPaceWidgetExtension",
       ],
       "build-phases": [
         "compile-sources",
@@ -85,6 +119,10 @@
           "name": "Embed Watch Content",
           "bundle-base-path": "build-products-directory",
           "relative-path": "$(CONTENTS_FOLDER_PATH)/Watch",
+        }, {
+          "kind": "copy",
+          "name": "Embed Foundation Extensions",
+          "bundle-base-path": "plugins-directory",
         },
       ],
       "build-settings": {
@@ -109,6 +147,7 @@
         "MARKETING_VERSION": "1.0",
         "PRODUCT_BUNDLE_IDENTIFIER": "com.js.personal.Steps",
         "PRODUCT_NAME": "$(TARGET_NAME)",
+        "REGISTER_APP_GROUPS": "YES",
         "STRING_CATALOG_GENERATE_SYMBOLS": "YES",
         "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
         "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
@@ -208,6 +247,44 @@
         "SWIFT_VERSION": "5.0",
         "TARGETED_DEVICE_FAMILY": "4",
         "WATCHOS_DEPLOYMENT_TARGET": "27.2",
+      },
+    }, {
+      "name": "OnPaceWidgetExtension",
+      "id": "4B12150B309E398000D04435",
+      "product": "Products/OnPaceWidgetExtension.appex",
+      "product-type": "app-extension",
+      "build-phases": [
+        "compile-sources",
+        "frameworks",
+        "resources",
+      ],
+      "build-settings": {
+        "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
+        "ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME": "WidgetBackground",
+        "CODE_SIGN_ENTITLEMENTS": "OnPaceWidgetExtension.entitlements",
+        "CODE_SIGN_STYLE": "Automatic",
+        "CURRENT_PROJECT_VERSION": "1",
+        "DEVELOPMENT_TEAM": "D9AGY5UL5N",
+        "GENERATE_INFOPLIST_FILE": "YES",
+        "INFOPLIST_FILE": "OnPaceWidget/Info.plist",
+        "INFOPLIST_KEY_CFBundleDisplayName": "OnPace",
+        "INFOPLIST_KEY_NSHumanReadableCopyright": "",
+        "LD_RUNPATH_SEARCH_PATHS": [
+          "$(inherited)",
+          "@executable_path/Frameworks",
+          "@executable_path/../../Frameworks",
+        ],
+        "MARKETING_VERSION": "1.0",
+        "PRODUCT_BUNDLE_IDENTIFIER": "com.js.personal.Steps.OnPaceWidget",
+        "PRODUCT_NAME": "$(TARGET_NAME)",
+        "REGISTER_APP_GROUPS": "YES",
+        "SKIP_INSTALL": "YES",
+        "STRING_CATALOG_GENERATE_SYMBOLS": "YES",
+        "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
+        "SWIFT_EMIT_LOC_STRINGS": "YES",
+        "SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY": "YES",
+        "SWIFT_VERSION": "5.0",
+        "TARGETED_DEVICE_FAMILY": "1,2",
       },
     },
   ],

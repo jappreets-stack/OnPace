@@ -1,6 +1,7 @@
 import SwiftUI
 import HealthKit
 import Combine
+import WidgetKit
 
 // MARK: - Data
 
@@ -89,6 +90,12 @@ final class StepStore: ObservableObject {
             }
             streak = count
             todayMeters = await WalkDistance.meters(health, from: todayStart)
+            // For the home-screen widget: today's steps and the goal, in the shared App Group.
+            let shared = Shared.defaults
+            shared.set(today, forKey: Shared.stepsKey)
+            shared.set(Date.now.timeIntervalSince1970, forKey: Shared.stepsDateKey)
+            shared.set(goal, forKey: Shared.goalKey)
+            WidgetCenter.shared.reloadAllTimelines()
             curve = await Pace.learnCurve(from: health)
             error = nil
             await importWorkouts()   // finished Apple workouts become sessions (Sessions.swift)
@@ -115,43 +122,40 @@ extension StepStore {
 // MARK: - Themes
 
 enum Theme: String, CaseIterable, Identifiable {
-    case system, dark, purpleGold, golf
+    case system, light, dark   // old "purpleGold" / "golf" saves fall back to Auto
     var id: String { rawValue }
 
     var name: String {
         switch self {
         case .system: "Auto"
+        case .light: "Light"
         case .dark: "Dark"
-        case .purpleGold: "Purple & gold"
-        case .golf: "Golf green"
         }
     }
     // nil = follow the iPhone's Light/Dark setting
     var scheme: ColorScheme? {
-        self == .system ? nil : .dark
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
     }
     var background: Color {
         switch self {
         case .system: Color(uiColor: .systemBackground)
+        case .light: .white
         case .dark: .black
-        case .purpleGold: Color(red: 0.16, green: 0.06, blue: 0.27)
-        case .golf: Color(red: 0.12, green: 0.38, blue: 0.20)
         }
     }
-    var ring: Color {
-        switch self {
-        case .system, .dark: .blue
-        case .purpleGold: Color(red: 0.99, green: 0.73, blue: 0.15)
-        case .golf: .white
-        }
-    }
-    var done: Color {
-        switch self {
-        case .system, .dark: .green
-        case .purpleGold: Color(red: 0.99, green: 0.73, blue: 0.15)
-        case .golf: .yellow
-        }
-    }
+    var ring: Color { .blue }
+    var done: Color { .green }
+}
+
+// How much of the scene shows behind the Today screen.
+enum SceneStyle: String, CaseIterable, Identifiable {
+    case full, calm, plain
+    var id: String { rawValue }
+    var name: String { rawValue.capitalized }
 }
 
 // MARK: - Main screen
@@ -161,6 +165,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("goal") private var goal = 10_000
     @AppStorage("theme") private var theme: Theme = .system
+    @AppStorage("sceneStyle") private var sceneStyle: SceneStyle = .calm
     @AppStorage("roundStart") private var roundStart: Double = 0
     @AppStorage("avatar") private var avatar: Avatar = .golfer
     @AppStorage("look") private var look: Look = .original
@@ -223,6 +228,11 @@ struct ContentView: View {
             BackdropView(backdrop: backdrop, horizon: horizonY, signText: funUnit == .km ? "1 km" : "1 mi",
                          tapeBroken: ringTap.tapeBroken)
                 .onGeometryChange(for: CGSize.self) { $0.size } action: { screenSize = $0 }
+                // Calm: the same scene, softly blurred and faded so the ring and numbers lead.
+                .blur(radius: sceneStyle == .calm ? 7 : 0)
+                .overlay { theme.background.opacity(sceneStyle == .calm ? 0.35 : 0).ignoresSafeArea() }
+                // Plain: just the theme color.
+                .overlay { if sceneStyle == .plain { theme.background.ignoresSafeArea() } }
             ScrollView {
                 VStack(spacing: 22) {
                     HStack {
@@ -372,8 +382,11 @@ struct ContentView: View {
         }
         #endif
         .sensoryFeedback(.impact(weight: .light), trigger: ringTap.taps)
+        // VoiceOver reads the ring as one thing: steps, goal, distance, and what a tap does.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(store.today.formatted()) of \(goal.formatted()) steps. \(funUnit.phrase(store.today, meters: store.todayMeters)).")
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint("Your mini-me reacts")
+        .accessibilityHint("Your mini-me does a sport move")
     }
 
     // Last 7 days: a summary row, then one line per day (newest first).
@@ -419,6 +432,11 @@ struct ContentView: View {
                     }
                     .frame(width: 92, alignment: .trailing)
                 }
+                // VoiceOver: "Wednesday, 10,319 steps, goal hit" instead of reading each piece.
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(isToday ? "Today" : day.date.formatted(.dateTime.weekday(.wide))), "
+                                    + "\(day.steps.formatted()) steps, "
+                                    + (hit ? "goal hit" : "\((goal - day.steps).formatted()) short"))
             }
         }
         .padding()
@@ -433,24 +451,36 @@ struct InfoRow: View {
     var detail: String? = nil
     let value: String
     var valueColor: Color = .primary
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(spacing: 14) {
+        // Very large text: number goes under the label so nothing wraps mid-word.
+        let stacked = typeSize.isAccessibilitySize
+        HStack(alignment: stacked ? .top : .center, spacing: 14) {
             Text(icon).font(.title2).frame(width: 38)
             VStack(alignment: .leading, spacing: 2) {
                 Text(label).font(.title3)
                 if let detail {
                     Text(detail).font(.subheadline).foregroundStyle(Color.primary.opacity(0.6))
                 }
+                if stacked && !value.isEmpty { valueText }
             }
-            Spacer(minLength: 8)
-            Text(value)
-                .font(.title2.weight(.bold).monospacedDigit())
-                .foregroundStyle(valueColor)
-                .multilineTextAlignment(.trailing)
+            if !stacked {
+                Spacer(minLength: 8)
+                valueText
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 14)
         .accessibilityElement(children: .combine)
+    }
+
+    private var valueText: some View {
+        Text(value)
+            .font(.title2.weight(.bold).monospacedDigit())
+            .foregroundStyle(valueColor)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
     }
 }
 
@@ -547,6 +577,7 @@ struct SettingsView: View {
     @AppStorage("distancePlace") private var place: DistancePlace = .road
     @AppStorage("importWorkouts") private var importWorkouts = true
     @AppStorage("didSetup") private var didSetup = true
+    @AppStorage("sceneStyle") private var sceneStyle: SceneStyle = .calm
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -593,11 +624,19 @@ struct SettingsView: View {
                 } footer: {
                     Text("When you end a Golf, Hike, Walk, Run or Strength workout in Apple's Workout app, it shows up here as a session with its steps.")
                 }
-                Section("Look") {
+                Section {
                     Picker("Theme", selection: $theme) {
                         ForEach(Theme.allCases) { Text($0.name).tag($0) }
                     }
                     .pickerStyle(.segmented)
+                    Picker("Background", selection: $sceneStyle) {
+                        ForEach(SceneStyle.allCases) { Text($0.name).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Look")
+                } footer: {
+                    Text("Background: Full shows the whole scene, Calm softens it, Plain hides it.")
                 }
                 Section {
                     Button("Show setup again") {

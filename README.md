@@ -23,6 +23,12 @@ a hand-drawn animated character that reacts to how your day is going.
   basketball courts, trips around the bases, track laps, city blocks, km, or miles (picked in Settings).
   Distances use the real distance Apple Health measured with your own stride; golf holes count steps
 - One **Start a session** button opens a "What are you doing?" sheet
+- **Background:** Full (the whole scene), Calm (default: the scene softly blurred so the ring leads), or Plain;
+  theme Auto, Light, or Dark
+- **Home-screen widget:** a small ring with today's steps and how many are left (reads Apple Health, falls back to
+  the last count the app saved when the phone is locked)
+- **Accessibility:** VoiceOver reads the ring and each day as one sentence; at the largest text sizes the numbers
+  move under their labels instead of wrapping
 - **Full-screen scenes:** your fun unit picks an illustrated scene that fills the whole screen, with its ground lined up
   with your mini-me's feet: golf course, soccer stadium, football field, basketball arena, tennis stadium, ballpark,
   running track, city street, and for km / miles a road, beach, or mountain trail. Day scenes in light mode, night
@@ -122,7 +128,7 @@ a hand-drawn animated character that reacts to how your day is going.
 
 ## Tech
 
-Swift · SwiftUI · HealthKit · WidgetKit · WatchConnectivity · App Groups · Combine · WatchKit · Xcode 27 · iOS 27 / watchOS 27
+Swift · SwiftUI · HealthKit · WidgetKit (watch complications + iPhone widget) · WatchConnectivity · App Groups · Combine · WatchKit · Xcode 27 · iOS 27 / watchOS 27
 
 ## Run it
 
