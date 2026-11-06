@@ -36,7 +36,7 @@ a hand-drawn animated character that reacts to how your day is going.
 - Themes: Auto (system), Dark, Purple & gold, Golf green
 
 **Apple Watch**
-- Ring page centered for the Ultra 2 screen, with your mini-me, step count, and the same fun-unit scene as the phone
+- Ring page centered for the Ultra 2 screen, with your mini-me, step count, distance in your fun unit ("4.9 miles walked"), pace, and the same fun-unit scene as the phone
 - Stats page (streak, pace, forecast, your fun unit) and a 7-day bar chart, paged with the Digital Crown
 - **Synced from the iPhone:** goal, mini-me (outfit + whole look), and fun unit; pick the ring color on the watch
 - Watch face complications (WidgetKit): ring, steps left, and pace, for circle, corner, inline,

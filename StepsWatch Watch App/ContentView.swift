@@ -187,21 +187,20 @@ struct ContentView: View {
                         .font(.system(size: d * 0.17, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .minimumScaleFactor(0.6)
+                    // How far you walked today, in your fun unit ("4.9 miles walked").
+                    Text(funUnit.phrase(store.today, meters: store.todayMeters))
+                        .font(.system(size: d * 0.065, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                     // Pace: goal hit, on pace, or how far behind + how long to walk.
                     Text(hitGoal ? "🎉 Goal hit"
                          : onPace ? "✅ On pace"
-                         : "⏳ \(pace.behindText)")
+                         : "⏳ \(pace.behindText) · walk \(pace.catchUpMinutes) min")
                         .font(.system(size: d * 0.075, weight: .semibold, design: .rounded))
                         .foregroundStyle(hitGoal || onPace ? color : .orange)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                    if !hitGoal && !onPace {
-                        Text(pace.walkText)
-                            .font(.system(size: d * 0.06, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                    }
                     if let error = store.error {
                         Text(error).font(.caption2).foregroundStyle(.red).lineLimit(2)
                     }
