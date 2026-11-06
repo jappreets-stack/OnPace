@@ -79,9 +79,12 @@ struct StepsProvider: TimelineProvider {
         // The iPhone sends its own numbers with every refresh; they include steps the watch's copy of
         // Health doesn't have yet, so they win (same as the watch app).
         let d = Shared.defaults
-        let fromPhoneToday = Double(d.string(forKey: Shared.stepsDateKey) ?? "")
-            .map { Calendar.current.isDateInToday(Date(timeIntervalSince1970: $0)) } ?? false
-        if fromPhoneToday, let phoneSteps = Int(d.string(forKey: Shared.stepsKey) ?? "") { today = max(today, phoneSteps) }
+        let stamp = Double(d.string(forKey: Shared.stepsDateKey) ?? "")
+        let fromPhoneToday = stamp.map { Calendar.current.isDateInToday(Date(timeIntervalSince1970: $0)) } ?? false
+        let fresh = stamp.map { Date.now.timeIntervalSince1970 - $0 < 30 * 60 } ?? false
+        if fromPhoneToday, let phoneSteps = Int(d.string(forKey: Shared.stepsKey) ?? "") {
+            today = fresh ? phoneSteps : max(today, phoneSteps)   // recent phone numbers win outright
+        }
 
         // Streak: days in a row at goal. Today only counts once you've hit it.
         var past = days

@@ -74,10 +74,10 @@ final class WatchStepStore: ObservableObject {
                 days.append(WatchDay(date: day, steps: Int(n)))
             }
             todayMeters = await WalkDistance.meters(health, from: todayStart)
-            // The iPhone often knows more of today's steps than the watch's copy of Health.
-            if let phone = Self.phoneToday() {
-                days[days.count - 1] = WatchDay(date: todayStart, steps: max(days.last?.steps ?? 0, phone.steps))
-                if let m = phone.meters, m > (todayMeters ?? 0) { todayMeters = m }
+            // When the iPhone sent numbers recently, they win (see applyPhone below).
+            if let phone = Self.phoneToday(), phone.fresh {
+                days[days.count - 1] = WatchDay(date: todayStart, steps: phone.steps)
+                if let m = phone.meters { todayMeters = m }
             }
             today = days.last?.steps ?? 0
             week = Array(days.suffix(7))
@@ -103,12 +103,14 @@ final class WatchStepStore: ObservableObject {
 
 extension WatchStepStore {
     // Today's steps and distance the iPhone last sent (nil if it's from another day).
-    nonisolated static func phoneToday() -> (steps: Int, meters: Double?)? {
+    // fresh = sent in the last 30 minutes, so it can be shown exactly as the phone shows it.
+    nonisolated static func phoneToday() -> (steps: Int, meters: Double?, fresh: Bool)? {
         let d = Shared.defaults
         guard let stamp = Double(d.string(forKey: Shared.stepsDateKey) ?? ""),
               Calendar.current.isDateInToday(Date(timeIntervalSince1970: stamp)),
               let steps = Int(d.string(forKey: Shared.stepsKey) ?? "") else { return nil }
-        return (steps, Double(d.string(forKey: Shared.metersKey) ?? ""))
+        let fresh = Date.now.timeIntervalSince1970 - stamp < 30 * 60
+        return (steps, Double(d.string(forKey: Shared.metersKey) ?? ""), fresh)
     }
 
     // Use the phone's numbers right away when they arrive (no need to wait for the next Health read).
@@ -117,16 +119,18 @@ extension WatchStepStore {
     func applyPhone() {
         guard let phone = Self.phoneToday() else { return }
         let d = Shared.defaults
-        if phone.steps > today { today = phone.steps }
-        if let m = phone.meters, m > (todayMeters ?? 0) { todayMeters = m }
+        // Fresh: show exactly the phone's numbers. Older: only take them if they're higher.
+        if phone.fresh || phone.steps > today { today = phone.steps }
+        if let m = phone.meters, phone.fresh || m > (todayMeters ?? 0) { todayMeters = m }
         if let s = Int(d.string(forKey: Shared.streakKey) ?? "") { streak = s }
         let phoneWeek = (d.string(forKey: Shared.weekKey) ?? "").split(separator: ",").compactMap { Int($0) }
         if phoneWeek.count == 7 {
             let start = Calendar.current.startOfDay(for: .now)
             week = phoneWeek.enumerated().map { i, steps in
                 let day = Calendar.current.date(byAdding: .day, value: i - 6, to: start)!
+                if i == 6 { return WatchDay(date: day, steps: today) }
                 let own = week.first { Calendar.current.isDate($0.date, inSameDayAs: day) }?.steps ?? 0
-                return WatchDay(date: day, steps: max(own, i == 6 ? today : steps))
+                return WatchDay(date: day, steps: phone.fresh ? steps : max(own, steps))
             }
         } else if let last = week.indices.last {
             week[last] = WatchDay(date: week[last].date, steps: today)
