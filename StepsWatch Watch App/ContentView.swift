@@ -365,19 +365,18 @@ struct ContentView: View {
         }
     }
 
-    // Page 2: streak, pace, finish forecast, steps left to reach the goal.
+        // Same order as the phone's Today card: steps left, pace, finish time, streak.
     private var statsPage: some View {
         VStack(spacing: 5) {
-            StatRow(icon: "🔥", title: "Streak",
-                    value: "\(store.streak) \(store.streak == 1 ? "day" : "days")")
+            StatRow(icon: "👟", title: hitGoal ? "Goal hit" : "Left to reach goal",
+                    value: hitGoal ? "+\((store.today - goal).formatted())" : (goal - store.today).formatted())
             StatRow(icon: onPace ? "✅" : "⏳",
                     title: (pace.isPersonal ? "Your pace" : "Pace") + (onPace ? "" : " · \(pace.behindText)"),
                     value: hitGoal ? "Goal hit" : onPace ? "On pace" : "Walk \(pace.catchUpMinutes) min")
             StatRow(icon: "🏁", title: "At this pace",
                     value: pace.forecastShort ?? (hitGoal ? "Goal hit 🎉" : "Too early to tell"))
-            // Your distance is already on the ring page; here, how many steps are left.
-            StatRow(icon: "👟", title: hitGoal ? "Goal hit" : "Left to reach goal",
-                    value: hitGoal ? "+\((store.today - goal).formatted())" : (goal - store.today).formatted())
+            StatRow(icon: "🔥", title: "Streak",
+                    value: "\(store.streak) \(store.streak == 1 ? "day" : "days")")
         }
         .padding(.horizontal, 4)
     }
