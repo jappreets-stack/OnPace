@@ -95,6 +95,9 @@ final class StepStore: ObservableObject {
             shared.set(today, forKey: Shared.stepsKey)
             shared.set(Date.now.timeIntervalSince1970, forKey: Shared.stepsDateKey)
             shared.set(goal, forKey: Shared.goalKey)
+            for key in [Shared.avatarKey, Shared.lookKey, Shared.funUnitKey] {   // the medium widget shows your mini-me
+                if let v = UserDefaults.standard.string(forKey: key) { shared.set(v, forKey: key) }
+            }
             WidgetCenter.shared.reloadAllTimelines()
             curve = await Pace.learnCurve(from: health)
             error = nil
@@ -604,18 +607,27 @@ struct SettingsView: View {
                 }
                 Section {
                     Picker("Show steps as", selection: $funUnit) {
-                        ForEach(FunUnit.allCases) { Text("\($0.emoji) \($0.name)").tag($0) }
+                        ForEach(FunUnit.allCases) { unit in
+                            // Make it obvious that km / miles come with a choice of scene.
+                            Text("\(unit.emoji) \(unit.name)" + (unit == .km || unit == .mi ? " (road, beach or trail)" : ""))
+                                .tag(unit)
+                        }
                     }
                     if funUnit == .km || funUnit == .mi {
-                        Picker("Where", selection: $place) {
-                            ForEach(DistancePlace.allCases) { Text("\($0.emoji) \($0.name)").tag($0) }
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Walk along a")
+                                .font(.subheadline)
+                            Picker("Walk along a", selection: $place) {
+                                ForEach(DistancePlace.allCases) { Text("\($0.emoji) \($0.name)").tag($0) }
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
                         }
-                        .pickerStyle(.segmented)
                     }
                 } header: {
                     Text("Fun unit")
                 } footer: {
-                    Text("Turns your steps into something you can picture. It also picks the scene behind your mini-me.")
+                    Text("Turns your steps into something you can picture, and picks the scene behind your mini-me. Kilometers and Miles let you walk a road, a beach or a mountain trail.")
                 }
                 Section {
                     Toggle("Add workouts automatically", isOn: $importWorkouts)
