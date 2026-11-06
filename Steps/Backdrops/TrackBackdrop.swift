@@ -119,9 +119,21 @@ enum TrackBackdrop {
         let hNear = postH / c.z(nearEdge - 0.5), hFar = postH / c.z(farEdge + 0.6)
         let sway = sin(f.t * 2.2) * 2
         var tape = Path()
-        tape.move(to: CGPoint(x: pFar.x, y: pFar.y - hFar))
-        tape.addQuadCurve(to: CGPoint(x: pNear.x, y: pNear.y - hNear),
-                          control: CGPoint(x: (pFar.x + pNear.x) / 2 + sway, y: (pFar.y - hFar + pNear.y - hNear) / 2 + 5))
+        let farTop = CGPoint(x: pFar.x, y: pFar.y - hFar), nearTop = CGPoint(x: pNear.x, y: pNear.y - hNear)
+        if f.tapeBroken {
+            // Run through: two loose ends hanging from the posts, fluttering.
+            let flap = sin(f.t * 9) * 4
+            tape.move(to: farTop)
+            tape.addQuadCurve(to: CGPoint(x: farTop.x + 6 + flap, y: farTop.y + hFar * 0.55),
+                              control: CGPoint(x: farTop.x + 14, y: farTop.y + 6))
+            tape.move(to: nearTop)
+            tape.addQuadCurve(to: CGPoint(x: nearTop.x - 8 - flap, y: nearTop.y + hNear * 0.6),
+                              control: CGPoint(x: nearTop.x - 18, y: nearTop.y + 4))
+        } else {
+            tape.move(to: farTop)
+            tape.addQuadCurve(to: nearTop,
+                              control: CGPoint(x: (pFar.x + pNear.x) / 2 + sway, y: (farTop.y + nearTop.y) / 2 + 5))
+        }
         ctx.stroke(tape, with: .color(.white), lineWidth: 3)
         ctx.stroke(tape, with: .color(rgb(0.95, 0.25, 0.25)), style: StrokeStyle(lineWidth: 3, dash: [5, 5]))
         for (p, h) in [(pFar, hFar), (pNear, hNear)] {

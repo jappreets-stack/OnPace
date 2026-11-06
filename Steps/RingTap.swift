@@ -170,6 +170,9 @@ final class RingTap: ObservableObject {
         let peak: Double
         let start: Date
         let duration: Double
+        var finish: Backdrop.Finish = .stop
+        var endScale = 1.0      // smaller at the end = farther away (posts, hoop, outfield)
+        var missed = false
     }
 
     @Published var bubble: String?
@@ -179,6 +182,7 @@ final class RingTap: ObservableObject {
     @Published var travel: CGFloat = 0   // how far the mini-me has run sideways (sprint, jog)
     @Published var flight: Flight?       // the ball / disc / taxi / flag in the scene
     @Published var taps = 0              // drives the little buzz
+    @Published var tapeBroken = false    // track: you ran through the finish tape
 
     private var recent: [Date] = []
     private var bubbleJob: Task<Void, Never>?
@@ -224,7 +228,15 @@ final class RingTap: ObservableObject {
         }
         try? await Task.sleep(for: .seconds(m.duration * m.release))
         if p.flier != .none {
-            flight = Flight(flier: p.flier, from: release, to: to, peak: p.peak, start: .now, duration: p.flight)
+            flight = Flight(flier: p.flier, from: release, to: to, peak: p.peak, start: .now, duration: p.flight,
+                            finish: p.finish, endScale: p.endScale, missed: missed)
+        }
+        if backdrop == .track && finishing {
+            // Break the tape as you reach the finish line.
+            Task {
+                try? await Task.sleep(for: .seconds(m.duration * (1 - m.release) * 0.4))
+                tapeBroken = true
+            }
         }
         let rest = max(m.duration * (1 - m.release), p.flier == .none ? 0 : p.flight)
         try? await Task.sleep(for: .seconds(rest + 0.15))
@@ -240,6 +252,7 @@ final class RingTap: ObservableObject {
         moveStart = nil
         try? await Task.sleep(for: .seconds(1.2))
         withAnimation(.easeOut(duration: 0.3)) { flight = nil }
+        tapeBroken = false
     }
 
     private func say(_ line: String, for seconds: Double) {
@@ -269,28 +282,69 @@ struct FlightLayer: View {
         }
     }
 
+    // The flight has two parts: the arc to the target, then what happens there
+    // (sink into the cup, drop through the net, carry on through the uprights).
+    private func phases(_ f: RingTap.Flight, _ t: Double) -> (arc: Double, after: Double) {
+        let share = f.finish == .stop || f.missed ? 1.0 : 0.72
+        return (min(t / share, 1), share >= 1 ? 0 : max(0, (t - share) / (1 - share)))
+    }
+
+    // Where the ball is, how big, and how visible.
+    private func place(_ f: RingTap.Flight, _ t: Double) -> (p: CGPoint, scale: Double, opacity: Double) {
+        let (a, after) = phases(f, t)
+        var p = arc(f, a)
+        var scale = 1 + (f.endScale - 1) * a
+        var opacity = 1.0
+        if f.missed {
+            opacity = 1 - max(0, (t - 0.8) / 0.2)
+        } else {
+            switch f.finish {
+            case .stop: break
+            case .sink:            // into the cup
+                p.y += 3 * after
+                scale *= 1 - 0.9 * after
+                opacity = 1 - after * 0.6
+            case .dropThrough(let dy):   // straight down through the net
+                p.y += dy * after * after
+                opacity = 1 - max(0, (after - 0.6) / 0.4)
+            case .carryOn(let dx, let dy):   // keeps flying into the distance
+                p.x += dx * after
+                p.y += dy * after
+                scale *= 1 - 0.5 * after
+                opacity = 1 - max(0, (after - 0.5) / 0.5)
+            }
+        }
+        return (p, scale, opacity)
+    }
+
     @ViewBuilder
     private func piece(_ f: RingTap.Flight, _ t: Double) -> some View {
+        let at = place(f, t)
         switch f.flier {
         case .emoji(let e, let size):
             Text(e).font(.system(size: size))
                 .rotationEffect(.degrees(t * 540))
-                .position(arc(f, t))
+                .scaleEffect(at.scale)
+                .opacity(at.opacity)
+                .position(at.p)
         case .golfBall:
             Circle().fill(.white).frame(width: 8, height: 8)
                 .shadow(color: .black.opacity(0.3), radius: 1)
-                .position(arc(f, t))
+                .scaleEffect(at.scale)
+                .opacity(at.opacity)
+                .position(at.p)
         case .disc:
             Ellipse().fill(Color(red: 1.0, green: 0.45, blue: 0.20))
                 .overlay(Ellipse().stroke(.white.opacity(0.6), lineWidth: 1.5).padding(3))
                 .frame(width: 22, height: 8)
                 .rotationEffect(.degrees(-12 + 8 * sin(t * 12)))
-                .position(arc(f, t))
+                .scaleEffect(at.scale)
+                .position(at.p)
         case .taxi:
-            // Drives in from the left edge and brakes at the curb.
+            // Drives in from the left edge and brakes at the curb. About as big as a real car next to you.
             let eased = 1 - pow(1 - t, 3)
-            Text("🚕").font(.system(size: 34)).scaleEffect(x: -1)
-                .position(x: -40 + (f.to.x + 40) * eased, y: f.to.y - 14)
+            Text("🚕").font(.system(size: 92)).scaleEffect(x: -1)
+                .position(x: -70 + (f.to.x - 10 + 70) * eased, y: f.to.y - 34)
         case .flag:
             Text("🚩").font(.system(size: 28))
                 .scaleEffect(t, anchor: .bottomLeading)

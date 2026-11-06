@@ -42,13 +42,15 @@ struct BackdropView: View {
     let backdrop: Backdrop
     let horizon: Double
     var signText = "1 mi"   // written on the road sign
+    var tapeBroken = false  // track: you just ran through the finish tape
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 20)) { timeline in
             Canvas { ctx, size in
                 let f = BackdropFrame(size: size, horizon: horizon, center: size.width / 2,
-                                      dark: scheme == .dark, t: timeline.date.timeIntervalSinceReferenceDate)
+                                      dark: scheme == .dark, t: timeline.date.timeIntervalSinceReferenceDate,
+                                      tapeBroken: tapeBroken)
                 backdrop.draw(&ctx, f)
                 if backdrop == .road {
                     let r = RoadBackdrop.signRect(f)

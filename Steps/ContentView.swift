@@ -220,7 +220,8 @@ struct ContentView: View {
     private var today: some View {
         ZStack {
             // The scene for your fun unit fills the whole screen; its ground lines up with your mini-me's feet.
-            BackdropView(backdrop: backdrop, horizon: horizonY, signText: funUnit == .km ? "1 km" : "1 mi")
+            BackdropView(backdrop: backdrop, horizon: horizonY, signText: funUnit == .km ? "1 km" : "1 mi",
+                         tapeBroken: ringTap.tapeBroken)
                 .onGeometryChange(for: CGSize.self) { $0.size } action: { screenSize = $0 }
             ScrollView {
                 VStack(spacing: 22) {
@@ -350,6 +351,9 @@ struct ContentView: View {
                     Text(funUnit.phrase(store.today, meters: store.todayMeters))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.primary.opacity(0.75))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .frame(maxWidth: 170)       // stays inside the ring
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
