@@ -5,7 +5,7 @@ It reads your step count from Apple Health and shows progress toward a daily goa
 a hand-drawn animated character that reacts to how your day is going.
 
 <p align="center">
-  <img src="Screenshots/iphone-main.png" width="260" alt="iPhone main screen with goal ring, golf scene, streak, sessions">
+  <img src="Screenshots/iphone-main.png" width="260" alt="iPhone Today screen: full-screen night soccer stadium behind the goal ring and mini-me">
   &nbsp;&nbsp;&nbsp;
   <img src="Screenshots/watch-ring.png" width="220" alt="Apple Watch Ultra 2 ring screen">
   &nbsp;&nbsp;&nbsp;
@@ -19,11 +19,20 @@ a hand-drawn animated character that reacts to how your day is going.
 **iPhone** (two tabs, Today and History, with big type and one idea per row)
 - **Today:** the goal ring (2,000–30,000, default 10,000) with today's steps and how far you walked in your
   **fun unit** under them ("4.9 miles walked"), then one card of rows: steps left, how far behind pace you are and
-  the minutes of walking to catch up, the time you'll finish at this pace, and your streak. Fun units: golf holes, soccer fields, track laps, city blocks, km, or miles (picked in Settings).
+  the minutes of walking to catch up, the time you'll finish at this pace, and your streak. Fun units: golf holes, soccer, football or tennis fields/courts,
+  basketball courts, trips around the bases, track laps, city blocks, km, or miles (picked in Settings).
   Distances use the real distance Apple Health measured with your own stride; golf holes count steps
 - One **Start a session** button opens a "What are you doing?" sheet
-- The ring shows a scene for your fun unit behind your mini-me: golf green, soccer field, running track,
-  city skyline, or a road with a distance sign (light and dark mode)
+- **Full-screen scenes:** your fun unit picks an illustrated scene that fills the whole screen, with its ground lined up
+  with your mini-me's feet: golf course, soccer stadium, football field, basketball arena, tennis stadium, ballpark,
+  running track, city street, and for km / miles a road, beach, or mountain trail. Day scenes in light mode, night
+  (floodlights, moon, lit windows) in dark mode; cards sit on frosted glass so they stay readable
+- **Tap the ring:** your mini-me does the scene's sport move and the ball flies to the target: golf swing into the cup,
+  kick into the goal, field goal through the uprights, jump shot, tennis serve, home-run swing, sprint through the
+  finish tape (only once you've hit your goal), hail a taxi, jog past the mile sign, throw a frisbee, or plant a flag on
+  the summit. Then a speech bubble cheers ("Swish!") and adds a line about your day from ~80 written lines that
+  match how today is going and don't repeat until all are used. Sometimes it misses ("Brick."). Poke it too
+  much and it turns its back
 - **Sessions:** golf (9 or 18 holes), hike, dog walk, shopping, theme park, workout, or a custom one you name.
   Counts only the steps between Start and End, with saved history. During a session your mini-me swings
   (golf) or walks with a prop: hiking stick + backpack, a dog on a leash, shopping bags, a balloon, or dumbbells
@@ -55,7 +64,7 @@ a hand-drawn animated character that reacts to how your day is going.
   <img src="Screenshots/setup-minime.png" width="23%" alt="Setup: build your mini-me">
 </p>
 
-**Animated characters** (`Characters.swift`, `CharacterBuilder.swift`)
+**Animated characters** (`Characters.swift`, `CharacterBuilder.swift`, scenes in `Backdrops/`)
 - Drawn entirely in code with SwiftUI `Canvas` + `TimelineView` on a 100×140 grid. No image assets.
 - Three outfits with the same poses: Golfer (pants or skort), Baller (jersey with your letter),
   and Gym (tank or sports top)
@@ -64,6 +73,8 @@ a hand-drawn animated character that reacts to how your day is going.
   main / accent / headwear colors from a 12-color palette
 - Male / Female sets matching defaults (body, hair, outfit), and every option stays open to change
 - Mood follows your progress: swings during a golf round, celebrates at goal, walks when on pace, slumps when behind
+- 11 one-shot sport moves (golf swing, kick, field goal, jump shot, serve, bat swing, sprint, hail, jog, frisbee, plant a
+  flag) for every outfit and body shape, with the exact release point the ball's flight starts from
 
 <p align="center">
   <img src="Screenshots/characters.png" width="100%" alt="All hair styles and outfits drawn by the character code">
@@ -72,7 +83,7 @@ a hand-drawn animated character that reacts to how your day is going.
   <img src="Screenshots/props.png" width="70%" alt="Session props: hiking stick, dog, shopping bags, balloon, dumbbells">
 </p>
 <p align="center">
-  <img src="Screenshots/scenes.png" width="100%" alt="Fun-unit scenes inside the ring, light and dark">
+  <img src="Screenshots/scenes.png" width="100%" alt="All 11 full-screen scenes, light and dark">
 </p>
 
 ## How it works
@@ -99,6 +110,10 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Sessions:** one `SessionRecord` list (stored under the original golf-rounds key; old rounds
   load as golf). `FunUnit` converts the measured walking + running distance (HealthKit
   `distanceWalkingRunning`) into fields, laps, blocks, km, or miles; it falls back to ~0.76 m per step without it.
+- **Scenes:** each backdrop is a `GraphicsContext` drawing that takes the screen size, the y of the mini-me's feet, and
+  light/dark, and reports a target point for the tap trick, so the same code fits any iPhone. Built in parallel by
+  helper agents against a shared contract and checked with Mac renders and the iOS Simulator (debug-only `-demoSteps`
+  and `-autoTap` launch arguments fake steps and tap the ring for screen recordings).
 - **State:** settings and sessions are stored with `@AppStorage`; data refreshes whenever the app becomes active.
 - **Layout:** the watch ring is centered on the physical screen (`WKInterfaceDevice.screenBounds`)
   instead of the safe area, so it stays centered next to the clock and page indicator.

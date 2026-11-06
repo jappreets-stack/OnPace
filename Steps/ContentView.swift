@@ -25,6 +25,9 @@ final class StepStore: ObservableObject {
     private var ready = false
 
     func start(goal: Int) async {
+        #if DEBUG
+        if UserDefaults.standard.integer(forKey: "demoSteps") > 0 { await refresh(goal: goal); return }
+        #endif
         guard HKHealthStore.isHealthDataAvailable() else {
             error = "Health data isn't available on this device."
             return
@@ -39,6 +42,21 @@ final class StepStore: ObservableObject {
     }
 
     func refresh(goal: Int) async {
+        #if DEBUG
+        // Simulator testing: launch with `-demoSteps 6400` to fake today's steps (no Health data there).
+        let demo = UserDefaults.standard.integer(forKey: "demoSteps")
+        if demo > 0 {
+            let cal = Calendar.current
+            today = demo
+            todayMeters = Double(demo) * 0.72
+            week = (0..<7).map { i in
+                DaySteps(date: cal.date(byAdding: .day, value: i - 6, to: cal.startOfDay(for: .now))!,
+                         steps: i == 6 ? demo : [11_200, 8_400, 12_300, 9_900, 13_600, 10_700][i])
+            }
+            streak = demo >= goal ? 4 : 3
+            return
+        }
+        #endif
         guard ready else { return }
         let cal = Calendar.current
         let todayStart = cal.startOfDay(for: .now)
@@ -148,7 +166,12 @@ struct ContentView: View {
     @AppStorage("look") private var look: Look = .original
     @AppStorage("sessionKind") private var sessionKind: SessionKind = .golf
     @AppStorage("funUnit") private var funUnit: FunUnit = .holes
+    @AppStorage("distancePlace") private var place: DistancePlace = .road
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var miniMeFrame: CGRect = .zero   // where the mini-me is on screen (the scene's ground lines up with its feet)
+    @State private var screenSize: CGSize = .zero
     @State private var showSettings = false
+    @StateObject private var ringTap = RingTap()   // tap the ring: mini-me talks, plays, runs (RingTap.swift)
     @AppStorage("didSetup") private var didSetup = true
 
     private var progress: Double { min(Double(store.today) / Double(goal), 1) }
@@ -196,13 +219,17 @@ struct ContentView: View {
     // Today: the ring, what's left, whether you're on pace, and sessions. Nothing else.
     private var today: some View {
         ZStack {
-            theme.background.ignoresSafeArea()
+            // The scene for your fun unit fills the whole screen; its ground lines up with your mini-me's feet.
+            BackdropView(backdrop: backdrop, horizon: horizonY, signText: funUnit == .km ? "1 km" : "1 mi")
+                .onGeometryChange(for: CGSize.self) { $0.size } action: { screenSize = $0 }
             ScrollView {
                 VStack(spacing: 22) {
                     HStack {
                         Spacer()
                         Button { showSettings = true } label: {
                             Image(systemName: "gearshape.fill").font(.title2)
+                                .padding(10)
+                                .background(.ultraThinMaterial, in: Circle())
                         }
                         .accessibilityLabel("Settings")
                     }
@@ -227,7 +254,7 @@ struct ContentView: View {
                         InfoRow(icon: "🔥", label: "Streak", value: "\(store.streak) \(store.streak == 1 ? "day" : "days")")
                     }
                     .padding(.horizontal)
-                    .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
                     SessionCard(store: store, theme: theme)
                     if let error = store.error {
                         Text(error).font(.footnote).foregroundStyle(.red)
@@ -235,6 +262,10 @@ struct ContentView: View {
                 }
                 .padding()
             }
+            .scrollBounceBehavior(.basedOnSize)
+            // The ball / disc / taxi / flag from a tap, flying through the scene.
+            FlightLayer(flight: ringTap.flight)
+                .ignoresSafeArea()
         }
     }
 
@@ -255,32 +286,90 @@ struct ContentView: View {
         }
     }
 
+    // The scene behind everything: golf rounds always get the golf course.
+    private var backdrop: Backdrop {
+        roundStart > 0 && sessionKind == .golf ? .golf : Backdrop(unit: funUnit, place: place)
+    }
+
+    // Where the scene's ground starts: your mini-me's feet (feet sit at about 96% of its frame's height).
+    private var horizonY: Double { miniMeFrame == .zero ? 330 : miniMeFrame.minY + miniMeFrame.height * 0.957 }
+
+    private var quipContext: QuipContext {
+        QuipContext(steps: store.today, goal: goal, behind: pace.behind, catchUpMinutes: pace.catchUpMinutes,
+                    onPace: onPace, streak: store.streak,
+                    distance: funUnit.phrase(store.today, meters: store.todayMeters),
+                    session: roundStart > 0 ? (sessionKind == .golf ? "round" : sessionKind.name.lowercased()) : nil,
+                    golfRound: roundStart > 0 && sessionKind == .golf)
+    }
+
+    // Tap: the mini-me does its sport move toward the scene's target, then says something.
+    private func tapRing() {
+        let f = BackdropFrame(size: screenSize, horizon: horizonY, center: screenSize.width / 2,
+                              dark: colorScheme == .dark, t: 0)
+        let grid = SportMove.releasePoint(backdrop.play.move)    // on the 100 x 140 character grid
+        let s = min(miniMeFrame.width / 100, miniMeFrame.height / 140)
+        let release = CGPoint(x: miniMeFrame.minX + (miniMeFrame.width - 100 * s) / 2 + grid.x * s,
+                              y: miniMeFrame.minY + (miniMeFrame.height - 140 * s) / 2 + grid.y * s)
+        ringTap.tap(quipContext, backdrop: backdrop, release: release, target: backdrop.target(f),
+                    miniMeX: miniMeFrame.midX)
+    }
+
     private var ring: some View {
         ZStack {
-            // Scene for your fun unit (golf rounds always get the golf course).
-            UnitScene(unit: roundStart > 0 && sessionKind == .golf ? .holes : funUnit)
-                .clipShape(Circle().inset(by: 10))
             Circle()
-                .stroke(Color.primary.opacity(0.15), lineWidth: 20)
+                .stroke(.ultraThinMaterial, lineWidth: 20)
             Circle()
                 .trim(from: 0, to: progress)
                 .stroke(hitGoal ? theme.done : theme.ring,
                         style: StrokeStyle(lineWidth: 20, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .animation(.easeOut(duration: 0.6), value: progress)
-            VStack(spacing: 0) {
-                CharacterView(avatar: avatar, mood: mood, look: look,
-                              prop: roundStart > 0 ? sessionKind.prop : nil)
-                    .frame(width: 120, height: 136)
-                Text(store.today, format: .number)
-                    .font(.system(size: 44, weight: .bold, design: .rounded))
-                // How far you walked today, in your fun unit ("4.9 miles walked").
-                Text(funUnit.phrase(store.today, meters: store.todayMeters))
-                    .font(.headline)
-                    .foregroundStyle(Color.primary.opacity(0.7))
+            VStack(spacing: 4) {
+                CharacterView(avatar: avatar,
+                              mood: ringTap.move.map { .move($0) } ?? (ringTap.grumpy ? .slump : mood),
+                              look: look,
+                              prop: roundStart > 0 ? sessionKind.prop : nil,
+                              moveStart: ringTap.moveStart)
+                    .frame(width: 110, height: 125)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { miniMeFrame = $0 }
+                    .scaleEffect(x: ringTap.grumpy ? -1 : 1)        // grumpy: turns away
+                    .offset(x: ringTap.travel)                       // sprinting / jogging over to the target
+                    .overlay(alignment: .top) {
+                        if let line = ringTap.bubble {
+                            SpeechBubble(text: line)
+                                .alignmentGuide(.top) { $0[.bottom] + 4 }
+                                .transition(.scale(scale: 0.4, anchor: .bottom).combined(with: .opacity))
+                        }
+                    }
+                    .zIndex(1)
+                // Today's steps and distance, on a frosted chip so they read over any scene.
+                VStack(spacing: 0) {
+                    Text(store.today, format: .number)
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                    // How far you walked today, in your fun unit ("4.9 miles walked").
+                    Text(funUnit.phrase(store.today, meters: store.todayMeters))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.primary.opacity(0.75))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
             }
         }
         .frame(width: 270, height: 270)
+        .contentShape(Circle())
+        .onTapGesture { tapRing() }
+        #if DEBUG
+        // Simulator testing: launch with `-autoTap YES` to tap the ring once, 2 seconds after opening.
+        .task {
+            guard UserDefaults.standard.bool(forKey: "autoTap") else { return }
+            try? await Task.sleep(for: .seconds(2))
+            tapRing()
+        }
+        #endif
+        .sensoryFeedback(.impact(weight: .light), trigger: ringTap.taps)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Your mini-me reacts")
     }
 
     // Last 7 days: a summary row, then one line per day (newest first).
@@ -451,6 +540,7 @@ struct SettingsView: View {
     @Binding var avatar: Avatar
     @Binding var look: Look
     @Binding var funUnit: FunUnit
+    @AppStorage("distancePlace") private var place: DistancePlace = .road
     @AppStorage("importWorkouts") private var importWorkouts = true
     @AppStorage("didSetup") private var didSetup = true
     @Environment(\.dismiss) private var dismiss
@@ -481,10 +571,16 @@ struct SettingsView: View {
                     Picker("Show steps as", selection: $funUnit) {
                         ForEach(FunUnit.allCases) { Text("\($0.emoji) \($0.name)").tag($0) }
                     }
+                    if funUnit == .km || funUnit == .mi {
+                        Picker("Where", selection: $place) {
+                            ForEach(DistancePlace.allCases) { Text("\($0.emoji) \($0.name)").tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                    }
                 } header: {
                     Text("Fun unit")
                 } footer: {
-                    Text("Turns your steps into something you can picture, like golf holes or soccer fields. Shown on the main screen and in sessions.")
+                    Text("Turns your steps into something you can picture. It also picks the scene behind your mini-me.")
                 }
                 Section {
                     Toggle("Add workouts automatically", isOn: $importWorkouts)

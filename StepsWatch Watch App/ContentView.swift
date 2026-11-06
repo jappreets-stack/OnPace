@@ -24,6 +24,21 @@ final class WatchStepStore: ObservableObject {
     private var ready = false
 
     func start(goal: Int) async {
+        #if DEBUG
+        // Simulator testing: launch with `-demoSteps 6400` to fake today's steps (no Health data there).
+        let demo = UserDefaults.standard.integer(forKey: "demoSteps")
+        if demo > 0 {
+            let cal = Calendar.current
+            today = demo
+            todayMeters = Double(demo) * 0.72
+            week = (0..<7).map { i in
+                WatchDay(date: cal.date(byAdding: .day, value: i - 6, to: cal.startOfDay(for: .now))!,
+                         steps: i == 6 ? demo : [11_200, 8_400, 12_300, 9_900, 13_600, 10_700][i])
+            }
+            streak = 3
+            return
+        }
+        #endif
         guard HKHealthStore.isHealthDataAvailable() else {
             error = "Health data isn't available."
             return
@@ -122,6 +137,7 @@ struct ContentView: View {
     @AppStorage(Shared.avatarKey, store: Shared.defaults) private var avatar: Avatar = .golfer
     @AppStorage(Shared.lookKey, store: Shared.defaults) private var look: Look = .original
     @AppStorage(Shared.funUnitKey, store: Shared.defaults) private var funUnit: FunUnit = .holes
+    @AppStorage(Shared.placeKey, store: Shared.defaults) private var place: DistancePlace = .road
     // Watch only.
     @AppStorage("ringStyle") private var style: RingStyle = .icon
 
@@ -166,7 +182,7 @@ struct ContentView: View {
             let color = hitGoal ? style.done : style.ring
             ZStack {
                 // Scene for your fun unit (soccer field, track, ...), same as the phone's ring.
-                UnitScene(unit: funUnit, horizon: 124, lowMarks: false)
+                UnitScene(unit: funUnit, place: place, horizon: 124, lowMarks: false)
                     .clipShape(Circle().inset(by: line / 2))
                 Circle()
                     .stroke(color.opacity(0.18), lineWidth: line)
@@ -182,7 +198,7 @@ struct ContentView: View {
                     .animation(.easeOut(duration: 0.6), value: progress)
                 VStack(spacing: 0) {
                     CharacterView(avatar: avatar, mood: mood, look: look)
-                        .frame(width: d * 0.38, height: d * 0.44)
+                        .frame(width: d * 0.36, height: d * 0.41)
                     Text(store.today, format: .number)
                         .font(.system(size: d * 0.17, weight: .bold, design: .rounded))
                         .monospacedDigit()
@@ -193,6 +209,7 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
+                        .frame(maxWidth: d * 0.78)
                     // Pace: goal hit, on pace, or how far behind + how long to walk.
                     Text(hitGoal ? "🎉 Goal hit"
                          : onPace ? "✅ On pace"
@@ -200,7 +217,8 @@ struct ContentView: View {
                         .font(.system(size: d * 0.075, weight: .semibold, design: .rounded))
                         .foregroundStyle(hitGoal || onPace ? color : .orange)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .minimumScaleFactor(0.5)
+                        .frame(maxWidth: d * 0.68)   // stays inside the ring near its bottom
                     if let error = store.error {
                         Text(error).font(.caption2).foregroundStyle(.red).lineLimit(2)
                     }

@@ -11,6 +11,7 @@ struct Onboarding: View {
     @AppStorage("avatar") private var avatar: Avatar = .golfer
     @AppStorage("look") private var look: Look = .original
     @AppStorage("funUnit") private var funUnit: FunUnit = .holes
+    @AppStorage("distancePlace") private var place: DistancePlace = .road
     @State private var page = 0
     @State private var asking = false
 
@@ -255,7 +256,13 @@ struct Onboarding: View {
                     .accessibilityAddTraits(funUnit == unit ? .isSelected : [])
                 }
             }
-            UnitScene(unit: funUnit)
+            if funUnit == .km || funUnit == .mi {
+                Picker("Where", selection: $place) {
+                    ForEach(DistancePlace.allCases) { Text("\($0.emoji) \($0.name)").tag($0) }
+                }
+                .pickerStyle(.segmented)
+            }
+            UnitScene(unit: funUnit, place: place)
                 .frame(width: 120, height: 120)
                 .clipShape(Circle())
         }
@@ -268,6 +275,10 @@ private extension FunUnit {
         switch self {
         case .holes: "1 hole ≈ 1,300 steps"
         case .soccerFields: "1 field = 105 m"
+        case .footballFields: "1 field = 100 yd"
+        case .courts: "1 court ≈ 29 m"
+        case .tennisCourts: "1 court ≈ 24 m"
+        case .bases: "1 trip = 110 m"
         case .laps: "1 lap = 400 m"
         case .blocks: "1 block ≈ 80 m"
         case .km: "1 km = 1,000 m"

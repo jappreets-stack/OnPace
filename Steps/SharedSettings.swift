@@ -13,7 +13,8 @@ nonisolated enum Shared {
     static let avatarKey = "avatar"
     static let lookKey = "look"
     static let funUnitKey = "funUnit"
-    static let syncedKeys = [goalKey, avatarKey, lookKey, funUnitKey]
+    static let placeKey = "distancePlace"   // road / beach / trail, for km and mi
+    static let syncedKeys = [goalKey, avatarKey, lookKey, funUnitKey, placeKey]
 
     // On the watch: the App Group storage both the app and the complications read.
     static var defaults: UserDefaults { UserDefaults(suiteName: appGroup) ?? .standard }
@@ -42,13 +43,17 @@ nonisolated enum WalkDistance {
 // Steps turned into something you can picture. Uses the real distance you walked when Apple Health
 // has it; golf holes always count steps (a hole is about walking, not a straight line).
 nonisolated enum FunUnit: String, CaseIterable, Identifiable {
-    case holes, soccerFields, laps, blocks, km, mi
+    case holes, soccerFields, footballFields, courts, tennisCourts, bases, laps, blocks, km, mi
     var id: String { rawValue }
 
     var name: String {
         switch self {
         case .holes: "Golf holes"
         case .soccerFields: "Soccer fields"
+        case .footballFields: "Football fields"
+        case .courts: "Basketball courts"
+        case .tennisCourts: "Tennis courts"
+        case .bases: "Trips around the bases"
         case .laps: "Track laps"
         case .blocks: "City blocks"
         case .km: "Kilometers"
@@ -60,6 +65,10 @@ nonisolated enum FunUnit: String, CaseIterable, Identifiable {
         switch self {
         case .holes: 1300        // walking a hole, tee to green plus the walk to the next tee
         case .soccerFields: 140  // one length of a 105 m field
+        case .footballFields: 120 // 100 yards, goal line to goal line
+        case .courts: 38         // one 28.65 m basketball court
+        case .tennisCourts: 31   // one 23.77 m tennis court
+        case .bases: 144         // home → 1st → 2nd → 3rd → home, 109.7 m
         case .laps: 525          // one 400 m lap
         case .blocks: 105        // a ~80 m city block
         case .km: 1320
@@ -72,6 +81,10 @@ nonisolated enum FunUnit: String, CaseIterable, Identifiable {
         switch self {
         case .holes: nil
         case .soccerFields: 105
+        case .footballFields: 91.44
+        case .courts: 28.65
+        case .tennisCourts: 23.77
+        case .bases: 109.73
         case .laps: 400
         case .blocks: 80
         case .km: 1000
@@ -83,6 +96,10 @@ nonisolated enum FunUnit: String, CaseIterable, Identifiable {
         switch self {
         case .holes: "⛳️"
         case .soccerFields: "⚽️"
+        case .footballFields: "🏈"
+        case .courts: "🏀"
+        case .tennisCourts: "🎾"
+        case .bases: "⚾️"
         case .laps: "🏃"
         case .blocks: "🏙️"
         case .km, .mi: "📏"
@@ -93,6 +110,10 @@ nonisolated enum FunUnit: String, CaseIterable, Identifiable {
         switch self {
         case .holes: "Golf"
         case .soccerFields: "Soccer"
+        case .footballFields: "Football"
+        case .courts: "Hoops"
+        case .tennisCourts: "Tennis"
+        case .bases: "Baseball"
         case .laps: "Track"
         case .blocks: "City"
         case .km, .mi: "Distance"
@@ -103,6 +124,10 @@ nonisolated enum FunUnit: String, CaseIterable, Identifiable {
         switch self {
         case .holes: "holes walked"
         case .soccerFields: "soccer fields"
+        case .footballFields: "football fields"
+        case .courts: "basketball courts"
+        case .tennisCourts: "tennis courts"
+        case .bases: "trips around the bases"
         case .laps: "track laps"
         case .blocks: "city blocks"
         case .km: "km walked"
@@ -118,7 +143,7 @@ nonisolated enum FunUnit: String, CaseIterable, Identifiable {
         let value: Double
         if let per = metersPerUnit, let meters { value = meters / per }
         else { value = Double(steps) / stepsPerUnit }
-        let decimals = (self == .soccerFields || self == .blocks) ? 0 : 1
+        let decimals = [.soccerFields, .footballFields, .courts, .tennisCourts, .blocks].contains(self) ? 0 : 1
         return value.formatted(.number.precision(.fractionLength(decimals)))
     }
 
@@ -133,6 +158,20 @@ nonisolated enum FunUnit: String, CaseIterable, Identifiable {
 }
 
 
+// Where you walk when you count km or miles: changes the scene, not the math.
+nonisolated enum DistancePlace: String, CaseIterable, Identifiable {
+    case road, beach, trail
+    var id: String { rawValue }
+    var name: String { rawValue.capitalized }
+    var emoji: String {
+        switch self {
+        case .road: "🛣️"
+        case .beach: "🏖️"
+        case .trail: "🥾"
+        }
+    }
+}
+
 // MARK: - Fun-unit scene (drawn inside the ring, behind your mini-me)
 
 // A soft scene that matches your fun unit: golf green, soccer field, running track, city, road.
@@ -140,6 +179,7 @@ nonisolated enum FunUnit: String, CaseIterable, Identifiable {
 // Shared with the watch, whose ring puts the feet higher (see `horizon`).
 struct UnitScene: View {
     let unit: FunUnit
+    var place: DistancePlace = .road
     var horizon = 152.0   // where the ground starts on the 270 grid (your mini-me's feet)
     var lowMarks = true   // field lines / road dashes near the bottom (off on the watch, where text sits there)
 
@@ -198,6 +238,48 @@ struct UnitScene: View {
                 ctx.stroke(frame, with: .color(.white), lineWidth: 2.5)
                 ctx.stroke(frame, with: .color(.gray.opacity(0.5)), lineWidth: 0.6)
 
+            case .footballFields:   // yard lines, numbers, yellow goalposts
+                fill(ground, grass.opacity(0.32))
+                for i in 0..<10 {   // yard lines, leaning a little for depth
+                    let x = Double(i) * 30 + 6
+                    line(CGPoint(x: x, y: horizon), CGPoint(x: x - 14, y: 270), .white.opacity(0.55), 1.3)
+                }
+                if lowMarks {
+                    for (x, n) in [(48.0, "20"), (138.0, "30"), (228.0, "40")] {
+                        ctx.draw(Text(n).font(.system(size: 15, weight: .heavy)).foregroundStyle(.white.opacity(0.6)),
+                                 at: CGPoint(x: x, y: horizon + 88))
+                    }
+                }
+                let post = Color(red: 0.98, green: 0.80, blue: 0.15)
+                line(CGPoint(x: 210, y: horizon + 2), CGPoint(x: 210, y: horizon - 30), post, 3)
+                line(CGPoint(x: 188, y: horizon - 30), CGPoint(x: 232, y: horizon - 30), post, 3)
+                line(CGPoint(x: 188, y: horizon - 30), CGPoint(x: 188, y: horizon - 82), post, 2.5)
+                line(CGPoint(x: 232, y: horizon - 30), CGPoint(x: 232, y: horizon - 82), post, 2.5)
+
+            case .courts:   // hardwood floor, three-point line, hoop
+                let wood = Color(red: 0.80, green: 0.55, blue: 0.30)
+                fill(ground, wood.opacity(0.45))
+                for y in stride(from: horizon + 9, to: 270, by: 9) {   // floor boards
+                    line(CGPoint(x: 0, y: y), CGPoint(x: 270, y: y), wood.opacity(0.35), 0.8)
+                }
+                line(CGPoint(x: 0, y: horizon + 1), CGPoint(x: 270, y: horizon + 1), .white.opacity(0.6), 1.5)
+                if lowMarks {
+                    ctx.stroke(Path(ellipseIn: CGRect(x: 60, y: horizon + 70, width: 300, height: 80)),
+                               with: .color(.white.opacity(0.6)), lineWidth: 1.5)
+                }
+                // pole, backboard, rim, net
+                line(CGPoint(x: 236, y: horizon), CGPoint(x: 236, y: horizon - 70), .gray.opacity(0.8), 4)
+                line(CGPoint(x: 236, y: horizon - 70), CGPoint(x: 220, y: horizon - 70), .gray.opacity(0.8), 3)
+                let board = CGRect(x: 186, y: horizon - 92, width: 36, height: 26)
+                ctx.fill(Path(roundedRect: board, cornerRadius: 2), with: .color(.white.opacity(0.85)))
+                ctx.stroke(Path(CGRect(x: 197, y: horizon - 84, width: 14, height: 11)), with: .color(.orange), lineWidth: 1.5)
+                let rim = CGRect(x: 192, y: horizon - 69, width: 24, height: 5)
+                for i in 0...4 {
+                    let x = rim.minX + Double(i) * 6
+                    line(CGPoint(x: x, y: rim.midY), CGPoint(x: 198 + Double(i) * 3, y: horizon - 50), .white.opacity(0.7), 0.8)
+                }
+                ctx.stroke(Path(ellipseIn: rim), with: .color(.orange), lineWidth: 2.5)
+
             case .laps:   // red running track with lane lines, infield grass up top
                 fill(CGRect(x: 0, y: horizon - 18, width: 270, height: 18), grass.opacity(0.25))
                 fill(ground, Color(red: 0.85, green: 0.35, blue: 0.25).opacity(0.35))
@@ -224,6 +306,49 @@ struct UnitScene: View {
                     line(CGPoint(x: x, y: horizon), CGPoint(x: x - 12, y: horizon + 22), .gray.opacity(0.35), 1)
                 }
                 line(CGPoint(x: 0, y: horizon + 22), CGPoint(x: 270, y: horizon + 22), .gray.opacity(0.45), 2)
+
+            case .tennisCourts:   // blue hard court, net
+                fill(ground, Color(red: 0.25, green: 0.45, blue: 0.75).opacity(0.45))
+                line(CGPoint(x: 0, y: horizon + 2), CGPoint(x: 270, y: horizon + 2), .white.opacity(0.8), 1.5)
+                line(CGPoint(x: 150, y: horizon + 30), CGPoint(x: 250, y: horizon + 30), .white.opacity(0.6), 1.2)
+                fill(CGRect(x: 160, y: horizon - 22, width: 100, height: 22), .white.opacity(0.10))
+                for x in stride(from: 160.0, through: 260, by: 6) {
+                    line(CGPoint(x: x, y: horizon - 22), CGPoint(x: x, y: horizon), .white.opacity(0.25), 0.6)
+                }
+                line(CGPoint(x: 160, y: horizon - 22), CGPoint(x: 260, y: horizon - 22), .white, 2.5)
+                line(CGPoint(x: 160, y: horizon - 22), CGPoint(x: 160, y: horizon), .gray, 2)
+
+            case .bases:   // infield dirt, a base, outfield wall
+                fill(CGRect(x: 0, y: horizon - 30, width: 270, height: 30), Color(red: 0.20, green: 0.45, blue: 0.25).opacity(0.6))
+                fill(CGRect(x: 0, y: horizon - 34, width: 270, height: 4), Color(red: 0.95, green: 0.80, blue: 0.20).opacity(0.7))
+                fill(ground, Color(red: 0.75, green: 0.55, blue: 0.35).opacity(0.45))
+                ctx.fill(Path(CGRect(x: 196, y: horizon + 4, width: 14, height: 7)), with: .color(.white.opacity(0.9)))
+
+            case .km, .mi where place == .beach:   // sea, sand, sun
+                fill(CGRect(x: 0, y: horizon - 34, width: 270, height: 34), Color(red: 0.20, green: 0.55, blue: 0.80).opacity(0.55))
+                for i in 0..<5 {
+                    let y = horizon - 30 + Double(i) * 7
+                    line(CGPoint(x: Double(i) * 23, y: y), CGPoint(x: Double(i) * 23 + 90, y: y), .white.opacity(0.35), 1.2)
+                }
+                fill(ground, Color(red: 0.93, green: 0.82, blue: 0.60).opacity(0.55))
+                ctx.fill(Path(ellipseIn: CGRect(x: 205, y: horizon - 80, width: 26, height: 26)),
+                         with: .color(Color(red: 1.0, green: 0.80, blue: 0.30).opacity(0.85)))
+
+            case .km, .mi where place == .trail:   // mountains, pines, trail
+                var far = Path()
+                far.move(to: CGPoint(x: 0, y: horizon))
+                far.addLine(to: CGPoint(x: 70, y: horizon - 60)); far.addLine(to: CGPoint(x: 120, y: horizon - 30))
+                far.addLine(to: CGPoint(x: 200, y: horizon - 95)); far.addLine(to: CGPoint(x: 270, y: horizon - 40))
+                far.addLine(to: CGPoint(x: 270, y: horizon)); far.closeSubpath()
+                ctx.fill(far, with: .color(Color(red: 0.45, green: 0.55, blue: 0.65).opacity(0.55)))
+                var snow = Path()
+                snow.move(to: CGPoint(x: 186, y: horizon - 78)); snow.addLine(to: CGPoint(x: 200, y: horizon - 95))
+                snow.addLine(to: CGPoint(x: 214, y: horizon - 82)); snow.closeSubpath()
+                ctx.fill(snow, with: .color(.white.opacity(0.8)))
+                fill(ground, Color(red: 0.30, green: 0.50, blue: 0.30).opacity(0.45))
+                var trail = Path()
+                trail.move(to: CGPoint(x: 110, y: 270)); trail.addQuadCurve(to: CGPoint(x: 150, y: horizon), control: CGPoint(x: 170, y: horizon + 60))
+                ctx.stroke(trail, with: .color(Color(red: 0.75, green: 0.62, blue: 0.45).opacity(0.7)), lineWidth: 10)
 
             case .km, .mi:   // road with dashed center line and a distance sign
                 fill(CGRect(x: 0, y: horizon - 10, width: 270, height: 10), grass.opacity(0.25))
