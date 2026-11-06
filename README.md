@@ -17,9 +17,9 @@ a hand-drawn animated character that reacts to how your day is going.
 ## Features
 
 **iPhone** (two tabs, Today and History, with big type and one idea per row)
-- **Today:** the goal ring (2,000–30,000, default 10,000), then one card of rows: steps left, how far behind
-  pace you are and the minutes of walking to catch up, the time you'll finish at this pace, your streak, and your
-  **fun unit**: golf holes, soccer fields, track laps, city blocks, km, or miles (picked in Settings).
+- **Today:** the goal ring (2,000–30,000, default 10,000) with today's steps and how far you walked in your
+  **fun unit** under them ("4.9 miles walked"), then one card of rows: steps left, how far behind pace you are and
+  the minutes of walking to catch up, the time you'll finish at this pace, and your streak. Fun units: golf holes, soccer fields, track laps, city blocks, km, or miles (picked in Settings).
   Distances use the real distance Apple Health measured with your own stride; golf holes count steps
 - One **Start a session** button opens a "What are you doing?" sheet
 - The ring shows a scene for your fun unit behind your mini-me: golf green, soccer field, running track,

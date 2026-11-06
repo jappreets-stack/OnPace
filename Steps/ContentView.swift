@@ -225,8 +225,6 @@ struct ContentView: View {
                         }
                         Divider().padding(.leading, 52)
                         InfoRow(icon: "🔥", label: "Streak", value: "\(store.streak) \(store.streak == 1 ? "day" : "days")")
-                        Divider().padding(.leading, 52)
-                        InfoRow(icon: funUnit.emoji, label: funUnit.title, value: funUnit.amount(store.today, meters: store.todayMeters))
                     }
                     .padding(.horizontal)
                     .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
@@ -276,8 +274,9 @@ struct ContentView: View {
                     .frame(width: 120, height: 136)
                 Text(store.today, format: .number)
                     .font(.system(size: 44, weight: .bold, design: .rounded))
-                Text("of \(goal.formatted()) steps")
-                    .font(.subheadline)
+                // How far you walked today, in your fun unit ("4.9 miles walked").
+                Text(funUnit.phrase(store.today, meters: store.todayMeters))
+                    .font(.headline)
                     .foregroundStyle(Color.primary.opacity(0.7))
             }
         }
