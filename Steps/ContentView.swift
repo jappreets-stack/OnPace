@@ -149,6 +149,7 @@ struct ContentView: View {
     @AppStorage("sessionKind") private var sessionKind: SessionKind = .golf
     @AppStorage("funUnit") private var funUnit: FunUnit = .holes
     @State private var showSettings = false
+    @AppStorage("didSetup") private var didSetup = true
 
     private var progress: Double { min(Double(store.today) / Double(goal), 1) }
     private var hitGoal: Bool { store.today >= goal }
@@ -175,7 +176,14 @@ struct ContentView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView(goal: $goal, theme: $theme, avatar: $avatar, look: $look, funUnit: $funUnit)
         }
-        .task { await store.start(goal: goal) }
+        // First-time setup (Onboarding.swift). Health access is asked there, not here.
+        .fullScreenCover(isPresented: Binding(get: { !didSetup }, set: { didSetup = !$0 })) {
+            Onboarding(store: store, theme: theme)
+        }
+        .task { if didSetup { await store.start(goal: goal) } }
+        .onChange(of: didSetup) { _, done in
+            if done { Task { await store.start(goal: goal) } }
+        }
         // Re-read steps every time you come back to the app.
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await store.refresh(goal: goal) } }
@@ -445,6 +453,7 @@ struct SettingsView: View {
     @Binding var look: Look
     @Binding var funUnit: FunUnit
     @AppStorage("importWorkouts") private var importWorkouts = true
+    @AppStorage("didSetup") private var didSetup = true
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -490,6 +499,18 @@ struct SettingsView: View {
                         ForEach(Theme.allCases) { Text($0.name).tag($0) }
                     }
                     .pickerStyle(.segmented)
+                }
+                Section {
+                    Button("Show setup again") {
+                        dismiss()
+                        // Wait for Settings to close before setup covers the screen.
+                        Task {
+                            try? await Task.sleep(for: .milliseconds(500))
+                            didSetup = false
+                        }
+                    }
+                } footer: {
+                    Text("Walks you through goal, mini-me and fun unit again. Your steps and sessions stay.")
                 }
             }
             .navigationTitle("Settings")

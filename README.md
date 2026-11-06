@@ -42,6 +42,19 @@ a hand-drawn animated character that reacts to how your day is going.
 - Watch face complications (WidgetKit): ring, steps left, and pace, for circle, corner, inline,
   and rectangle slots; they read HealthKit directly, use the goal synced from the phone, and refresh when the app opens
 
+**First-time setup** (`Onboarding.swift`, shown once to new people)
+- Five short screens, one idea each: Welcome, Apple Health (what's read and why, stays on your iPhone),
+  daily goal (− / + and 5K–12K picks), build your mini-me (body, outfit, skin, hair, with "More options" for the
+  full builder), and a fun unit. Every step can be skipped. People who used the app before setup existed skip it,
+  and Settings has "Show setup again".
+
+<p align="center">
+  <img src="Screenshots/setup-welcome.png" width="23%" alt="Setup: welcome">
+  <img src="Screenshots/setup-health.png" width="23%" alt="Setup: connect Apple Health">
+  <img src="Screenshots/setup-goal.png" width="23%" alt="Setup: daily goal">
+  <img src="Screenshots/setup-minime.png" width="23%" alt="Setup: build your mini-me">
+</p>
+
 **Animated characters** (`Characters.swift`, `CharacterBuilder.swift`)
 - Drawn entirely in code with SwiftUI `Canvas` + `TimelineView` on a 100×140 grid. No image assets.
 - Three outfits with the same poses: Golfer (pants or skort), Baller (jersey with your letter),
