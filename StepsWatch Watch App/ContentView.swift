@@ -140,6 +140,11 @@ struct ContentView: View {
     @AppStorage(Shared.placeKey, store: Shared.defaults) private var place: DistancePlace = .road
     // Watch only.
     @AppStorage("ringStyle") private var style: RingStyle = .icon
+    // Tap the ring: your mini-me does the scene's sport move (see WatchPlay below).
+    @State private var tapMove: SportMove?
+    @State private var tapStart: Date?
+    @State private var flight: (play: WatchPlay, start: Date)?
+    @State private var cheer: String?
 
     private var progress: Double { min(Double(store.today) / Double(goal), 1) }
     private var hitGoal: Bool { store.today >= goal }
@@ -197,7 +202,8 @@ struct ContentView: View {
                     .shadow(color: color.opacity(0.5), radius: 4)
                     .animation(.easeOut(duration: 0.6), value: progress)
                 VStack(spacing: 0) {
-                    CharacterView(avatar: avatar, mood: mood, look: look)
+                    CharacterView(avatar: avatar, mood: tapMove.map { .move($0) } ?? mood, look: look,
+                                  moveStart: tapStart)
                         .frame(width: d * 0.36, height: d * 0.41)
                     Text(store.today, format: .number)
                         .font(.system(size: d * 0.17, weight: .bold, design: .rounded))
@@ -225,8 +231,47 @@ struct ContentView: View {
                 }
                 // Sit a little high so the pace lines clear the bottom of the ring.
                 .offset(y: -d * 0.06)
+
+                // The ball / taxi / flag from a tap, drawn on the scene's 270-point grid.
+                if let flight {
+                    TimelineView(.animation) { tl in
+                        let t = min(max(tl.date.timeIntervalSince(flight.start) / flight.play.duration, 0), 1)
+                        let k = d / 270
+                        let p = flight.play.point(t)
+                        Text(flight.play.ball)
+                            .font(.system(size: flight.play.size * k))
+                            .rotationEffect(.degrees(flight.play.spins ? t * 540 : 0))
+                            .scaleEffect(flight.play.scale(t))
+                            .opacity(flight.play.opacity(t))
+                            .position(x: p.x * k, y: p.y * k)
+                    }
+                    .frame(width: d, height: d)
+                    .clipShape(Circle().inset(by: line / 2))
+                    .allowsHitTesting(false)
+                }
+                // A short cheer at the top of the ring.
+                if let cheer {
+                    Text(cheer)
+                        .font(.system(size: d * 0.075, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(.white, in: Capsule())
+                        .position(x: d / 2, y: d * 0.13)
+                        .transition(.scale.combined(with: .opacity))
+                }
             }
             .frame(width: d, height: d)
+            .contentShape(Circle())
+            .onTapGesture { tapRing() }
+            #if DEBUG
+            // Simulator testing: launch with `-autoTap YES` to tap the ring 2 seconds after opening.
+            .task {
+                guard UserDefaults.standard.bool(forKey: "autoTap") else { return }
+                try? await Task.sleep(for: .seconds(2))
+                tapRing()
+            }
+            #endif
             // Center on the physical screen, not the app area (the page dots shift that left).
             .position(x: screen.width / 2 - geo.frame(in: .global).minX,
                       y: screen.height / 2 - geo.frame(in: .global).minY)
@@ -235,6 +280,27 @@ struct ContentView: View {
     }
 
     private var screen: CGRect { WKInterfaceDevice.current().screenBounds }
+
+    // Tap: move → ball flies to the goal in the ring's scene → cheer + wrist tap.
+    private func tapRing() {
+        guard tapMove == nil else { return }
+        let play = WatchPlay.for(funUnit, place: place, goalHit: hitGoal)
+        WKInterfaceDevice.current().play(.click)
+        Task {
+            tapStart = .now
+            tapMove = play.move
+            try? await Task.sleep(for: .seconds(play.move.duration * play.move.release))
+            if !play.ball.isEmpty { flight = (play, .now) }
+            try? await Task.sleep(for: .seconds(max(play.move.duration * (1 - play.move.release), play.duration)))
+            withAnimation(.spring(duration: 0.3)) { cheer = play.cheer }
+            WKInterfaceDevice.current().play(.success)
+            try? await Task.sleep(for: .seconds(0.4))
+            tapMove = nil
+            tapStart = nil
+            try? await Task.sleep(for: .seconds(1.8))
+            withAnimation(.easeOut(duration: 0.3)) { cheer = nil; flight = nil }
+        }
+    }
 
     // Page 2: streak, pace, finish forecast, fun unit (holes walked, soccer fields, ...).
     private var statsPage: some View {
@@ -335,4 +401,73 @@ struct StatRow: View {
 
 #Preview {
     ContentView()
+}
+
+
+// What the mini-me does on the watch ring for each scene, on UnitScene's 270 x 270 grid
+// (the watch draws the ground at y = 124). Phone has fuller versions in Backdrops/BackdropPlay.swift.
+struct WatchPlay {
+    let move: SportMove
+    var ball = ""            // emoji that flies; empty = nothing flies
+    var size = 22.0
+    var from = CGPoint(x: 150, y: 118)
+    var to = CGPoint(x: 205, y: 120)
+    var peak = 50.0
+    var duration = 0.9
+    var spins = true
+    var drop = 0.0           // falls this far after arriving (through the net / into the cup)
+    var pop = false          // grows in place (summit flag)
+    var drive = false        // drives in from the left (taxi)
+    let cheer: String
+
+    static func `for`(_ unit: FunUnit, place: DistancePlace, goalHit: Bool) -> WatchPlay {
+        let h = 124.0
+        switch unit {
+        case .holes:
+            return WatchPlay(move: .golfSwing, ball: "⚪️", size: 9, to: CGPoint(x: 205, y: h + 4), peak: 70,
+                             duration: 1.1, spins: false, drop: 6, cheer: "In the cup!")
+        case .soccerFields:
+            return WatchPlay(move: .kick, ball: "⚽️", to: CGPoint(x: 207, y: h - 17), peak: 30, cheer: "GOAL!")
+        case .footballFields:
+            return WatchPlay(move: .fieldGoal, ball: "🏈", to: CGPoint(x: 210, y: h - 58), peak: 30, cheer: "It's good!")
+        case .courts:
+            return WatchPlay(move: .jumpShot, ball: "🏀", size: 18, from: CGPoint(x: 140, y: 70),
+                             to: CGPoint(x: 204, y: h - 67), peak: 40, duration: 1.0, drop: 26, cheer: "Swish!")
+        case .tennisCourts:
+            return WatchPlay(move: .serve, ball: "🎾", size: 14, from: CGPoint(x: 145, y: 64),
+                             to: CGPoint(x: 236, y: h - 10), peak: 20, duration: 0.7, cheer: "Ace!")
+        case .bases:
+            return WatchPlay(move: .batSwing, ball: "⚾️", size: 14, from: CGPoint(x: 155, y: 100),
+                             to: CGPoint(x: 250, y: h - 80), peak: 50, duration: 1.0, cheer: "Home run!")
+        case .laps:
+            return WatchPlay(move: .sprint, cheer: goalHit ? "Photo finish!" : "Zoom!")
+        case .blocks:
+            return WatchPlay(move: .hail, ball: "🚕", size: 34, to: CGPoint(x: 205, y: h - 4), duration: 1.0,
+                             spins: false, drive: true, cheer: "Taxi!")
+        case .km, .mi:
+            switch place {
+            case .road: return WatchPlay(move: .jog, cheer: "Another marker!")
+            case .beach:
+                return WatchPlay(move: .throwDisc, ball: "🥏", size: 18, from: CGPoint(x: 160, y: 95),
+                                 to: CGPoint(x: 220, y: h - 60), peak: 25, duration: 1.0, cheer: "Nice throw!")
+            case .trail:
+                return WatchPlay(move: .plantFlag, ball: "🚩", size: 22, to: CGPoint(x: 204, y: h - 104),
+                                 duration: 0.5, spins: false, pop: true, cheer: "Summit!")
+            }
+        }
+    }
+
+    func point(_ t: Double) -> CGPoint {
+        if pop { return to }
+        if drive {
+            let e = 1 - pow(1 - t, 3)
+            return CGPoint(x: -30 + (to.x + 30) * e, y: to.y)
+        }
+        let a = drop > 0 ? min(t / 0.75, 1) : t
+        let after = drop > 0 ? max(0, (t - 0.75) / 0.25) : 0
+        return CGPoint(x: from.x + (to.x - from.x) * a,
+                       y: from.y + (to.y - from.y) * a - 4 * peak * a * (1 - a) + drop * after)
+    }
+    func scale(_ t: Double) -> Double { pop ? t : 1 }
+    func opacity(_ t: Double) -> Double { drop > 0 ? 1 - max(0, (t - 0.9) / 0.1) : 1 }
 }

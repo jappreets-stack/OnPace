@@ -367,17 +367,17 @@ struct SpeechBubble: View {
 
     var body: some View {
         Text(text)
-            .font(.subheadline.weight(.semibold))
+            .font(.footnote.weight(.semibold))
             .multilineTextAlignment(.center)
             .foregroundStyle(.black)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
             .background(.white, in: RoundedRectangle(cornerRadius: 14))
             .overlay(alignment: .bottom) {
                 Triangle().fill(.white).frame(width: 14, height: 9).offset(y: 8)
             }
             .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
-            .frame(width: 240)
+            .frame(maxWidth: 220)
             .fixedSize(horizontal: false, vertical: true)
     }
 }

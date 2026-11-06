@@ -46,6 +46,8 @@ a hand-drawn animated character that reacts to how your day is going.
 
 **Apple Watch**
 - Ring page centered for the Ultra 2 screen, with your mini-me, step count, distance in your fun unit ("4.9 miles walked"), pace, and the same fun-unit scene as the phone
+- **Tap the watch ring:** your mini-me does the same sport move as on the phone, the ball flies to the goal in the
+  ring's scene, a short cheer pops up ("Swish!") and the watch taps your wrist
 - Stats page (streak, pace, forecast, your fun unit) and a 7-day bar chart, paged with the Digital Crown
 - **Synced from the iPhone:** goal, mini-me (outfit + whole look), and fun unit; pick the ring color on the watch
 - Watch face complications (WidgetKit): ring, steps left, and pace, for circle, corner, inline,

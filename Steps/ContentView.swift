@@ -335,32 +335,32 @@ struct ContentView: View {
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { miniMeFrame = $0 }
                     .scaleEffect(x: ringTap.grumpy ? -1 : 1)        // grumpy: turns away
                     .offset(x: ringTap.travel)                       // sprinting / jogging over to the target
-                    .overlay(alignment: .top) {
-                        if let line = ringTap.bubble {
-                            SpeechBubble(text: line)
-                                .alignmentGuide(.top) { $0[.bottom] + 4 }
-                                .transition(.scale(scale: 0.4, anchor: .bottom).combined(with: .opacity))
-                        }
-                    }
-                    .zIndex(1)
                 // Today's steps and distance, on a frosted chip so they read over any scene.
                 VStack(spacing: 0) {
                     Text(store.today, format: .number)
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
                     // How far you walked today, in your fun unit ("4.9 miles walked").
                     Text(funUnit.phrase(store.today, meters: store.todayMeters))
-                        .font(.subheadline.weight(.semibold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(Color.primary.opacity(0.75))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                        .frame(maxWidth: 170)       // stays inside the ring
+                        .frame(maxWidth: 140)       // stays well inside the ring
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 11))
             }
         }
         .frame(width: 270, height: 270)
+        // The speech bubble sits just above the ring, its tail pointing down at your mini-me.
+        .overlay(alignment: .top) {
+            if let line = ringTap.bubble {
+                SpeechBubble(text: line)
+                    .alignmentGuide(.top) { $0[.bottom] - 4 }
+                    .transition(.scale(scale: 0.4, anchor: .bottom).combined(with: .opacity))
+            }
+        }
         .contentShape(Circle())
         .onTapGesture { tapRing() }
         #if DEBUG
