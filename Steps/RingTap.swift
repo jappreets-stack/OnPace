@@ -217,7 +217,8 @@ final class RingTap: ObservableObject {
         let finishing = backdrop != .track || c.hitGoal
         let missed = p.miss != nil && Int.random(in: 0..<5) == 0
         var to = target
-        if missed { to.x += 36; to.y -= 14 }
+        // A miss lands just past the target (rolls by the cup, off the rim, wide of the posts), never off screen.
+        if missed { to.x += backdrop == .golf ? 14 : 26; to.y += backdrop == .golf ? 2 : -10 }
 
         bubble = nil
         moveStart = .now
@@ -328,7 +329,7 @@ struct FlightLayer: View {
                 .opacity(at.opacity)
                 .position(at.p)
         case .golfBall:
-            Circle().fill(.white).frame(width: 8, height: 8)
+            Circle().fill(.white).frame(width: 10, height: 10)
                 .shadow(color: .black.opacity(0.3), radius: 1)
                 .scaleEffect(at.scale)
                 .opacity(at.opacity)
@@ -341,10 +342,11 @@ struct FlightLayer: View {
                 .scaleEffect(at.scale)
                 .position(at.p)
         case .taxi:
-            // Drives in from the left edge and brakes at the curb. About as big as a real car next to you.
+            // Drives in from the right edge (the way the taxi emoji faces) and brakes at the curb.
+            // About as big as a real car next to you.
             let eased = 1 - pow(1 - t, 3)
-            Text("🚕").font(.system(size: 92)).scaleEffect(x: -1)
-                .position(x: -70 + (f.to.x - 10 + 70) * eased, y: f.to.y - 34)
+            Text("🚕").font(.system(size: 92))
+                .position(x: f.to.x + 260 * (1 - eased), y: f.to.y - 34)
         case .flag:
             Text("🚩").font(.system(size: 28))
                 .scaleEffect(t, anchor: .bottomLeading)

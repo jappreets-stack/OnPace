@@ -27,7 +27,7 @@ extension Backdrop {
         case emoji(String, size: Double)
         case golfBall
         case disc
-        case taxi        // drives in from the left and stops at the target
+        case taxi        // drives in from the right and stops at the target
         case flag        // pops up at the target (summit)
         case none        // the mini-me itself runs to the target
     }

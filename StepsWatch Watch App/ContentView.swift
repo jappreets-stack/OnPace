@@ -145,6 +145,7 @@ struct ContentView: View {
     @State private var tapStart: Date?
     @State private var flight: (play: WatchPlay, start: Date)?
     @State private var cheer: String?
+    @State private var dayLine = ""
 
     private var progress: Double { min(Double(store.today) / Double(goal), 1) }
     private var hitGoal: Bool { store.today >= goal }
@@ -251,14 +252,22 @@ struct ContentView: View {
                 }
                 // A short cheer at the top of the ring.
                 if let cheer {
-                    Text(cheer)
-                        .font(.system(size: d * 0.075, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(.white, in: Capsule())
-                        .position(x: d / 2, y: d * 0.13)
-                        .transition(.scale.combined(with: .opacity))
+                    VStack(spacing: 0) {
+                        Text(cheer)
+                            .font(.system(size: d * 0.075, weight: .heavy, design: .rounded))
+                        Text(dayLine)
+                            .font(.system(size: d * 0.05, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.black.opacity(0.65))
+                    }
+                    .foregroundStyle(.black)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(.white, in: RoundedRectangle(cornerRadius: d * 0.06))
+                    .frame(maxWidth: d * 0.7)
+                    .position(x: d / 2, y: d * 0.15)
+                    .transition(.scale.combined(with: .opacity))
                 }
             }
             .frame(width: d, height: d)
@@ -292,7 +301,11 @@ struct ContentView: View {
             try? await Task.sleep(for: .seconds(play.move.duration * play.move.release))
             if !play.ball.isEmpty { flight = (play, .now) }
             try? await Task.sleep(for: .seconds(max(play.move.duration * (1 - play.move.release), play.duration)))
-            withAnimation(.spring(duration: 0.3)) { cheer = play.cheer }
+            // A different cheer than last time, plus how today is going.
+            let options = play.cheers.filter { $0 != cheer }
+            dayLine = hitGoal ? "Goal hit 🎉" : onPace ? "On pace ✅"
+                : "\(pace.behind.formatted()) behind · walk \(pace.catchUpMinutes) min"
+            withAnimation(.spring(duration: 0.3)) { cheer = options.randomElement() ?? play.cheer }
             WKInterfaceDevice.current().play(.success)
             try? await Task.sleep(for: .seconds(0.4))
             tapMove = nil
@@ -417,8 +430,26 @@ struct WatchPlay {
     var spins = true
     var drop = 0.0           // falls this far after arriving (through the net / into the cup)
     var pop = false          // grows in place (summit flag)
-    var drive = false        // drives in from the left (taxi)
+    var drive = false        // drives in from the right (taxi)
     let cheer: String
+
+    // Several cheers per scene so it isn't the same word every tap.
+    var cheers: [String] {
+        switch move {
+        case .golfSwing: ["In the cup!", "Birdie!", "Tap-in!", "Pure strike!", "Fore… just kidding!"]
+        case .kick: ["GOAL!", "Top corner!", "Back of the net!", "What a strike!", "Golazo!"]
+        case .fieldGoal: ["It's good!", "Right down the middle!", "Three points!", "Splits the posts!"]
+        case .jumpShot: ["Swish!", "Nothing but net!", "Buckets!", "From downtown!", "Cash!"]
+        case .serve: ["Ace!", "Service winner!", "Love-15!", "Untouchable!"]
+        case .batSwing: ["Home run!", "Gone!", "Outta here!", "Grand slam!"]
+        case .sprint: cheer == "Photo finish!" ? ["Photo finish!", "Gold medal!", "New record!"] : ["Zoom!", "Lap done!", "Keep going!"]
+        case .hail: ["Taxi!", "Ride's here!", "Hop in!", "Cab!"]
+        case .jog: ["Another marker!", "Mile down!", "Cruising!", "Nice pace!"]
+        case .throwDisc: ["Nice throw!", "Caught it!", "Long toss!", "Beach legend!"]
+        case .plantFlag: ["Summit!", "Top of the world!", "Peak bagged!", "Made it up!"]
+        default: [cheer]
+        }
+    }
 
     static func `for`(_ unit: FunUnit, place: DistancePlace, goalHit: Bool) -> WatchPlay {
         let h = 124.0
@@ -442,7 +473,7 @@ struct WatchPlay {
         case .laps:
             return WatchPlay(move: .sprint, cheer: goalHit ? "Photo finish!" : "Zoom!")
         case .blocks:
-            return WatchPlay(move: .hail, ball: "🚕", size: 34, to: CGPoint(x: 205, y: h - 4), duration: 1.0,
+            return WatchPlay(move: .hail, ball: "🚕", size: 64, to: CGPoint(x: 200, y: h - 14), duration: 1.0,
                              spins: false, drive: true, cheer: "Taxi!")
         case .km, .mi:
             switch place {
@@ -461,7 +492,7 @@ struct WatchPlay {
         if pop { return to }
         if drive {
             let e = 1 - pow(1 - t, 3)
-            return CGPoint(x: -30 + (to.x + 30) * e, y: to.y)
+            return CGPoint(x: to.x + 140 * (1 - e), y: to.y)   // from the right, the way the taxi faces
         }
         let a = drop > 0 ? min(t / 0.75, 1) : t
         let after = drop > 0 ? max(0, (t - 0.75) / 0.25) : 0
