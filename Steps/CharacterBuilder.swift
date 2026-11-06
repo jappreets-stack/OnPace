@@ -114,8 +114,8 @@ struct CharacterBuilder: View {
             }
 
             Section {
-                Button("Back to the original look") {
-                    look = .original
+                Button("Start over") {
+                    look = .starter
                     avatar = .golfer
                 }
             }

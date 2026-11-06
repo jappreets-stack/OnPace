@@ -167,8 +167,22 @@ nonisolated struct Look: Equatable, Codable, RawRepresentable {
     var accent: Swatch = .gold       // collar, jersey, shoes
     var letter: String = "J"         // on the Baller jersey
 
-    // The original look: turban, full beard, purple & gold.
+    // The original look: turban, full beard, purple & gold (the app's first mini-me).
     static let original = Look()
+
+    // What new people start with: a plain look they then make their own in setup.
+    static let starter: Look = {
+        var l = Look()
+        l.skin = .medium
+        l.hair = .short
+        l.hairColor = .darkBrown
+        l.beard = .none
+        l.hat = .navy
+        l.main = .blue
+        l.accent = .white
+        l.letter = "1"
+        return l
+    }()
 
     // How each character looked before the builder (the watch still uses these).
     static func classic(_ avatar: Avatar) -> Look {
@@ -196,12 +210,12 @@ nonisolated struct Look: Equatable, Codable, RawRepresentable {
             bottoms = .skort
             top = .sportsTop
         case .male:
-            let original = Look.original
+            let starter = Look.starter
             lashes = false
             lips = .natural
-            beard = original.beard
-            hair = original.hair
-            hat = original.hat
+            beard = starter.beard
+            if [.ponytail, .braids, .bun].contains(hair) { hair = starter.hair }
+            hat = starter.hat
             hatTrim = nil
             bottoms = .pants
             top = .tank

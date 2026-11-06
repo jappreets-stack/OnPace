@@ -9,7 +9,7 @@ struct Onboarding: View {
     @AppStorage("didSetup") private var didSetup = false
     @AppStorage("goal") private var goal = 10_000
     @AppStorage("avatar") private var avatar: Avatar = .golfer
-    @AppStorage("look") private var look: Look = .original
+    @AppStorage("look") private var look: Look = .starter
     @AppStorage("funUnit") private var funUnit: FunUnit = .holes
     @AppStorage("distancePlace") private var place: DistancePlace = .road
     @State private var page = 0

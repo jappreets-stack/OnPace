@@ -171,7 +171,7 @@ struct ContentView: View {
     @AppStorage("sceneStyle") private var sceneStyle: SceneStyle = .calm
     @AppStorage("roundStart") private var roundStart: Double = 0
     @AppStorage("avatar") private var avatar: Avatar = .golfer
-    @AppStorage("look") private var look: Look = .original
+    @AppStorage("look") private var look: Look = .starter
     @AppStorage("sessionKind") private var sessionKind: SessionKind = .golf
     @AppStorage("funUnit") private var funUnit: FunUnit = .holes
     @AppStorage("distancePlace") private var place: DistancePlace = .road
@@ -229,7 +229,7 @@ struct ContentView: View {
         ZStack {
             // The scene for your fun unit fills the whole screen; its ground lines up with your mini-me's feet.
             BackdropView(backdrop: backdrop, horizon: horizonY, signText: funUnit == .km ? "1 km" : "1 mi",
-                         tapeBroken: ringTap.tapeBroken)
+                         tapeBroken: ringTap.tapeBroken, animated: sceneStyle == .full)
                 .onGeometryChange(for: CGSize.self) { $0.size } action: { screenSize = $0 }
                 // Calm: the same scene, softly blurred and faded so the ring and numbers lead.
                 .blur(radius: sceneStyle == .calm ? 7 : 0)
@@ -248,6 +248,9 @@ struct ContentView: View {
                         .accessibilityLabel("Settings")
                     }
                     ring
+                    if store.week.isEmpty == false && store.week.allSatisfy({ $0.steps == 0 }) {
+                        NoStepsHelp()
+                    }
                     // One card of plain rows: label on the left, number on the right.
                     VStack(spacing: 0) {
                         InfoRow(icon: "👟", label: hitGoal ? "Goal hit 🎉" : "Left to reach goal",
@@ -444,6 +447,21 @@ struct ContentView: View {
         }
         .padding()
         .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+    }
+}
+
+// Shown when Apple Health has no steps at all this week: new phone, or Health access turned off.
+struct NoStepsHelp: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("No steps from Apple Health yet").font(.headline)
+            Text("Just installed OnPace? Walk a little and they'll show up. Still 0? Open the Settings app → Health → Data Access & Devices → OnPace, and turn everything on.")
+                .font(.subheadline)
+                .foregroundStyle(Color.primary.opacity(0.75))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
     }
 }
 

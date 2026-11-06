@@ -43,10 +43,12 @@ struct BackdropView: View {
     let horizon: Double
     var signText = "1 mi"   // written on the road sign
     var tapeBroken = false  // track: you just ran through the finish tape
+    var animated = true     // false = drawn once and kept still (saves battery when the scene is blurred)
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 20)) { timeline in
+        // Only the Full background moves; Calm and Plain stay still to save battery.
+        TimelineView(.animation(minimumInterval: 1 / 20, paused: !animated)) { timeline in
             Canvas { ctx, size in
                 let f = BackdropFrame(size: size, horizon: horizon, center: size.width / 2,
                                       dark: scheme == .dark, t: timeline.date.timeIntervalSinceReferenceDate,

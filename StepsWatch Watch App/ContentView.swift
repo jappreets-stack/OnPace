@@ -135,7 +135,7 @@ struct ContentView: View {
     // Sent from the iPhone (see WatchSync), stored in the App Group the complications read too.
     @AppStorage(Shared.goalKey, store: Shared.defaults) private var goal = 10_000
     @AppStorage(Shared.avatarKey, store: Shared.defaults) private var avatar: Avatar = .golfer
-    @AppStorage(Shared.lookKey, store: Shared.defaults) private var look: Look = .original
+    @AppStorage(Shared.lookKey, store: Shared.defaults) private var look: Look = .starter
     @AppStorage(Shared.funUnitKey, store: Shared.defaults) private var funUnit: FunUnit = .holes
     @AppStorage(Shared.placeKey, store: Shared.defaults) private var place: DistancePlace = .road
     // Watch only.

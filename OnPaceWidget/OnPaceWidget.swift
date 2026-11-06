@@ -13,7 +13,7 @@ struct OnPaceEntry: TimelineEntry {
     var meters: Double? = nil
     var curve: [Double]? = nil
     var avatar: Avatar = .golfer
-    var look: Look = .original
+    var look: Look = .starter
     var unit: FunUnit = .holes
 
     var progress: Double { min(Double(steps) / Double(max(goal, 1)), 1) }
@@ -56,7 +56,7 @@ struct OnPaceProvider: TimelineProvider {
         let health = HKHealthStore()
         let start = Calendar.current.startOfDay(for: .now)
         let avatar = d.string(forKey: Shared.avatarKey).flatMap(Avatar.init(rawValue:)) ?? .golfer
-        let look = d.string(forKey: Shared.lookKey).flatMap(Look.init(rawValue:)) ?? .original
+        let look = d.string(forKey: Shared.lookKey).flatMap(Look.init(rawValue:)) ?? .starter
         let unit = d.string(forKey: Shared.funUnitKey).flatMap(FunUnit.init(rawValue:)) ?? .holes
 
         let query = HKStatisticsQueryDescriptor(
