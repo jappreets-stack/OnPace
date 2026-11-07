@@ -1,5 +1,6 @@
 import SwiftUI
 import HealthKit
+import CoreMotion
 import Combine
 import WatchKit
 import WidgetKit
@@ -23,6 +24,9 @@ final class WatchStepStore: ObservableObject {
     private let stepType = HKQuantityType(.stepCount)
     private var ready = false
     var liveQuery: HKObserverQuery?
+    // The watch's own step counter: live, unlike Health, which the watch only fills in batches.
+    let pedometer = CMPedometer()
+    var pedometerLive = false
 
     func start(goal: Int) async {
         #if DEBUG
@@ -76,6 +80,11 @@ final class WatchStepStore: ObservableObject {
                 days.append(WatchDay(date: day, steps: Int(n)))
             }
             todayMeters = await WalkDistance.meters(health, from: todayStart)
+            // The watch's live step counter is ahead of Health (Health is filled in batches).
+            if let live = await Self.pedometerToday(pedometer) {
+                days[days.count - 1] = WatchDay(date: todayStart, steps: max(days.last?.steps ?? 0, live.steps))
+                if let m = live.meters, m > (todayMeters ?? 0) { todayMeters = m }
+            }
             // Today: the higher of the watch's own count and the phone's last count, so it's never behind.
             if let phone = Self.phoneToday() {
                 days[days.count - 1] = WatchDay(date: todayStart, steps: max(days.last?.steps ?? 0, phone.steps))
@@ -104,6 +113,16 @@ final class WatchStepStore: ObservableObject {
 }
 
 extension WatchStepStore {
+    // Today's steps and distance from the watch's step counter (nil if Motion access is off).
+    nonisolated static func pedometerToday(_ pedometer: CMPedometer = CMPedometer()) async -> (steps: Int, meters: Double?)? {
+        guard CMPedometer.isStepCountingAvailable() else { return nil }
+        return await withCheckedContinuation { cont in
+            pedometer.queryPedometerData(from: Calendar.current.startOfDay(for: .now), to: .now) { data, _ in
+                cont.resume(returning: data.map { ($0.numberOfSteps.intValue, $0.distance?.doubleValue) })
+            }
+        }
+    }
+
     // Today's steps and distance the iPhone last sent (nil if it's from another day).
     // fresh = sent in the last 30 minutes, so it can be shown exactly as the phone shows it.
     nonisolated static func phoneToday() -> (steps: Int, meters: Double?, fresh: Bool)? {
@@ -146,6 +165,22 @@ extension WatchStepStore {
     // While the app is open, re-read Health whenever the watch saves new steps, so the number
     // keeps climbing as you walk (no need to leave and come back).
     func startLiveUpdates() {
+        // Step counter: updates every few seconds while you walk.
+        if !pedometerLive, CMPedometer.isStepCountingAvailable() {
+            pedometerLive = true
+            pedometer.startUpdates(from: Calendar.current.startOfDay(for: .now)) { [weak self] data, _ in
+                guard let data else { return }
+                let steps = data.numberOfSteps.intValue, meters = data.distance?.doubleValue
+                Task { @MainActor in
+                    guard let self else { return }
+                    if steps > self.today {
+                        self.today = steps
+                        if let last = self.week.indices.last { self.week[last] = WatchDay(date: self.week[last].date, steps: steps) }
+                    }
+                    if let meters, meters > (self.todayMeters ?? 0) { self.todayMeters = meters }
+                }
+            }
+        }
         guard liveQuery == nil else { return }
         let query = HKObserverQuery(sampleType: HKQuantityType(.stepCount), predicate: nil) { [weak self] _, done, _ in
             Task { @MainActor in

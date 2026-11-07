@@ -1,6 +1,7 @@
 import WidgetKit
 import SwiftUI
 import HealthKit
+import CoreMotion
 
 // MARK: - Data
 
@@ -79,6 +80,15 @@ struct StepsProvider: TimelineProvider {
         // The iPhone sends its own numbers with every refresh; they include steps the watch's copy of
         // Health doesn't have yet, so they win (same as the watch app).
         let d = Shared.defaults
+        // The watch's live step counter is ahead of Health, which the watch fills in batches.
+        if CMPedometer.isStepCountingAvailable() {
+            let live: Int? = await withCheckedContinuation { cont in
+                CMPedometer().queryPedometerData(from: todayStart, to: .now) { data, _ in
+                    cont.resume(returning: data?.numberOfSteps.intValue)
+                }
+            }
+            if let live { today = max(today, live) }
+        }
         let stamp = Double(d.string(forKey: Shared.stepsDateKey) ?? "")
         let fromPhoneToday = stamp.map { Calendar.current.isDateInToday(Date(timeIntervalSince1970: $0)) } ?? false
         let fresh = stamp.map { Date.now.timeIntervalSince1970 - $0 < 30 * 60 } ?? false

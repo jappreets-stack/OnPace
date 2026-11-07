@@ -186,6 +186,7 @@
         "GENERATE_INFOPLIST_FILE": "YES",
         "INFOPLIST_KEY_CFBundleDisplayName": "StepsWatch",
         "INFOPLIST_KEY_NSHealthShareUsageDescription": "OnPace reads your steps and walking distance to show your progress and pace. Your data stays on your devices.",
+        "INFOPLIST_KEY_NSMotionUsageDescription": "OnPace reads the steps your watch counts so today's total stays current, even without your iPhone.",
         "INFOPLIST_KEY_UISupportedInterfaceOrientations": "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown",
         "INFOPLIST_KEY_WKCompanionAppBundleIdentifier": "com.js.personal.Steps",
         "LD_RUNPATH_SEARCH_PATHS": [
@@ -228,6 +229,7 @@
         "INFOPLIST_FILE": "StepsComplication/Info.plist",
         "INFOPLIST_KEY_CFBundleDisplayName": "StepsComplication",
         "INFOPLIST_KEY_NSHealthShareUsageDescription": "OnPace reads your steps and walking distance to show your progress and pace. Your data stays on your devices.",
+        "INFOPLIST_KEY_NSMotionUsageDescription": "OnPace reads the steps your watch counts so today's total stays current, even without your iPhone.",
         "INFOPLIST_KEY_NSHumanReadableCopyright": "",
         "LD_RUNPATH_SEARCH_PATHS": [
           "$(inherited)",
