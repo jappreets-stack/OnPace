@@ -58,9 +58,8 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Synced from the iPhone:** goal, mini-me (outfit + whole look), fun unit, and with every refresh today's steps,
   distance, streak, last 7 days, your usual-day pace pattern, and today's sessions (the watch's own copy of Apple Health
   is missing steps the iPhone counted, so the watch and its complications use the phone's numbers when they're newer)
-- **Live on the wrist, even without the iPhone:** the watch reads its own step counter (CoreMotion `CMPedometer`),
-  which is live, while Apple Health only gets the watch's steps in batches. Today's count = the highest of the
-  live counter, Apple Health, and the phone's last count
+- **Matches Apple Health exactly:** today's steps on the watch and its complications come only from the watch's
+  Apple Health (same number as the Health app); the phone adds history: last 7 days, streak, usual-day pace
 - **Today's sessions** page: sessions you tracked and workouts from the Workout app; pick the ring color on the watch
 - Watch face complications (WidgetKit): ring, steps left, and pace, for circle, corner, inline,
   and rectangle slots; they read HealthKit directly, use the goal synced from the phone, and refresh when the app opens

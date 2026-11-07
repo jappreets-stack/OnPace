@@ -1,7 +1,6 @@
 import WidgetKit
 import SwiftUI
 import HealthKit
-import CoreMotion
 
 // MARK: - Data
 
@@ -49,7 +48,11 @@ struct StepsProvider: TimelineProvider {
             let entry = await Self.load()
             // watchOS decides the exact time; asking for 15 minutes keeps it fresh.
             let next = Date.now.addingTimeInterval(15 * 60)
-            completion(Timeline(entries: [entry], policy: .after(next)))
+            // If no refresh comes before midnight, start the new day at 0 instead of showing yesterday.
+            let midnight = Calendar.current.startOfDay(for: .now.addingTimeInterval(24 * 3600))
+            let newDay = StepsEntry(date: midnight, steps: 0, streak: entry.hitGoal ? entry.streak : 0,
+                                    curve: entry.curve, goal: entry.goal)
+            completion(Timeline(entries: [entry, newDay], policy: .after(next)))
         }
     }
 
@@ -75,26 +78,12 @@ struct StepsProvider: TimelineProvider {
             let day = cal.date(byAdding: .day, value: -offset, to: todayStart)!
             days.append(Int(collection.statistics(for: day)?.sumQuantity()?.doubleValue(for: .count()) ?? 0))
         }
-        var today = days.last ?? 0
+        // Today's steps: Apple Health on the watch only, so it matches the Health app exactly.
+        let today = days.last ?? 0
         let goal = Shared.goal   // sent from the iPhone (see WatchSync)
-        // The iPhone sends its own numbers with every refresh; they include steps the watch's copy of
-        // Health doesn't have yet, so they win (same as the watch app).
         let d = Shared.defaults
-        // The watch's live step counter is ahead of Health, which the watch fills in batches.
-        if CMPedometer.isStepCountingAvailable() {
-            let live: Int? = await withCheckedContinuation { cont in
-                CMPedometer().queryPedometerData(from: todayStart, to: .now) { data, _ in
-                    cont.resume(returning: data?.numberOfSteps.intValue)
-                }
-            }
-            if let live { today = max(today, live) }
-        }
         let stamp = Double(d.string(forKey: Shared.stepsDateKey) ?? "")
         let fromPhoneToday = stamp.map { Calendar.current.isDateInToday(Date(timeIntervalSince1970: $0)) } ?? false
-        let fresh = stamp.map { Date.now.timeIntervalSince1970 - $0 < 30 * 60 } ?? false
-        if fromPhoneToday, let phoneSteps = Int(d.string(forKey: Shared.stepsKey) ?? "") {
-            today = fresh ? phoneSteps : max(today, phoneSteps)   // recent phone numbers win outright
-        }
 
         // Streak: days in a row at goal. Today only counts once you've hit it.
         var past = days
@@ -209,6 +198,19 @@ struct NumberWithLineView: View {
                 .widgetLabel {
                     Text(line).foregroundStyle(lineColor)
                 }
+        } else if family == .accessoryInline {
+            Text("\(entry.steps.formatted()) · \(line)")
+        } else if family == .accessoryRectangular {
+            VStack(alignment: .leading, spacing: 1) {
+                Text("\(entry.steps.formatted()) steps")
+                    .font(.headline)
+                Text(line)
+                    .font(.caption)
+                    .foregroundStyle(lineColor)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         } else {
             ZStack {
                 AccessoryWidgetBackground()
@@ -238,7 +240,7 @@ struct StepsNumberComplication: Widget {
         }
         .configurationDisplayName("Steps left")
         .description("Today's steps and how many are left.")
-        .supportedFamilies([.accessoryCircular, .accessoryCorner])
+        .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryInline, .accessoryRectangular])
     }
 }
 
@@ -251,7 +253,7 @@ struct StepsPaceComplication: Widget {
         }
         .configurationDisplayName("Steps pace")
         .description("Today's steps and whether you're on pace.")
-        .supportedFamilies([.accessoryCircular, .accessoryCorner])
+        .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryInline, .accessoryRectangular])
     }
 }
 
