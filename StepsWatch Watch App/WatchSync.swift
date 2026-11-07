@@ -13,6 +13,14 @@ nonisolated final class WatchSync: NSObject, WCSessionDelegate {
         WCSession.default.activate()
     }
 
+    // Ask the iPhone for its latest steps (it answers in the background, even if its app is closed).
+    func askPhone() {
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isReachable else { return }
+        session.sendMessage(["request": "today"], replyHandler: { [weak self] reply in self?.apply(reply) },
+                            errorHandler: nil)
+    }
+
     private func apply(_ context: [String: Any]) {
         guard !context.isEmpty else { return }
         DispatchQueue.main.async {

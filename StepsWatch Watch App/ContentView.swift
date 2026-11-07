@@ -19,9 +19,10 @@ final class WatchStepStore: ObservableObject {
     @Published var curve: [Double]?   // your usual day, learned from the last 30 days
     @Published var error: String?
 
-    private let health = HKHealthStore()
+    let health = HKHealthStore()
     private let stepType = HKQuantityType(.stepCount)
     private var ready = false
+    var liveQuery: HKObserverQuery?
 
     func start(goal: Int) async {
         #if DEBUG
@@ -46,6 +47,7 @@ final class WatchStepStore: ObservableObject {
         do {
             try await health.requestAuthorization(toShare: [], read: [stepType, WalkDistance.type])
             ready = true
+            startLiveUpdates()
             await refresh(goal: goal)
         } catch {
             self.error = error.localizedDescription
@@ -74,10 +76,10 @@ final class WatchStepStore: ObservableObject {
                 days.append(WatchDay(date: day, steps: Int(n)))
             }
             todayMeters = await WalkDistance.meters(health, from: todayStart)
-            // When the iPhone sent numbers recently, they win (see applyPhone below).
-            if let phone = Self.phoneToday(), phone.fresh {
-                days[days.count - 1] = WatchDay(date: todayStart, steps: phone.steps)
-                if let m = phone.meters { todayMeters = m }
+            // Today: the higher of the watch's own count and the phone's last count, so it's never behind.
+            if let phone = Self.phoneToday() {
+                days[days.count - 1] = WatchDay(date: todayStart, steps: max(days.last?.steps ?? 0, phone.steps))
+                if let m = phone.meters, m > (todayMeters ?? 0) { todayMeters = m }
             }
             today = days.last?.steps ?? 0
             week = Array(days.suffix(7))
@@ -119,9 +121,9 @@ extension WatchStepStore {
     func applyPhone() {
         guard let phone = Self.phoneToday() else { return }
         let d = Shared.defaults
-        // Fresh: show exactly the phone's numbers. Older: only take them if they're higher.
-        if phone.fresh || phone.steps > today { today = phone.steps }
-        if let m = phone.meters, phone.fresh || m > (todayMeters ?? 0) { todayMeters = m }
+        // Today's steps and distance: whichever is higher, so the watch is never behind.
+        if phone.steps > today { today = phone.steps }
+        if let m = phone.meters, m > (todayMeters ?? 0) { todayMeters = m }
         if let s = Int(d.string(forKey: Shared.streakKey) ?? "") { streak = s }
         let phoneWeek = (d.string(forKey: Shared.weekKey) ?? "").split(separator: ",").compactMap { Int($0) }
         if phoneWeek.count == 7 {
@@ -137,6 +139,22 @@ extension WatchStepStore {
         }
         let phoneCurve = (d.string(forKey: Shared.curveKey) ?? "").split(separator: ",").compactMap { Double($0) }
         if phoneCurve.count == 24 { curve = phoneCurve }
+    }
+}
+
+extension WatchStepStore {
+    // While the app is open, re-read Health whenever the watch saves new steps, so the number
+    // keeps climbing as you walk (no need to leave and come back).
+    func startLiveUpdates() {
+        guard liveQuery == nil else { return }
+        let query = HKObserverQuery(sampleType: HKQuantityType(.stepCount), predicate: nil) { [weak self] _, done, _ in
+            Task { @MainActor in
+                if let self { await self.refresh(goal: Shared.goal) }
+            }
+            done()
+        }
+        liveQuery = query
+        health.execute(query)
     }
 }
 
@@ -221,10 +239,16 @@ struct ContentView: View {
             colorPage
         }
         .tabViewStyle(.verticalPage)
-        .task { await store.start(goal: goal) }
+        .task {
+            await store.start(goal: goal)
+            WatchSync.shared.askPhone()
+        }
         // Re-read steps every time you raise your wrist / open the app.
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await store.refresh(goal: goal) } }
+            if phase == .active {
+                Task { await store.refresh(goal: goal) }
+                WatchSync.shared.askPhone()   // the phone replies in the background with its latest count
+            }
         }
         // The phone's latest steps show up right away.
         .onChange(of: phoneStamp) { _, _ in store.applyPhone() }
