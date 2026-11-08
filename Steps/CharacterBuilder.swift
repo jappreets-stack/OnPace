@@ -17,7 +17,6 @@ struct CharacterBuilder: View {
                         Text("Walking").tag(Mood.walk)
                         Text("Goal hit").tag(Mood.celebrate)
                         Text("Behind").tag(Mood.slump)
-                        Text("Golf").tag(Mood.swing)
                     }
                     .pickerStyle(.segmented)
                 }
@@ -55,10 +54,10 @@ struct CharacterBuilder: View {
                     }
                     .pickerStyle(.segmented)
                 }
-                ColorDots(title: "Main color", options: Swatch.allCases, color: \.color, name: \.name,
-                          selection: $look.main)
-                ColorDots(title: "Accent color", options: Swatch.allCases, color: \.color, name: \.name,
-                          selection: $look.accent)
+                // One outfit color; the trim (collar, shoes) picks a match by itself.
+                ColorDots(title: "Outfit color", options: Swatch.allCases, color: \.color, name: \.name,
+                          selection: Binding(get: { look.main },
+                                             set: { look.main = $0; look.accent = $0.partner }))
                 if avatar == .baller {
                     HStack {
                         Text("Jersey letter")
@@ -82,7 +81,7 @@ struct CharacterBuilder: View {
             }
 
             Section("Hair") {
-                HeadChips(options: HairStyle.allCases, name: \.name, base: look, selection: $look.hair) {
+                HeadChips(options: HairStyle.options(for: look.body), name: \.name, base: look, selection: $look.hair) {
                     $0.hair = $1
                 }
                 if look.hair.wearsHat {

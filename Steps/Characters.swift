@@ -48,9 +48,17 @@ nonisolated enum SkinTone: String, Codable, CaseIterable, Identifiable {
 }
 
 nonisolated enum HairStyle: String, Codable, CaseIterable, Identifiable {
-    case turban, hijab, short, long, ponytail, braids, curly, bun, bald, cap
+    case turban, hijab, short, long, longCurly, ponytail, braids, curly, bun, bald, cap
     var id: String { rawValue }
-    var name: String { rawValue.capitalized }
+    var name: String { self == .longCurly ? "Long curly" : rawValue.capitalized }
+
+    // Hair choices shown for each body (a man won't wear a hijab, and so on).
+    static func options(for body: BodyShape) -> [HairStyle] {
+        switch body {
+        case .male: [.turban, .short, .curly, .bald, .cap]
+        case .female: [.hijab, .short, .long, .longCurly, .ponytail, .braids, .bun, .cap]
+        }
+    }
     var wearsHat: Bool { self == .turban || self == .cap || self == .hijab }
 }
 
@@ -121,6 +129,14 @@ nonisolated enum Swatch: String, Codable, CaseIterable, Identifiable {
     case purple, gold, navy, blue, red, orange, green, teal, pink, black, white, gray
     var id: String { rawValue }
     var name: String { rawValue.capitalized }
+    // The second outfit color (collar, jersey trim, shoes), picked to go with the main color.
+    var partner: Swatch {
+        switch self {
+        case .gold, .orange, .pink, .white: .navy
+        case .gray: .black
+        default: .white
+        }
+    }
     var rgb: (Double, Double, Double) {
         switch self {
         case .purple: (0.36, 0.16, 0.56)
@@ -206,7 +222,7 @@ nonisolated struct Look: Equatable, Codable, RawRepresentable {
             lashes = true
             lips = .pink
             beard = .none
-            if [.turban, .short, .bald].contains(hair) { hair = .ponytail }
+            if !HairStyle.options(for: .female).contains(hair) { hair = .ponytail }
             bottoms = .skort
             top = .sportsTop
         case .male:
@@ -214,7 +230,7 @@ nonisolated struct Look: Equatable, Codable, RawRepresentable {
             lashes = false
             lips = .natural
             beard = starter.beard
-            if [.ponytail, .braids, .bun].contains(hair) { hair = starter.hair }
+            if !HairStyle.options(for: .male).contains(hair) { hair = starter.hair }
             hat = starter.hat
             hatTrim = nil
             bottoms = .pants
@@ -363,9 +379,15 @@ enum Pen {
         let hairColor = look.hairColor.color
 
         // Behind the head: long hair falls to the shoulders, a bun sits on top.
-        if look.hair == .long {
+        if look.hair == .long || look.hair == .longCurly {
             head.fill(Path(roundedRect: CGRect(x: 34, y: 19, width: 32, height: 40), cornerRadius: 13),
                       with: .color(hairColor))
+        }
+        if look.hair == .longCurly {   // big curls down both sides to the shoulders
+            for y in stride(from: 26.0, through: 58.0, by: 6.4) {
+                dot(&head, CGPoint(x: 33.5, y: y), 4.6, hairColor)
+                dot(&head, CGPoint(x: 66.5, y: y), 4.6, hairColor)
+            }
         }
         if look.hair == .bun { dot(&head, CGPoint(x: 50, y: 16), 5.5, hairColor) }
         if look.hair == .ponytail {   // tail swinging out behind the head
@@ -462,7 +484,7 @@ enum Pen {
             edge.move(to: CGPoint(x: 38.5, y: 27.5))
             edge.addQuadCurve(to: CGPoint(x: 61.5, y: 27.5), control: CGPoint(x: 50, y: 22.5))
             head.stroke(edge, with: .color(look.foldColor), lineWidth: 1.2)
-        case .short, .long, .bun, .curly, .ponytail, .braids:
+        case .short, .long, .longCurly, .bun, .curly, .ponytail, .braids:
             var top = Path()   // hair over the top of the head, hairline at the forehead
             top.move(to: CGPoint(x: 37, y: 34))
             top.addQuadCurve(to: CGPoint(x: 50, y: 19), control: CGPoint(x: 36, y: 19))
@@ -487,7 +509,13 @@ enum Pen {
                     dot(&head, CGPoint(x: x + (x < 50 ? -2 : 2), y: 62), 1.8, look.accent.color)
                 }
             }
-            if look.hair == .curly {   // a ring of curls around the top
+            if look.hair == .longCurly {   // curls framing the face
+                for y in stride(from: 31.0, through: 53.0, by: 5.5) {
+                    dot(&head, CGPoint(x: 37, y: y), 3.2, hairColor)
+                    dot(&head, CGPoint(x: 63, y: y), 3.2, hairColor)
+                }
+            }
+            if look.hair == .curly || look.hair == .longCurly {   // a ring of curls around the top
                 for deg in stride(from: -15.0, through: 195.0, by: 26.25) {
                     let a = deg * .pi / 180
                     dot(&head, CGPoint(x: 50 + cos(a) * 13, y: 30 - sin(a) * 12), 4.6, hairColor)

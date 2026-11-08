@@ -212,7 +212,7 @@ struct Onboarding: View {
                 ColorDots(title: "Skin tone", options: SkinTone.allCases, color: \.color, name: \.name,
                           selection: $look.skin)
                 Text("Hair").font(.subheadline)
-                HeadChips(options: HairStyle.allCases, name: \.name, base: look, selection: $look.hair) {
+                HeadChips(options: HairStyle.options(for: look.body), name: \.name, base: look, selection: $look.hair) {
                     $0.hair = $1
                 }
             }

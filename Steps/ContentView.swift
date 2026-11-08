@@ -709,6 +709,31 @@ struct SettingsView: View {
                 Section("Daily goal") {
                     Stepper("\(goal.formatted()) steps", value: $goal, in: 2_000...30_000, step: 500)
                 }
+                // Style gets its own section near the top, every choice visible (people missed it in a menu).
+                Section {
+                    Picker("App style", selection: $appStyle) {
+                        ForEach(AppStyle.allCases) { style in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(style.name)
+                                Text(style.blurb).font(.caption).foregroundStyle(.secondary)
+                            }
+                            .tag(style)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
+                } header: {
+                    Text("App style")
+                } footer: {
+                    Text("Changes how the whole app looks, on your iPhone and Apple Watch.")
+                }
+                Section("Light or dark") {
+                    Picker("Light or dark", selection: $theme) {
+                        ForEach(Theme.allCases) { Text($0.name).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                }
                 Section("Character") {
                     NavigationLink {
                         CharacterBuilder(avatar: $avatar, look: $look)
@@ -731,26 +756,6 @@ struct SettingsView: View {
                     Text("Apple Workout app")
                 } footer: {
                     Text("When you end a Golf, Hike, Walk, Run or Strength workout in Apple's Workout app, it shows up here as a session with its steps.")
-                }
-                Section {
-                    Picker("Style", selection: $appStyle) {
-                        ForEach(AppStyle.allCases) { Text($0.name).tag($0) }
-                    }
-                    Picker("Theme", selection: $theme) {
-                        ForEach(Theme.allCases) { Text($0.name).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                } header: {
-                    Text("Look")
-                } footer: {
-                    switch appStyle {
-                    case .original:
-                        Text("Style changes how the whole app looks. Original has emoji icons and a blue ring.")
-                    case .minimal:
-                        Text("Style changes how the whole app looks. Clean minimal is simple and calm, with no scene behind your mini-me.")
-                    case .retro16:
-                        Text("Style changes how the whole app looks. 16-bit adventure draws everything like an old video game: your mini-me in pixels, a castle world, and a ring of gold blocks.")
-                    }
                 }
                 Section {
                     Button("Show setup again") {

@@ -12,6 +12,14 @@ enum AppStyle: String, CaseIterable, Identifiable {
         case .retro16: "16-bit adventure"
         }
     }
+    // One line under the name in Settings.
+    var blurb: String {
+        switch self {
+        case .original: "Emoji icons and a blue ring"
+        case .minimal: "Simple and calm, one green ring"
+        case .retro16: "Pixel art: a castle world and a ring of gold blocks"
+        }
+    }
 }
 
 // Clean minimal: plain system colors, one green accent, Apple-style grouped cards.

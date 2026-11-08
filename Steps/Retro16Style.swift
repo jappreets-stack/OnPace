@@ -212,6 +212,8 @@ enum RetroSprite {
             return ["................", "................", ".....SSSSSS.....", "....SSSSSSSS...."]
         case .bun:
             return ["......RRRR......", ".......RR.......", ".....RRRRRR.....", "....RRRRRRRR...."]
+        case .longCurly:   // big curly hair, wider than the head
+            return ["....R.RR.RR.....", "...RRRRRRRRRR...", "..RRRRRRRRRRRR..", "..RRRRRRRRRRRR.."]
         case .curly:
             return ["................", "......R.RR......", ".....RRRRRRR....", "....RRRRRRRRR..."]
         default:
@@ -226,7 +228,7 @@ enum RetroSprite {
         case .glasses: eyes = "gWEggEWg"
         case .sunglasses: eyes = "GGGSSGGG"
         }
-        let longHair = [.long, .ponytail, .braids, .curly].contains(look.hair)
+        let longHair = [.long, .longCurly, .ponytail, .braids, .curly].contains(look.hair)
         let side: Character = look.hair == .hijab ? "H" : (longHair ? "R" : "S")
         // Eyes are two pixels tall (lashes: a wider top row); glasses are one row.
         let lower = look.glasses == .none ? "SSESSESS" : "SSSSSSSS"
@@ -245,9 +247,12 @@ enum RetroSprite {
         if longHair {
             face[2] = "...R" + face[2].dropFirst(4).dropLast(4) + "R..."
             face[3] = "...R" + face[3].dropFirst(4).dropLast(4) + "R..."
-            if look.hair == .long || look.hair == .braids { face[4] = "...R" + face[4].dropFirst(4).dropLast(4) + "R..." }
+            if [.long, .longCurly, .braids].contains(look.hair) { face[4] = "...R" + face[4].dropFirst(4).dropLast(4) + "R..." }
         }
         if look.hair == .ponytail { face[1] = "..R" + face[1].dropFirst(3) }
+        if look.hair == .longCurly {   // curls falling past the chin on both sides
+            for i in 0...5 { face[i] = "..RR" + face[i].dropFirst(4).dropLast(4) + "RR.." }
+        }
         if eyesDown {   // looking at the ground: only the lower half of the eyes
             face[1] = "...s" + String(face[1].dropFirst(4).dropLast(4).map { $0 == "E" ? "S" : $0 }) + "s..."
             if look.glasses != .none { face.swapAt(1, 2) }
