@@ -1,7 +1,7 @@
 import SwiftUI
 
 // First-time setup: shown once, the first time someone opens OnPace.
-// 1 Welcome · 2 Apple Health · 3 Daily goal · 4 Build your mini-me · 5 Fun unit.
+// 1 Welcome · 2 Apple Health · 3 Daily goal · 4 Build your mini-me.
 // People who already used the app skip it (see StepsApp). Settings can show it again.
 struct Onboarding: View {
     @ObservedObject var store: StepStore
@@ -10,11 +10,10 @@ struct Onboarding: View {
     @AppStorage("goal") private var goal = 10_000
     @AppStorage("avatar") private var avatar: Avatar = .golfer
     @AppStorage("look") private var look: Look = .starter
-    @AppStorage("funUnit") private var funUnit: FunUnit = .holes
     @State private var page = 0
     @State private var asking = false
 
-    private let pages = 5
+    private let pages = 4
 
     var body: some View {
         NavigationStack {
@@ -36,8 +35,7 @@ struct Onboarding: View {
                         case 0: welcome
                         case 1: health
                         case 2: goalPage
-                        case 3: miniMe
-                        default: funUnitPage
+                        default: miniMe
                         }
                     }
                     .padding(.horizontal, 24)
@@ -224,59 +222,6 @@ struct Onboarding: View {
                 Label("More options (beard, glasses, colors…)", systemImage: "slider.horizontal.3")
                     .font(.body.weight(.semibold))
             }
-        }
-    }
-
-    private var funUnitPage: some View {
-        VStack(spacing: 18) {
-            Text("Pick a fun unit")
-                .font(.largeTitle.weight(.bold))
-            Text("Your steps, made fun.")
-                .font(.title3)
-                .foregroundStyle(Color.primary.opacity(0.7))
-                .multilineTextAlignment(.center)
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
-                      spacing: 12) {
-                ForEach(FunUnit.allCases) { unit in
-                    Button { funUnit = unit } label: {
-                        VStack(spacing: 4) {
-                            Text(unit.emoji).font(.system(size: 34))
-                            Text(unit.name).font(.headline)
-                            Text(unit.example).font(.caption).foregroundStyle(Color.primary.opacity(0.6))
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 104)
-                        .foregroundStyle(Color.primary)
-                        .background(Color.primary.opacity(funUnit == unit ? 0.14 : 0.06),
-                                    in: RoundedRectangle(cornerRadius: 18))
-                        .overlay(RoundedRectangle(cornerRadius: 18)
-                            .stroke(theme.done, lineWidth: funUnit == unit ? 3 : 0))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(funUnit == unit ? .isSelected : [])
-                }
-            }
-            // What the pick does: the line under your step count.
-            Text("10,000 steps ≈ \(funUnit.phrase(10_000).replacingOccurrences(of: "~", with: ""))")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(theme.done)
-        }
-    }
-}
-
-private extension FunUnit {
-    // What one unit is, in plain words.
-    var example: String {
-        switch self {
-        case .holes: "1 hole ≈ 1,300 steps"
-        case .soccerFields: "1 field = 105 m"
-        case .footballFields: "1 field = 100 yd"
-        case .courts: "1 court ≈ 29 m"
-        case .tennisCourts: "1 court ≈ 24 m"
-        case .bases: "1 trip = 110 m"
-        case .laps: "1 lap = 400 m"
-        case .blocks: "1 block ≈ 80 m"
-        case .km: "1 km = 1,000 m"
-        case .mi: "1 mi = 1,609 m"
         }
     }
 }

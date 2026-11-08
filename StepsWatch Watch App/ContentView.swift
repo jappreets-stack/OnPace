@@ -192,8 +192,7 @@ struct ContentView: View {
     @AppStorage(Shared.goalKey, store: Shared.defaults) private var goal = 10_000
     @AppStorage(Shared.avatarKey, store: Shared.defaults) private var avatar: Avatar = .golfer
     @AppStorage(Shared.lookKey, store: Shared.defaults) private var look: Look = .starter
-    @AppStorage(Shared.funUnitKey, store: Shared.defaults) private var funUnit: FunUnit = .holes
-    @AppStorage(Shared.placeKey, store: Shared.defaults) private var place: DistancePlace = .road
+    private let funUnit = FunUnit.walked
     // Watch only.
     @AppStorage("ringStyle") private var style: RingStyle = .icon
     // Sent by the iPhone with every refresh (see PhoneSync): today's steps and sessions.
@@ -255,7 +254,7 @@ struct ContentView: View {
             let color = hitGoal ? style.done : style.ring
             ZStack {
                 // Scene for your fun unit (soccer field, track, ...), same as the phone's ring.
-                UnitScene(unit: funUnit, place: place, horizon: 124, lowMarks: false)
+                UnitScene(unit: .holes, horizon: 124, lowMarks: false)
                     .clipShape(Circle().inset(by: line / 2))
                 Circle()
                     .stroke(color.opacity(0.18), lineWidth: line)

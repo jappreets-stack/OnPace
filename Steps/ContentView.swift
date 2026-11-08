@@ -101,7 +101,7 @@ final class StepStore: ObservableObject {
             shared.set(week.map { "\($0.steps)" }.joined(separator: ","), forKey: Shared.weekKey)
             shared.set(curve.map { $0.map { "\($0)" }.joined(separator: ",") } ?? "", forKey: Shared.curveKey)
             shared.set(goal, forKey: Shared.goalKey)
-            for key in [Shared.avatarKey, Shared.lookKey, Shared.funUnitKey] {   // the medium widget shows your mini-me
+            for key in [Shared.avatarKey, Shared.lookKey] {   // the medium widget shows your mini-me
                 if let v = UserDefaults.standard.string(forKey: key) { shared.set(v, forKey: key) }
             }
             WidgetCenter.shared.reloadAllTimelines()
@@ -179,8 +179,7 @@ struct ContentView: View {
     @AppStorage("avatar") private var avatar: Avatar = .golfer
     @AppStorage("look") private var look: Look = .starter
     @AppStorage("sessionKind") private var sessionKind: SessionKind = .golf
-    @AppStorage("funUnit") private var funUnit: FunUnit = .holes
-    @AppStorage("distancePlace") private var place: DistancePlace = .road
+    private let funUnit = FunUnit.walked
     @State private var miniMeFrame: CGRect = .zero   // where the mini-me is on screen (the scene's ground lines up with its feet)
     @State private var showSettings = false
     @AppStorage("didSetup") private var didSetup = true
@@ -222,7 +221,7 @@ struct ContentView: View {
         .tint(Color.primary)
         .preferredColorScheme(theme.scheme)
         .sheet(isPresented: $showSettings) {
-            SettingsView(goal: $goal, theme: $theme, avatar: $avatar, look: $look, funUnit: $funUnit)
+            SettingsView(goal: $goal, theme: $theme, avatar: $avatar, look: $look)
         }
         // First-time setup (Onboarding.swift). Health access is asked there, not here.
         .fullScreenCover(isPresented: Binding(get: { !didSetup }, set: { didSetup = !$0 })) {
@@ -249,8 +248,8 @@ struct ContentView: View {
     // Today: the ring, what's left, whether you're on pace, and sessions. Nothing else.
     private var today: some View {
         ZStack {
-            // The scene for your fun unit fills the whole screen; its ground lines up with your mini-me's feet.
-            BackdropView(backdrop: backdrop, horizon: horizonY, signText: funUnit == .km ? "1 km" : "1 mi",
+            // The golf course scene fills the whole screen; its ground lines up with your mini-me's feet.
+            BackdropView(backdrop: backdrop, horizon: horizonY, signText: "",
                          animated: sceneStyle == .full)
                 // Calm: the same scene, softly blurred and faded so the ring and numbers lead.
                 .blur(radius: sceneStyle == .calm ? 7 : 0)
@@ -443,10 +442,8 @@ struct ContentView: View {
         }
     }
 
-    // The scene behind everything: golf rounds always get the golf course.
-    private var backdrop: Backdrop {
-        roundStart > 0 && sessionKind == .golf ? .golf : Backdrop(unit: funUnit, place: place)
-    }
+    // The scene behind everything (Original style): always the golf course.
+    private let backdrop = Backdrop.golf
 
     // Where the scene's ground starts: your mini-me's feet (feet sit at about 96% of its frame's height).
     private var horizonY: Double { miniMeFrame == .zero ? 330 : miniMeFrame.minY + miniMeFrame.height * 0.957 }
@@ -724,8 +721,6 @@ struct SettingsView: View {
     @Binding var theme: Theme
     @Binding var avatar: Avatar
     @Binding var look: Look
-    @Binding var funUnit: FunUnit
-    @AppStorage("distancePlace") private var place: DistancePlace = .road
     @AppStorage("importWorkouts") private var importWorkouts = true
     @AppStorage("didSetup") private var didSetup = true
     @AppStorage("sceneStyle") private var sceneStyle: SceneStyle = .calm
@@ -753,31 +748,6 @@ struct SettingsView: View {
                             }
                         }
                     }
-                }
-                Section {
-                    Picker("Show steps as", selection: $funUnit) {
-                        ForEach(FunUnit.allCases) { unit in
-                            Text("\(unit.emoji) \(unit.name)").tag(unit)
-                        }
-                    }
-                    // The road / beach / trail scene only shows in the Original style.
-                    if appStyle == .original && (funUnit == .km || funUnit == .mi) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Walk along a")
-                                .font(.subheadline)
-                            Picker("Walk along a", selection: $place) {
-                                ForEach(DistancePlace.allCases) { Text("\($0.emoji) \($0.name)").tag($0) }
-                            }
-                            .pickerStyle(.segmented)
-                            .labelsHidden()
-                        }
-                    }
-                } header: {
-                    Text("Fun unit")
-                } footer: {
-                    // Live example, so picking a unit visibly changes something here too.
-                    Text("Shown under your step count. Your goal of \(goal.formatted()) steps is about \(funUnit.phrase(goal).replacingOccurrences(of: "~", with: ""))."
-                         + (appStyle == .original ? " Also picks the scene behind your mini-me." : ""))
                 }
                 Section {
                     Toggle("Add workouts automatically", isOn: $importWorkouts)

@@ -17,11 +17,10 @@ a hand-drawn animated character that reacts to how your day is going.
 ## Features
 
 **iPhone** (two tabs, Today and History, with big type and one idea per row)
-- **Today:** the goal ring (2,000–30,000, default 10,000) with today's steps and how far you walked in your
-  **fun unit** under them ("4.9 miles walked"), then one card of rows: steps left, how far behind pace you are and
-  the minutes of walking to catch up, the time you'll finish at this pace, and your streak. Fun units: golf holes, soccer, football or tennis fields/courts,
-  basketball courts, trips around the bases, track laps, city blocks, km, or miles (picked in Settings).
-  Distances use the real distance Apple Health measured with your own stride; golf holes count steps
+- **Today:** the goal ring (2,000–30,000, default 10,000) with today's steps and how far you walked under them
+  ("4.9 miles walked", or km where you use metric), then one card of rows: steps left, how far behind pace you are and
+  the minutes of walking to catch up, the time you'll finish at this pace, and your streak.
+  Distance is the real distance Apple Health measured with your own stride; golf sessions count holes
 - One **Start a session** button opens a "What are you doing?" sheet
 - **Styles:** Clean minimal (default: Apple-style grouped cards, one green ring, SF Symbols), 16-bit adventure
   (original pixel art drawn in code: mountains and a castle by day or under the stars, a gold block ring, a pixel
@@ -33,9 +32,8 @@ a hand-drawn animated character that reacts to how your day is going.
   the last count the app saved when the phone is locked)
 - **Accessibility:** VoiceOver reads the ring and each day as one sentence; at the largest text sizes the numbers
   move under their labels instead of wrapping
-- **Full-screen scenes:** your fun unit picks an illustrated scene that fills the whole screen, with its ground lined up
-  with your mini-me's feet: golf course, soccer stadium, football field, basketball arena, tennis stadium, ballpark,
-  running track, city street, and for km / miles a road, beach, or mountain trail. Day scenes in light mode, night
+- **Full-screen scene (Original style):** an illustrated golf course fills the whole screen, with its ground lined up
+  with your mini-me's feet. Day scenes in light mode, night
   (floodlights, moon, lit windows) in dark mode; cards sit on frosted glass so they stay readable
 - **Sessions:** golf (9 or 18 holes), hike, dog walk, shopping, theme park, workout, or a custom one you name.
   Counts only the steps between Start and End, with saved history. During a session your mini-me swings
@@ -48,10 +46,10 @@ a hand-drawn animated character that reacts to how your day is going.
   (see below)
 
 **Apple Watch**
-- Ring page centered for the Ultra 2 screen, with your mini-me, step count, distance in your fun unit ("4.9 miles walked"), pace, and the same fun-unit scene as the phone
+- Ring page centered for the Ultra 2 screen, with your mini-me, step count, distance walked ("4.9 miles walked"), pace, and a small golf scene
 - Mini-me walks when you walk (Core Motion), same moods as the phone
-- Stats page (streak, pace, forecast, your fun unit) and a 7-day bar chart, paged with the Digital Crown
-- **Synced from the iPhone:** goal, mini-me (outfit + whole look), fun unit, and with every refresh today's steps,
+- Stats page (streak, pace, forecast, distance) and a 7-day bar chart, paged with the Digital Crown
+- **Synced from the iPhone:** goal, mini-me (outfit + whole look), and with every refresh today's steps,
   distance, streak, last 7 days, your usual-day pace pattern, and today's sessions (the watch's own copy of Apple Health
   is missing steps the iPhone counted, so the watch and its complications use the phone's numbers when they're newer)
 - **Matches Apple Health exactly:** today's steps on the watch and its complications come only from the watch's
@@ -63,9 +61,9 @@ a hand-drawn animated character that reacts to how your day is going.
   and rectangle slots; they read HealthKit directly, use the goal synced from the phone, and refresh when the app opens
 
 **First-time setup** (`Onboarding.swift`, shown once to new people)
-- Five short screens, one idea each: Welcome, Apple Health (what's read and why, stays on your iPhone),
+- Four short screens, one idea each: Welcome, Apple Health (what's read and why, stays on your iPhone),
   daily goal (− / + and 5K–12K picks), build your mini-me (body, outfit, skin, hair, with "More options" for the
-  full builder), and a fun unit. Every step can be skipped. People who used the app before setup existed skip it,
+  full builder). Every step can be skipped. People who used the app before setup existed skip it,
   and Settings has "Show setup again".
 
 <p align="center">
@@ -110,7 +108,7 @@ a hand-drawn animated character that reacts to how your day is going.
   minutes of walking would close the gap). One shared `Pace.swift` drives the phone, watch, and complications.
 - **Your look:** one `Look` struct (Codable, saved as JSON in `@AppStorage`) drives every drawing.
   Missing fields fall back to defaults when decoding, so adding new options never resets a saved look.
-- **Phone → watch sync:** the iPhone is the source of truth. `PhoneSync` sends goal, mini-me, and fun unit with
+- **Phone → watch sync:** the iPhone is the source of truth. `PhoneSync` sends goal and mini-me with
   WatchConnectivity's application context (the watch always gets the latest copy, even if it was asleep).
   `WatchSync` saves them in an App Group, which both the watch app and its WidgetKit complications read.
 - **Workouts:** an `HKAnchoredObjectQueryDescriptor` picks up newly finished workouts each time the app refreshes.
@@ -118,7 +116,7 @@ a hand-drawn animated character that reacts to how your day is going.
   syncs from the watch late still counts). Workouts that overlap a session you tracked in the app are skipped.
 - **Sessions:** one `SessionRecord` list (stored under the original golf-rounds key; old rounds
   load as golf). `FunUnit` converts the measured walking + running distance (HealthKit
-  `distanceWalkingRunning`) into fields, laps, blocks, km, or miles; it falls back to ~0.76 m per step without it.
+  `distanceWalkingRunning`) into miles or km (from the phone's region), and golf sessions into holes; it falls back to ~0.76 m per step without it.
 - **Scenes:** each backdrop is a `GraphicsContext` drawing that takes the screen size, the y of the mini-me's feet, and
   light/dark, so the same code fits any iPhone. Built in parallel by
   helper agents against a shared contract and checked with Mac renders and the iOS Simulator (debug-only `-demoSteps`

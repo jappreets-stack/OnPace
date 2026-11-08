@@ -2,7 +2,7 @@ import SwiftUI
 import HealthKit
 
 // Settings the iPhone shares with the watch and its watch-face complications.
-// The iPhone is the boss: it sends goal, mini-me and fun unit to the watch (WatchConnectivity),
+// The iPhone is the boss: it sends goal and mini-me to the watch (WatchConnectivity),
 // and the watch saves them in an App Group so the complications can read them too.
 // Shared by all three targets.
 nonisolated enum Shared {
@@ -12,8 +12,6 @@ nonisolated enum Shared {
     static let goalKey = "goal"
     static let avatarKey = "avatar"
     static let lookKey = "look"
-    static let funUnitKey = "funUnit"
-    static let placeKey = "distancePlace"   // road / beach / trail, for km and mi
     // The iPhone app saves today's steps here for its home-screen widget (used when Health is locked).
     static let stepsKey = "todaySteps"
     static let stepsDateKey = "todayStepsDate"
@@ -25,7 +23,7 @@ nonisolated enum Shared {
     static let curveKey = "phoneCurve"     // your usual day (24 numbers), so the watch's forecast matches
     static let weekKey = "phoneWeek"       // last 7 days of steps, oldest first, ending today
     static let liveKeys = [stepsKey, stepsDateKey, metersKey, sessionsKey, streakKey, curveKey, weekKey]
-    static let syncedKeys = [goalKey, avatarKey, lookKey, funUnitKey, placeKey]
+    static let syncedKeys = [goalKey, avatarKey, lookKey]
 
     // On the watch: the App Group storage both the app and the complications read.
     static var defaults: UserDefaults { UserDefaults(suiteName: appGroup) ?? .standard }
@@ -56,6 +54,10 @@ nonisolated enum WalkDistance {
 nonisolated enum FunUnit: String, CaseIterable, Identifiable {
     case holes, soccerFields, footballFields, courts, tennisCourts, bases, laps, blocks, km, mi
     var id: String { rawValue }
+
+    // The line under your step count: the real distance you walked, in miles (US, UK) or km.
+    // Golf sessions still count holes.
+    static var walked: FunUnit { Locale.current.measurementSystem == .metric ? .km : .mi }
 
     var name: String {
         switch self {

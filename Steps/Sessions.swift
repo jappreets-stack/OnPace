@@ -79,7 +79,7 @@ struct SessionCard: View {
     @AppStorage("rounds") private var recordsData = Data()
     @AppStorage("sessionKind") private var kind: SessionKind = .golf
     @AppStorage("sessionName") private var customName = ""
-    @AppStorage("funUnit") private var funUnit: FunUnit = .holes
+    private let funUnit = FunUnit.walked
     @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
     @State private var sessionSteps = 0
     @State private var sessionMeters: Double?
@@ -285,7 +285,7 @@ struct SessionPicker: View {
 struct SessionHistory: View {
     let theme: Theme
     @AppStorage("rounds") private var recordsData = Data()
-    @AppStorage("funUnit") private var funUnit: FunUnit = .holes
+    private let funUnit = FunUnit.walked
     @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
 
     private var records: [SessionRecord] {
@@ -367,7 +367,7 @@ extension StepStore {
     func shareTodaysSessions() {
         let d = UserDefaults.standard
         let records = (try? JSONDecoder().decode([SessionRecord].self, from: d.data(forKey: "rounds") ?? Data())) ?? []
-        let unit = d.string(forKey: "funUnit").flatMap(FunUnit.init(rawValue:)) ?? .holes
+        let unit = FunUnit.walked
         let today = records.filter { Calendar.current.isDateInToday($0.start) }.map { r in
             WatchSession(emoji: r.sessionKind.emoji, title: r.title, steps: r.steps,
                          distance: (r.sessionKind == .golf ? FunUnit.holes : unit).phrase(r.steps, meters: r.meters))
