@@ -69,7 +69,7 @@ enum RoadBackdrop {
     }
 
     // Base of the sign post, on the ground.
-    static func target(_ f: BackdropFrame) -> CGPoint { CGPoint(x: f.targetX, y: f.horizon) }
+    private static func target(_ f: BackdropFrame) -> CGPoint { CGPoint(x: f.targetX, y: f.horizon) }
 
     static func draw(_ ctx: inout GraphicsContext, _ f: BackdropFrame) {
         drawSky(&ctx, f)

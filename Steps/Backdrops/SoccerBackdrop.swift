@@ -3,12 +3,6 @@ import SwiftUI
 // Soccer: a stadium pitch. Checkered mowing pattern in perspective, box markings, a goal with a net,
 // ad boards, packed stands with camera flashes and floodlights. Dark mode = night game under the lights.
 enum SoccerBackdrop {
-    // The ball flies into the middle of the goal mouth.
-    static func target(_ f: BackdropFrame) -> CGPoint {
-        let g = goal(f)
-        return CGPoint(x: f.targetX, y: g.line - g.h * 0.5)
-    }
-
     // Goal line y, goal width and height.
     private static func goal(_ f: BackdropFrame) -> (line: Double, w: Double, h: Double) {
         let s = scale(f)

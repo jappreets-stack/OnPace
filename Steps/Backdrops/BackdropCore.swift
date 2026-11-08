@@ -4,8 +4,8 @@ import SwiftUI
 // Every scene is drawn in code (no images) so it fits any screen and works in light and dark mode.
 //
 // Layout rule all scenes follow: your mini-me stands at x = `center`, feet on y = `horizon`.
-// Keep ~60 pt either side of the mini-me free of tall things. The "target" (goal, hoop, flag …)
-// sits to the right, outside the ring (see targetX), and tap tricks fly to `target(_:)`.
+// Keep ~60 pt either side of the mini-me free of tall things. The goal, hoop, flag …
+// sits to the right, outside the ring (see targetX).
 
 enum Backdrop: String, CaseIterable, Identifiable {
     case golf, soccer, football, basketball, tennis, baseball, track, city, road, beach, trail
@@ -19,7 +19,6 @@ struct BackdropFrame {
     let center: Double    // x of your mini-me (middle of the screen)
     let dark: Bool        // dark mode: evening / night lighting
     let t: Double         // seconds, for gentle motion (clouds, flags, waves)
-    var tapeBroken = false // track: the finish tape has just been run through
 
     var width: Double { size.width }
     var height: Double { size.height }

@@ -4,12 +4,6 @@ import SwiftUI
 // alternating mowed bands, a plain-colored end zone with pylons, yellow goalposts with waving ribbons,
 // packed stands and light towers. Dark mode = night game under the lights.
 enum FootballBackdrop {
-    // A kick sails just above the crossbar, between the uprights.
-    static func target(_ f: BackdropFrame) -> CGPoint {
-        let p = posts(f)
-        return CGPoint(x: f.targetX, y: p.bar - 16 * scale(f))
-    }
-
     private static func scale(_ f: BackdropFrame) -> Double { min(1.2, max(0.75, f.horizon / 280)) }
     // End line, goal line, crossbar y and half the upright spread.
     private static func posts(_ f: BackdropFrame) -> (end: Double, goal: Double, bar: Double, half: Double) {

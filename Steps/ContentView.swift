@@ -181,12 +181,11 @@ struct ContentView: View {
     @AppStorage("sessionKind") private var sessionKind: SessionKind = .golf
     @AppStorage("funUnit") private var funUnit: FunUnit = .holes
     @AppStorage("distancePlace") private var place: DistancePlace = .road
-    @Environment(\.colorScheme) private var colorScheme
     @State private var miniMeFrame: CGRect = .zero   // where the mini-me is on screen (the scene's ground lines up with its feet)
-    @State private var screenSize: CGSize = .zero
     @State private var showSettings = false
-    @StateObject private var ringTap = RingTap()   // tap the ring: mini-me talks, plays, runs (RingTap.swift)
     @AppStorage("didSetup") private var didSetup = true
+    @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
+    @State private var tab = "today"
 
     private var progress: Double { min(Double(store.today) / Double(goal), 1) }
     private var hitGoal: Bool { store.today >= goal }
@@ -196,18 +195,27 @@ struct ContentView: View {
     private var onPace: Bool { pace.onPace }
 
     // What your character does: swing in a golf round, walk with a prop in other sessions,
-    // celebrate at goal, walk on pace, slump behind.
+    // walk while you walk, celebrate at goal, stand on pace, slump behind.
     private var mood: Mood {
         if roundStart > 0 { return sessionKind == .golf ? .swing : .walk }
-        if hitGoal { return .celebrate }
-        return onPace ? .walk : .slump
+        return .everyday(walking: walking.isWalking, hitGoal: hitGoal, onPace: onPace)
     }
+    @StateObject private var walking = WalkingDetector()   // walks while you walk (Walking.swift)
 
     var body: some View {
-        TabView {
-            Tab("Today", systemImage: "figure.walk") { today }
-            Tab("History", systemImage: "calendar") { history }
+        TabView(selection: $tab) {
+            Tab("Today", systemImage: "figure.walk", value: "today") {
+                switch appStyle {
+                case .original: today
+                case .minimal: minimalToday
+                }
+            }
+            Tab("History", systemImage: "calendar", value: "history") { history }
         }
+        #if DEBUG
+        // Simulator testing: launch with `-startTab history` to open on the History tab.
+        .onAppear { if let t = UserDefaults.standard.string(forKey: "startTab") { tab = t } }
+        #endif
         .tint(Color.primary)
         .preferredColorScheme(theme.scheme)
         .sheet(isPresented: $showSettings) {
@@ -223,7 +231,12 @@ struct ContentView: View {
         }
         // Re-read steps every time you come back to the app.
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await store.refresh(goal: goal) } }
+            if phase == .active {
+                Task { await store.refresh(goal: goal) }
+                if didSetup { walking.start() }
+            } else if phase == .background {
+                walking.stop()
+            }
         }
         .onChange(of: goal) { _, newGoal in
             Task { await store.refresh(goal: newGoal) }
@@ -235,8 +248,7 @@ struct ContentView: View {
         ZStack {
             // The scene for your fun unit fills the whole screen; its ground lines up with your mini-me's feet.
             BackdropView(backdrop: backdrop, horizon: horizonY, signText: funUnit == .km ? "1 km" : "1 mi",
-                         tapeBroken: ringTap.tapeBroken, animated: sceneStyle == .full)
-                .onGeometryChange(for: CGSize.self) { $0.size } action: { screenSize = $0 }
+                         animated: sceneStyle == .full)
                 // Calm: the same scene, softly blurred and faded so the ring and numbers lead.
                 .blur(radius: sceneStyle == .calm ? 7 : 0)
                 .overlay { theme.background.opacity(sceneStyle == .calm ? 0.35 : 0).ignoresSafeArea() }
@@ -258,26 +270,9 @@ struct ContentView: View {
                         NoStepsHelp()
                     }
                     // One card of plain rows: label on the left, number on the right.
-                    VStack(spacing: 0) {
-                        InfoRow(icon: "👟", label: hitGoal ? "Goal hit 🎉" : "Left to reach goal",
-                                value: hitGoal ? "+\((store.today - goal).formatted())"
-                                               : (goal - store.today).formatted())
-                        if !hitGoal {
-                            Divider().padding(.leading, 52)
-                            InfoRow(icon: onPace ? "✅" : "⏳", label: onPace ? "On pace" : "Behind pace",
-                                    detail: onPace ? nil : "walk \(pace.catchUpMinutes) min to catch up",
-                                    value: onPace ? "" : pace.behind.formatted(),
-                                    valueColor: .orange)
-                        }
-                        if let f = pace.forecastRow {
-                            Divider().padding(.leading, 52)
-                            InfoRow(icon: "🏁", label: "At this pace", detail: f.detail, value: f.value)
-                        }
-                        Divider().padding(.leading, 52)
-                        InfoRow(icon: "🔥", label: "Streak", value: "\(store.streak) \(store.streak == 1 ? "day" : "days")")
-                    }
-                    .padding(.horizontal)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
+                    infoRows(symbols: false)
+                        .padding(.horizontal)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
                     SessionCard(store: store, theme: theme)
                     if let error = store.error {
                         Text(error).font(.footnote).foregroundStyle(.red)
@@ -286,17 +281,96 @@ struct ContentView: View {
                 .padding()
             }
             .scrollBounceBehavior(.basedOnSize)
-            // The ball / disc / taxi / flag from a tap, flying through the scene.
-            FlightLayer(flight: ringTap.flight)
-                .ignoresSafeArea()
         }
+    }
+
+    // Left to goal, pace, forecast, streak. Original uses emoji; Clean minimal uses SF Symbols.
+    private func infoRows(symbols: Bool) -> some View {
+        let tint = Minimal.accent
+        return VStack(spacing: 0) {
+            InfoRow(icon: "👟", label: hitGoal ? "Goal hit 🎉" : "Left to reach goal",
+                    value: hitGoal ? "+\((store.today - goal).formatted())"
+                                   : (goal - store.today).formatted(),
+                    symbol: symbols ? (hitGoal ? "checkmark.circle.fill" : "figure.walk") : nil, symbolTint: tint)
+            if !hitGoal {
+                Divider().padding(.leading, 52)
+                InfoRow(icon: onPace ? "✅" : "⏳", label: onPace ? "On pace" : "Behind pace",
+                        detail: onPace ? nil : "walk \(pace.catchUpMinutes) min to catch up",
+                        value: onPace ? "" : pace.behind.formatted(),
+                        valueColor: .orange,
+                        symbol: symbols ? "gauge.with.dots.needle.67percent" : nil,
+                        symbolTint: onPace ? tint : .orange)
+            }
+            if let f = pace.forecastRow {
+                Divider().padding(.leading, 52)
+                InfoRow(icon: "🏁", label: "At this pace", detail: f.detail, value: f.value,
+                        symbol: symbols ? "flag.checkered" : nil, symbolTint: tint)
+            }
+            Divider().padding(.leading, 52)
+            InfoRow(icon: "🔥", label: "Streak", value: "\(store.streak) \(store.streak == 1 ? "day" : "days")",
+                    symbol: symbols ? "flame.fill" : nil, symbolTint: .orange)
+        }
+    }
+
+    // Clean minimal Today: no scene, grouped background, a thick ring and one card of rows.
+    private var minimalToday: some View {
+        ScrollView {
+            VStack(spacing: 22) {
+                HStack {
+                    Spacer()
+                    Button { showSettings = true } label: {
+                        Image(systemName: "gearshape").font(.title2)
+                            .foregroundStyle(.secondary)
+                            .padding(6)
+                    }
+                    .accessibilityLabel("Settings")
+                }
+                minimalRing
+                if store.week.isEmpty == false && store.week.allSatisfy({ $0.steps == 0 }) {
+                    NoStepsHelp()
+                }
+                infoRows(symbols: true)
+                    .minimalCard()
+                SessionCard(store: store, theme: theme)
+                if let error = store.error {
+                    Text(error).font(.footnote).foregroundStyle(.red)
+                }
+            }
+            .padding()
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .background(Minimal.background.ignoresSafeArea())
+    }
+
+    private var minimalRing: some View {
+        ringLabel(
+            MinimalRing(progress: progress) {
+                VStack(spacing: 2) {
+                    miniMe(width: 72, height: 100)
+                    Text(store.today, format: .number)
+                        .font(.system(size: 44, weight: .bold, design: .rounded).monospacedDigit())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    Text("of \(goal.formatted()) steps")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text(funUnit.phrase(store.today, meters: store.todayMeters))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                .frame(maxWidth: 170)       // stays inside the ring
+            }
+            .frame(width: 270, height: 270)
+        )
     }
 
     // History: the last 7 days, then every saved session.
     private var history: some View {
         NavigationStack {
             ZStack {
-                theme.background.ignoresSafeArea()
+                (appStyle == .minimal ? Minimal.background : theme.background).ignoresSafeArea()
                 ScrollView {
                     VStack(spacing: 20) {
                         weekTable
@@ -317,28 +391,8 @@ struct ContentView: View {
     // Where the scene's ground starts: your mini-me's feet (feet sit at about 96% of its frame's height).
     private var horizonY: Double { miniMeFrame == .zero ? 330 : miniMeFrame.minY + miniMeFrame.height * 0.957 }
 
-    private var quipContext: QuipContext {
-        QuipContext(steps: store.today, goal: goal, behind: pace.behind, catchUpMinutes: pace.catchUpMinutes,
-                    onPace: onPace, streak: store.streak,
-                    distance: funUnit.phrase(store.today, meters: store.todayMeters),
-                    session: roundStart > 0 ? (sessionKind == .golf ? "round" : sessionKind.name.lowercased()) : nil,
-                    golfRound: roundStart > 0 && sessionKind == .golf)
-    }
-
-    // Tap: the mini-me does its sport move toward the scene's target, then says something.
-    private func tapRing() {
-        let f = BackdropFrame(size: screenSize, horizon: horizonY, center: screenSize.width / 2,
-                              dark: colorScheme == .dark, t: 0)
-        let grid = SportMove.releasePoint(backdrop.play.move)    // on the 100 x 140 character grid
-        let s = min(miniMeFrame.width / 100, miniMeFrame.height / 140)
-        let release = CGPoint(x: miniMeFrame.minX + (miniMeFrame.width - 100 * s) / 2 + grid.x * s,
-                              y: miniMeFrame.minY + (miniMeFrame.height - 140 * s) / 2 + grid.y * s)
-        ringTap.tap(quipContext, backdrop: backdrop, release: release, target: backdrop.target(f),
-                    miniMeX: miniMeFrame.midX)
-    }
-
     private var ring: some View {
-        ZStack {
+        ringLabel(ZStack {
             Circle()
                 .stroke(.ultraThinMaterial, lineWidth: 20)
             Circle()
@@ -348,15 +402,7 @@ struct ContentView: View {
                 .rotationEffect(.degrees(-90))
                 .animation(.easeOut(duration: 0.6), value: progress)
             VStack(spacing: 4) {
-                CharacterView(avatar: avatar,
-                              mood: ringTap.move.map { .move($0) } ?? (ringTap.grumpy ? .slump : mood),
-                              look: look,
-                              prop: roundStart > 0 ? sessionKind.prop : nil,
-                              moveStart: ringTap.moveStart)
-                    .frame(width: 110, height: 125)
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { miniMeFrame = $0 }
-                    .scaleEffect(x: ringTap.grumpy ? -1 : 1)        // grumpy: turns away
-                    .offset(x: ringTap.travel)                       // sprinting / jogging over to the target
+                miniMe(width: 110, height: 125)
                 // Today's steps and distance, on a frosted chip so they read over any scene.
                 VStack(spacing: 0) {
                     Text(store.today, format: .number)
@@ -375,30 +421,22 @@ struct ContentView: View {
             }
         }
         .frame(width: 270, height: 270)
-        // The speech bubble sits just above the ring, its tail pointing down at your mini-me.
-        .overlay(alignment: .top) {
-            if let line = ringTap.bubble {
-                SpeechBubble(text: line)
-                    .alignmentGuide(.top) { $0[.bottom] - 4 }
-                    .transition(.scale(scale: 0.4, anchor: .bottom).combined(with: .opacity))
-            }
-        }
-        .contentShape(Circle())
-        .onTapGesture { tapRing() }
-        #if DEBUG
-        // Simulator testing: launch with `-autoTap YES` to tap the ring once, 2 seconds after opening.
-        .task {
-            guard UserDefaults.standard.bool(forKey: "autoTap") else { return }
-            try? await Task.sleep(for: .seconds(2))
-            tapRing()
-        }
-        #endif
-        .sensoryFeedback(.impact(weight: .light), trigger: ringTap.taps)
-        // VoiceOver reads the ring as one thing: steps, goal, distance, and what a tap does.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(store.today.formatted()) of \(goal.formatted()) steps. \(funUnit.phrase(store.today, meters: store.todayMeters)).")
-        .accessibilityAddTraits(.isButton)
-        .accessibilityHint("Your mini-me does a sport move")
+        )
+    }
+
+    // Your mini-me inside the ring.
+    private func miniMe(width: CGFloat, height: CGFloat) -> some View {
+        CharacterView(avatar: avatar, mood: mood, look: look,
+                      prop: roundStart > 0 ? sessionKind.prop : nil)
+            .frame(width: width, height: height)
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { miniMeFrame = $0 }
+    }
+
+    // VoiceOver reads the ring as one thing: steps, goal, distance. Shared by every style.
+    private func ringLabel(_ ring: some View) -> some View {
+        ring
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(store.today.formatted()) of \(goal.formatted()) steps. \(funUnit.phrase(store.today, meters: store.todayMeters)).")
     }
 
     // Last 7 days: a summary row, then one line per day (newest first).
@@ -411,9 +449,9 @@ struct ContentView: View {
             Text("Last 7 days").font(.title2.weight(.bold))
 
             HStack(spacing: 0) {
-                BigNumber(value: average.formatted(), label: "Daily average", color: theme.ring)
+                BigNumber(value: average.formatted(), label: "Daily average", color: appStyle == .minimal ? .primary : theme.ring)
                 Divider().frame(height: 60)
-                BigNumber(value: "\(daysHit) of \(store.week.count)", label: "Days at goal", color: theme.done)
+                BigNumber(value: "\(daysHit) of \(store.week.count)", label: "Days at goal", color: appStyle == .minimal ? Minimal.accent : theme.done)
             }
             .padding(.vertical, 8)
 
@@ -432,7 +470,8 @@ struct ContentView: View {
                     }
                     .frame(width: 64, alignment: .leading)
                     MiniBar(fraction: min(Double(day.steps) / Double(goal), 1),
-                            color: hit ? theme.done : theme.ring.opacity(0.6),
+                            color: appStyle == .minimal ? Minimal.accent.opacity(hit ? 1 : 0.55)
+                                                    : (hit ? theme.done : theme.ring.opacity(0.6)),
                             avatar: avatar, look: look,
                             mood: hit ? .celebrate : isToday ? .walk : .slump)
                     VStack(alignment: .trailing, spacing: 1) {
@@ -452,7 +491,8 @@ struct ContentView: View {
             }
         }
         .padding()
-        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+        .background(appStyle == .minimal ? AnyShapeStyle(Minimal.card) : AnyShapeStyle(Color.primary.opacity(0.08)),
+                    in: RoundedRectangle(cornerRadius: 22))
     }
 }
 
@@ -478,13 +518,22 @@ struct InfoRow: View {
     var detail: String? = nil
     let value: String
     var valueColor: Color = .primary
+    var symbol: String? = nil          // SF Symbol instead of the emoji (Clean minimal)
+    var symbolTint: Color = .secondary
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         // Very large text: number goes under the label so nothing wraps mid-word.
         let stacked = typeSize.isAccessibilitySize
         HStack(alignment: stacked ? .top : .center, spacing: 14) {
-            Text(icon).font(.title2).frame(width: 38)
+            Group {
+                if let symbol {
+                    Image(systemName: symbol).font(.title3.weight(.semibold)).foregroundStyle(symbolTint)
+                } else {
+                    Text(icon).font(.title2)
+                }
+            }
+            .frame(width: 38)
             VStack(alignment: .leading, spacing: 2) {
                 Text(label).font(.title3)
                 if let detail {
@@ -605,6 +654,7 @@ struct SettingsView: View {
     @AppStorage("importWorkouts") private var importWorkouts = true
     @AppStorage("didSetup") private var didSetup = true
     @AppStorage("sceneStyle") private var sceneStyle: SceneStyle = .calm
+    @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -661,18 +711,25 @@ struct SettingsView: View {
                     Text("When you end a Golf, Hike, Walk, Run or Strength workout in Apple's Workout app, it shows up here as a session with its steps.")
                 }
                 Section {
+                    Picker("Style", selection: $appStyle) {
+                        ForEach(AppStyle.allCases) { Text($0.name).tag($0) }
+                    }
                     Picker("Theme", selection: $theme) {
                         ForEach(Theme.allCases) { Text($0.name).tag($0) }
                     }
                     .pickerStyle(.segmented)
-                    Picker("Background", selection: $sceneStyle) {
-                        ForEach(SceneStyle.allCases) { Text($0.name).tag($0) }
+                    if appStyle == .original {
+                        Picker("Background", selection: $sceneStyle) {
+                            ForEach(SceneStyle.allCases) { Text($0.name).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
                     }
-                    .pickerStyle(.segmented)
                 } header: {
                     Text("Look")
                 } footer: {
-                    Text("Background: Full shows the whole scene, Calm softens it, Plain hides it.")
+                    Text(appStyle == .original
+                         ? "Style changes how the whole app looks. Background: Full shows the whole scene, Calm softens it, Plain hides it."
+                         : "Style changes how the whole app looks. Clean minimal is simple and calm, with no scene behind your mini-me.")
                 }
                 Section {
                     Button("Show setup again") {

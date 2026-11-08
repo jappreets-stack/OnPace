@@ -148,14 +148,6 @@ enum BaseballBackdrop {
         Sketch.gradient(&ctx, vig, [.clear, rgb(0, 0.03, 0, dk ? 0.35 : 0.15)])
     }
 
-    // A home run: high over the right-center wall, up in the sky.
-    static func target(_ f: BackdropFrame) -> CGPoint {
-        let c = cam(f)
-        let wallTop = c.y(fence(0)) - max(9, 0.03 * f.width)
-        let standsTop = max(wallTop * 0.55, wallTop - min(64, f.width * 0.15))
-        return CGPoint(x: f.targetX, y: max(26, standsTop - 34))
-    }
-
     // MARK: - Pieces
 
     private static func bleachers(_ ctx: inout GraphicsContext, _ f: BackdropFrame, top: Double, bottom: Double) {

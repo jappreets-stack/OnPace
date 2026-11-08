@@ -28,8 +28,8 @@ enum TrailBackdrop {
     // How high the summit rises above the mini-me's feet (fits short and tall skies).
     private static func peakHeight(_ f: BackdropFrame) -> Double { min(170, max(90, f.horizon * 0.55)) }
 
-    // The top of the summit, where the flag goes.
-    static func target(_ f: BackdropFrame) -> CGPoint { CGPoint(x: f.targetX, y: f.horizon - peakHeight(f)) }
+    // The top of the summit.
+    private static func target(_ f: BackdropFrame) -> CGPoint { CGPoint(x: f.targetX, y: f.horizon - peakHeight(f)) }
 
     // Points given as (x fraction of width, fraction of peak height above the horizon).
     private static func pt(_ f: BackdropFrame, _ u: Double, _ k: Double) -> CGPoint {

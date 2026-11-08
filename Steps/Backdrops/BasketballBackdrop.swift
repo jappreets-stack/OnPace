@@ -5,9 +5,6 @@ import SwiftUI
 // dim stands with camera flashes, a hanging scoreboard and arena lights. Dark mode = lights dimmed,
 // spotlights on the court.
 enum BasketballBackdrop {
-    // The ball drops through the middle of the rim.
-    static func target(_ f: BackdropFrame) -> CGPoint { CGPoint(x: f.targetX, y: layout(f).rim) }
-
     private static func scale(_ f: BackdropFrame) -> Double { min(1.2, max(0.75, f.horizon / 280)) }
     // Baseline y and rim y.
     private static func layout(_ f: BackdropFrame) -> (base: Double, rim: Double) {

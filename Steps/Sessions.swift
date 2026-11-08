@@ -80,6 +80,7 @@ struct SessionCard: View {
     @AppStorage("sessionKind") private var kind: SessionKind = .golf
     @AppStorage("sessionName") private var customName = ""
     @AppStorage("funUnit") private var funUnit: FunUnit = .holes
+    @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
     @State private var sessionSteps = 0
     @State private var sessionMeters: Double?
     @State private var confirmEnd = false
@@ -132,7 +133,7 @@ struct SessionCard: View {
                     .tint(.red)
                 }
                 .padding()
-                .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+                .background(appStyle == .minimal ? Minimal.card : Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
             } else {
                 // Not in a session: one big button; the choices are in a sheet.
                 Button { showPicker = true } label: {
@@ -271,6 +272,7 @@ struct SessionHistory: View {
     let theme: Theme
     @AppStorage("rounds") private var recordsData = Data()
     @AppStorage("funUnit") private var funUnit: FunUnit = .holes
+    @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
 
     private var records: [SessionRecord] {
         (try? JSONDecoder().decode([SessionRecord].self, from: recordsData)) ?? []
@@ -323,7 +325,7 @@ struct SessionHistory: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+        .background(appStyle == .minimal ? Minimal.card : Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
     }
 
     private func delete(_ record: SessionRecord) {

@@ -46,9 +46,6 @@ enum BeachBackdrop {
 
     // MARK: Public API
 
-    // Up in the air over the sand to the right, where a frisbee gets caught.
-    static func target(_ f: BackdropFrame) -> CGPoint { CGPoint(x: f.targetX, y: f.horizon - 90) }
-
     static func draw(_ ctx: inout GraphicsContext, _ f: BackdropFrame) {
         drawSky(&ctx, f)
         drawSea(&ctx, f)

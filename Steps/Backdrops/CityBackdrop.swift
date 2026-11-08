@@ -120,12 +120,6 @@ enum CityBackdrop {
         Sketch.gradient(&ctx, vig, [.clear, rgb(0, 0, 0.05, dk ? 0.35 : 0.18)])
     }
 
-    // The curb lane, just right of the mini-me, where the taxi pulls up.
-    static func target(_ f: BackdropFrame) -> CGPoint {
-        let c = cam(f)
-        return CGPoint(x: f.targetX, y: c.y(-2.2))
-    }
-
     // MARK: - Pieces
 
     private static func skyline(_ ctx: inout GraphicsContext, _ f: BackdropFrame, base: Double, lo: Double, hi: Double,

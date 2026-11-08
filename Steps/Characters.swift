@@ -1,9 +1,9 @@
 import SwiftUI
 
-// What the character is doing. `.move` plays a one-shot sport move (see SportMove below).
+// What the character is doing.
 enum Mood: Hashable {
     case slump, walk, celebrate, swing
-    case move(SportMove)
+    case stand   // on pace but not walking right now: relaxed, breathing, smiling
 }
 
 // Something your mini-me carries while walking during a session (hike, dog walk, ...).
@@ -280,7 +280,6 @@ struct CharacterView: View {
     let mood: Mood
     var look: Look? = nil   // nil = the classic look for this character (watch, for now)
     var prop: Prop? = nil   // carried while walking
-    var moveStart: Date? = nil   // when a `.move` mood started; nil = loop the move (previews)
 
     var body: some View {
         TimelineView(.animation) { timeline in
@@ -291,12 +290,6 @@ struct CharacterView: View {
                 let s = min(size.width / 100, size.height / 140)
                 ctx.translateBy(x: (size.width - 100 * s) / 2, y: (size.height - 140 * s) / 2)
                 ctx.scaleBy(x: s, y: s)
-                if case .move(let m) = mood {
-                    let p = moveStart.map { min(1, max(0, timeline.date.timeIntervalSince($0) / m.duration)) }
-                        ?? Moves.loop(m, t: t)
-                    Moves.draw(&ctx, avatar: avatar, move: m, p: p, t: t, look: look)
-                    return
-                }
                 switch avatar {
                 case .golfer: Golfer.draw(&ctx, mood: mood, t: t, look: look, prop: mood == .walk ? prop : nil)
                 case .baller: Baller.draw(&ctx, mood: mood, t: t, look: look, prop: mood == .walk ? prop : nil)
@@ -559,22 +552,8 @@ enum Golfer {
         body.fill(Path(CGRect(x: 35, y: 86, width: 30, height: 4)), with: .color(.black.opacity(0.6)))
     }
 
-    static func rig(_ look: Look) -> MoveRig {
-        let skort = look.bottoms == .skort, curvy = look.body == .female
-        return MoveRig(hipL: 45, hipR: 55, hipY: 90, thigh: 19, shin: 19,
-                       legColor: skort ? look.skin.color : pants, legWidth: skort ? 7 : 9, shoe: .white,
-                       shoulderL: CGPoint(x: curvy ? 40 : 38, y: 57), shoulderR: CGPoint(x: curvy ? 60 : 62, y: 57),
-                       upper: 14, fore: 14,
-                       lower: { b in if skort { skirt(&b) } },
-                       torso: { b in torso(&b, look: look) },
-                       arm: { b, s, e, h in arm(&b, shoulder: s, elbow: e, hand: h, look: look) })
-    }
 
     static func draw(_ ctx: inout GraphicsContext, mood: Mood, t: Double, look: Look, prop: Prop? = nil) {
-        if case .move(let m) = mood {
-            Moves.draw(&ctx, avatar: .golfer, move: m, p: Moves.loop(m, t: t), t: t, look: look)
-            return
-        }
         Pen.shadow(&ctx)
 
         var bob = 0.0, spread = 5.0, liftL = 0.0, liftR = 0.0
@@ -583,6 +562,10 @@ enum Golfer {
         var club: Double? = nil   // swing angle; both hands on the club
 
         switch mood {
+        case .stand:
+            bob = -1.2 * (sin(t * 2) + 1) / 2
+            armL = -8 - 2 * sin(t * 2)
+            armR = 8 + 2 * sin(t * 2)
         case .walk:
             let w = sin(t * 6)
             bob = -abs(w) * 2
@@ -612,7 +595,6 @@ enum Golfer {
             else if p < 0.55 { club = -125 + 265 * ((p - 0.4) / 0.15) }     // downswing
             else if p < 0.85 { club = 140 }                                 // hold the finish
             else { club = 140 * (1 - (p - 0.85) / 0.15) }                   // reset
-        case .move: break   // drawn by Moves above
         }
 
         var body = ctx
@@ -692,26 +674,8 @@ enum Baller {
                   at: CGPoint(x: 50, y: 71))
     }
 
-    static func rig(_ look: Look) -> MoveRig {
-        let curvy = look.body == .female, skin = look.skin.color
-        return MoveRig(hipL: 45, hipR: 55, hipY: 92, thigh: 18, shin: 18,
-                       legColor: skin, legWidth: 8, shoe: look.accent.color,
-                       shoulderL: CGPoint(x: curvy ? 40 : 39, y: 57), shoulderR: CGPoint(x: curvy ? 60 : 61, y: 57),
-                       upper: 13.5, fore: 13.5,
-                       lower: { b in shorts(&b, look: look) },
-                       torso: { b in jersey(&b, look: look) },
-                       arm: { b, s, e, h in
-                           Pen.line(&b, s, e, skin, 7)
-                           Pen.line(&b, e, h, skin, 7)
-                           Pen.dot(&b, h, 3.5, skin)
-                       })
-    }
 
     static func draw(_ ctx: inout GraphicsContext, mood: Mood, t: Double, look: Look, prop: Prop? = nil) {
-        if case .move(let m) = mood {   // the move brings its own ball (if any); his ball stays home
-            Moves.draw(&ctx, avatar: .baller, move: m, p: Moves.loop(m, t: t), t: t, look: look)
-            return
-        }
         let skin = look.skin.color
         Pen.shadow(&ctx)
 
@@ -735,6 +699,11 @@ enum Baller {
             armR = 22
             ballAt = CGPoint(x: 72, y: 127 - b * (127 - (handY + 8)))
             spin = t * 3
+        case .stand:   // ball held at the hip
+            bob = -1.2 * (sin(t * 2) + 1) / 2
+            armR = 20
+            ballAt = CGPoint(x: 72, y: 92)
+            ballInBody = true
         case .slump:  // ball parked, head down
             bob = 2
             headTilt = 10 + 3 * sin(t * 1.5)
@@ -754,7 +723,6 @@ enum Baller {
             armR = 165
             ballInBody = true
             spin = t * 9
-        case .move: break   // drawn by Moves above
         }
 
         var body = ctx
@@ -826,16 +794,6 @@ enum Ripped {
                   with: .color(look.main.color))
     }
 
-    static func rig(_ look: Look) -> MoveRig {
-        let curvy = look.body == .female, shoulderX = curvy ? 13.0 : 17.0
-        return MoveRig(hipL: 44, hipR: 56, hipY: 90, thigh: 19, shin: 19,
-                       legColor: look.skin.color, legWidth: 9, shoe: .white,
-                       shoulderL: CGPoint(x: 50 - shoulderX, y: 59), shoulderR: CGPoint(x: 50 + shoulderX, y: 59),
-                       upper: 16, fore: 15,
-                       lower: { b in shorts(&b, look: look) },
-                       torso: { b in torso(&b, look: look) },
-                       arm: { b, s, e, h in arm(&b, s, elbow: e, hand: h, look: look) })
-    }
 
     static func golfBag(_ ctx: inout GraphicsContext, hangingFrom hand: CGPoint, look: Look) {
         for dx in [-3.0, 0.0, 3.0] {   // club heads sticking out
@@ -849,10 +807,6 @@ enum Ripped {
     }
 
     static func draw(_ ctx: inout GraphicsContext, mood: Mood, t: Double, look: Look, prop: Prop? = nil) {
-        if case .move(let m) = mood {
-            Moves.draw(&ctx, avatar: .ripped, move: m, p: Moves.loop(m, t: t), t: t, look: look)
-            return
-        }
         let shorts = look.main.color
         Pen.shadow(&ctx)
 
@@ -876,6 +830,8 @@ enum Ripped {
             liftR = max(0, -w) * 10
             upL = -15 + 20 * w; foreL = 140 + 20 * w
             upR = 15 + 20 * w; foreR = -140 + 20 * w
+        case .stand:   // standing tall, breathing
+            bob = -1.2 * (sin(t * 2) + 1) / 2
         case .slump:  // sitting on a bench
             seated = true
             bob = 14
@@ -895,7 +851,6 @@ enum Ripped {
             upR = 10
             foreR = 10 + 150 * (sin(t * 3) + 1) / 2
             flex = 2 * (sin(t * 3) + 1) / 2
-        case .move: break   // drawn by Moves above
         }
 
         if seated {   // bench
@@ -1081,557 +1036,5 @@ enum Props {
                 Pen.dot(&body, hand, 3.6, look.skin.color)
             }
         }
-    }
-}
-
-// MARK: - Sport moves (one-shot animations: golf swing, kick, jump shot, ...)
-
-// A move plays once: wind-up, the action at `release` (ball leaves the foot/hand), then a
-// follow-through that holds at the end. Show it with `CharacterView(mood: .move(m), moveStart: Date())`.
-enum SportMove: String, CaseIterable {
-    case golfSwing, kick, fieldGoal, jumpShot, serve, batSwing, sprint, hail, jog, throwDisc, plantFlag
-
-    // Seconds the whole move takes.
-    var duration: Double {
-        switch self {
-        case .golfSwing: 1.6
-        case .kick, .fieldGoal: 1.2
-        case .jumpShot: 1.3
-        case .serve: 1.5
-        case .batSwing: 1.1
-        case .sprint: 1.4
-        case .hail: 1.0
-        case .jog: 1.6
-        case .throwDisc: 1.2
-        case .plantFlag: 1.5
-        }
-    }
-
-    // 0...1: when the ball/disc leaves (hand goes up for hail, flag goes in, the finish for sprint).
-    var release: Double {
-        switch self {
-        case .golfSwing: 0.5
-        case .kick, .fieldGoal: 0.55
-        case .jumpShot: 0.55
-        case .serve: 0.6
-        case .batSwing: 0.5
-        case .sprint: 0.8
-        case .hail: 0.4
-        case .jog: 0.6
-        case .throwDisc: 0.55
-        case .plantFlag: 0.6
-        }
-    }
-
-    // Where the ball/disc is on the 100 x 140 grid at the release moment (start the ball flight here).
-    static func releasePoint(_ m: SportMove) -> CGPoint { m.releasePoint }
-    var releasePoint: CGPoint { Moves.pose(self, p: release, t: 0).contact }
-}
-
-// One outfit's body parts, so every outfit can draw every move.
-struct MoveRig {
-    var hipL: Double, hipR: Double, hipY: Double
-    var thigh: Double, shin: Double
-    var legColor: Color, legWidth: Double, shoe: Color
-    var shoulderL: CGPoint, shoulderR: CGPoint
-    var upper: Double, fore: Double
-    var lower: (inout GraphicsContext) -> Void    // shorts / skirt, over the legs
-    var torso: (inout GraphicsContext) -> Void
-    var arm: (inout GraphicsContext, CGPoint, CGPoint, CGPoint) -> Void   // shoulder, elbow, hand
-}
-
-// Things drawn with a move, in grid (ground) coordinates.
-enum MoveItem {
-    case golfBall(CGPoint), soccer(CGPoint), football(CGPoint), basketball(CGPoint), tennis(CGPoint)
-    case disc(CGPoint)
-    case club(CGPoint, Double)                  // hands, angle
-    case racket(CGPoint, Double, behind: Bool)  // hand, angle; behind = behind the back
-    case bat(CGPoint, Double)                   // hands, angle
-    case flag(bottom: CGPoint, top: CGPoint, flutter: Double)
-    case speedLines(Double)                     // strength 0...1
-}
-
-// The body position at one moment of a move.
-struct MovePose {
-    var bob = 0.0                                  // + = whole body lower
-    var lean = 0.0                                 // degrees, + = upper body tips forward (right)
-    var footL = CGPoint(x: 42, y: 128), footR = CGPoint(x: 58, y: 128)   // grid coordinates
-    var kneeL = 1.0, kneeR = -1.0                  // which way the knee bends
-    var handL = CGPoint(x: 34, y: 84), handR = CGPoint(x: 66, y: 84)     // upper-body coordinates
-    var elbowL = 1.0, elbowR = -1.0
-    var holdL = false, holdR = false               // hand holds something: keep it exactly there
-    var openL = false, openR = false               // open hand (waving)
-    var headTilt = 0.0, smile = true
-    var items: [MoveItem] = []
-    var contact = CGPoint(x: 50, y: 128)           // ball / hand / foot at the release moment
-
-    // Upper-body coordinates (rotated by `lean` around the hips, moved by `bob`) -> grid.
-    func ground(_ q: CGPoint) -> CGPoint {
-        let a = lean * .pi / 180, dx = q.x - 50, dy = q.y - 90
-        return CGPoint(x: 50 + dx * cos(a) - dy * sin(a), y: 90 + dx * sin(a) + dy * cos(a) + bob)
-    }
-    // Grid -> upper-body coordinates.
-    func upper(_ g: CGPoint) -> CGPoint {
-        let a = -lean * .pi / 180, dx = g.x - 50, dy = g.y - bob - 90
-        return CGPoint(x: 50 + dx * cos(a) - dy * sin(a), y: 90 + dx * sin(a) + dy * cos(a))
-    }
-}
-
-enum Moves {
-    // Looping progress for previews (no start time): play the move, hold the end a moment, repeat.
-    static func loop(_ m: SportMove, t: Double) -> Double {
-        min(1, t.truncatingRemainder(dividingBy: m.duration + 0.8) / m.duration)
-    }
-
-    // Draws `avatar` doing `move` at progress `p` (0...1). Also the entry for fixed-progress renders.
-    static func draw(_ ctx: inout GraphicsContext, avatar: Avatar, move: SportMove, p: Double, t: Double, look: Look) {
-        let rig: MoveRig
-        switch avatar {
-        case .golfer: rig = Golfer.rig(look)
-        case .baller: rig = Baller.rig(look)
-        case .ripped: rig = Ripped.rig(look)
-        }
-        draw(&ctx, rig: rig, pose: pose(move, p: min(1, max(0, p)), t: t), look: look)
-    }
-
-    static func draw(_ ctx: inout GraphicsContext, rig: MoveRig, pose o: MovePose, look: Look) {
-        Pen.shadow(&ctx)
-        for item in o.items { if case .speedLines = item { drawItem(&ctx, item, look: look) } }
-
-        var body = ctx
-        body.translateBy(x: 0, y: o.bob)
-        for (hipX, foot, bend) in [(rig.hipL, o.footL, o.kneeL), (rig.hipR, o.footR, o.kneeR)] {
-            let hip = CGPoint(x: hipX, y: rig.hipY)
-            let f = CGPoint(x: foot.x, y: foot.y - o.bob)
-            let knee = joint(hip, f, rig.thigh, rig.shin, bend: bend)
-            Pen.line(&body, hip, knee, rig.legColor, rig.legWidth)
-            Pen.line(&body, knee, f, rig.legColor, rig.legWidth)
-            Pen.shoe(&body, f, rig.shoe)
-        }
-        rig.lower(&body)
-
-        var upper = body
-        upper.translateBy(x: 50, y: 90)
-        upper.rotate(by: .degrees(o.lean))
-        upper.translateBy(x: -50, y: -90)
-
-        for item in o.items { if case .racket(_, _, true) = item { drawItem(&ctx, item, look: look) } }
-        rig.torso(&upper)
-        for item in o.items {
-            switch item {
-            case .club, .bat, .flag, .racket(_, _, false): drawItem(&ctx, item, look: look)
-            default: break
-            }
-        }
-        // Poses are made for the golfer (shoulders 38/62, arm 28). A free hand keeps the same place
-        // relative to this outfit's own shoulder and arm length; a holding hand stays exactly put.
-        let k = (rig.upper + rig.fore) / 28
-        for (s, target, ref, hold, bend, open) in [(rig.shoulderL, o.handL, CGPoint(x: 38, y: 57), o.holdL, o.elbowL, o.openL),
-                                                   (rig.shoulderR, o.handR, CGPoint(x: 62, y: 57), o.holdR, o.elbowR, o.openR)] {
-            let h = hold ? target : CGPoint(x: s.x + (target.x - ref.x) * k, y: s.y + (target.y - ref.y) * k)
-            let e = joint(s, h, rig.upper, rig.fore, bend: bend)
-            rig.arm(&upper, s, e, h)
-            if open {   // spread fingers, pointing on from the forearm
-                let a = atan2(h.x - e.x, h.y - e.y) * 180 / .pi
-                for da in [-28.0, 0, 28] {
-                    Pen.line(&upper, Pen.reach(h, a + da, 2), Pen.reach(h, a + da, 5.5), look.skin.color, 1.8)
-                }
-            }
-        }
-        Pen.head(upper, look: look, tilt: o.headTilt, smile: o.smile)
-        for item in o.items {
-            switch item {
-            case .golfBall, .soccer, .basketball, .tennis, .disc: drawItem(&ctx, item, look: look)
-            default: break
-            }
-        }
-    }
-
-    // Elbow / knee for a two-part limb from `a` to `b`. Out of reach = the limb stretches straight.
-    static func joint(_ a: CGPoint, _ b: CGPoint, _ l1: Double, _ l2: Double, bend: Double) -> CGPoint {
-        let dx = b.x - a.x, dy = b.y - a.y
-        let d = max(0.001, hypot(dx, dy))
-        if d >= l1 + l2 { return CGPoint(x: a.x + dx * l1 / (l1 + l2), y: a.y + dy * l1 / (l1 + l2)) }
-        let ang = acos(max(-1, min(1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d)))) * bend
-        let ux = dx / d, uy = dy / d
-        return CGPoint(x: a.x + (ux * cos(ang) - uy * sin(ang)) * l1, y: a.y + (ux * sin(ang) + uy * cos(ang)) * l1)
-    }
-
-    // MARK: Balls and gear (also handy for drawing the ball in flight)
-
-    static let wood = Color(red: 0.78, green: 0.58, blue: 0.36)
-    static let tennisColor = Color(red: 0.80, green: 0.93, blue: 0.20)
-
-    static func soccerBall(_ ctx: inout GraphicsContext, _ c: CGPoint, r: Double = 5.5, spin: Double = 0) {
-        Pen.dot(&ctx, c, r, .white)
-        var b = ctx
-        b.translateBy(x: c.x, y: c.y)
-        b.rotate(by: .radians(spin))
-        var pent = Path()
-        for i in 0..<5 {
-            let a = Double(i) * 2 * .pi / 5 - .pi / 2
-            let q = CGPoint(x: cos(a) * r * 0.42, y: sin(a) * r * 0.42)
-            if i == 0 { pent.move(to: q) } else { pent.addLine(to: q) }
-            b.stroke({ var l = Path(); l.move(to: q); l.addLine(to: CGPoint(x: cos(a) * r, y: sin(a) * r)); return l }(),
-                     with: .color(.black.opacity(0.7)), lineWidth: r * 0.14)
-        }
-        pent.closeSubpath()
-        b.fill(pent, with: .color(Color(white: 0.12)))
-        ctx.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
-                   with: .color(.black.opacity(0.6)), lineWidth: r * 0.12)
-    }
-
-    static func football(_ ctx: inout GraphicsContext, _ c: CGPoint, angle: Double = -20) {
-        var b = ctx
-        b.translateBy(x: c.x, y: c.y)
-        b.rotate(by: .degrees(angle))
-        b.fill(Path(ellipseIn: CGRect(x: -8, y: -5, width: 16, height: 10)), with: .color(Color(red: 0.55, green: 0.30, blue: 0.15)))
-        Pen.line(&b, CGPoint(x: -3.5, y: 0), CGPoint(x: 3.5, y: 0), .white, 1.2)
-        for x in [-2.0, 0, 2] { Pen.line(&b, CGPoint(x: x, y: -1.4), CGPoint(x: x, y: 1.4), .white, 0.9) }
-    }
-
-    static func tennisBall(_ ctx: inout GraphicsContext, _ c: CGPoint, r: Double = 3.2) {
-        Pen.dot(&ctx, c, r, tennisColor)
-        var seam = Path()
-        seam.move(to: CGPoint(x: c.x - r * 0.7, y: c.y - r * 0.7))
-        seam.addQuadCurve(to: CGPoint(x: c.x - r * 0.7, y: c.y + r * 0.7), control: CGPoint(x: c.x + r * 0.2, y: c.y))
-        ctx.stroke(seam, with: .color(.white.opacity(0.9)), lineWidth: 0.7)
-    }
-
-    static func golfBall(_ ctx: inout GraphicsContext, _ c: CGPoint, r: Double = 2.4) {
-        Pen.dot(&ctx, c, r, .white)
-        ctx.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
-                   with: .color(.black.opacity(0.35)), lineWidth: 0.5)
-    }
-
-    static func disc(_ ctx: inout GraphicsContext, _ c: CGPoint, color: Color, tilt: Double = -8) {
-        var b = ctx
-        b.translateBy(x: c.x, y: c.y)
-        b.rotate(by: .degrees(tilt))
-        let rim = Path(ellipseIn: CGRect(x: -9, y: -3.2, width: 18, height: 6.4))
-        b.fill(rim, with: .color(color))
-        b.stroke(rim, with: .color(.black.opacity(0.35)), lineWidth: 0.8)
-        b.stroke(Path(ellipseIn: CGRect(x: -5.5, y: -1.8, width: 11, height: 3.6)), with: .color(.white.opacity(0.5)), lineWidth: 0.7)
-    }
-
-    static func drawItem(_ ctx: inout GraphicsContext, _ item: MoveItem, look: Look) {
-        switch item {
-        case .golfBall(let c): golfBall(&ctx, c)
-        case .soccer(let c): soccerBall(&ctx, c)
-        case .football(let c): football(&ctx, CGPoint(x: c.x, y: c.y - 2), angle: -10)
-        case .basketball(let c): Baller.ball(&ctx, c, spin: 0.4)
-        case .tennis(let c): tennisBall(&ctx, c)
-        case .disc(let c): disc(&ctx, c, color: look.accent == .white ? Swatch.orange.color : look.accent.color)
-
-        case .club(let hands, let a):   // same club as the golfer's round
-            let head = Pen.reach(hands, a, 32)
-            Pen.line(&ctx, hands, head, Color(white: 0.85), 2)
-            ctx.fill(Path(ellipseIn: CGRect(x: head.x - 3.5, y: head.y - 2.5, width: 7, height: 5)),
-                     with: .color(Color(white: 0.7)))
-
-        case .racket(let hand, let a, _):   // handle, throat, oval frame with strings
-            let frame = Color(white: 0.2)
-            let throat = Pen.reach(hand, a, 9)
-            Pen.line(&ctx, Pen.reach(hand, a, -2), throat, frame, 2.4)
-            let c = Pen.reach(hand, a, 17)
-            var head = ctx
-            head.translateBy(x: c.x, y: c.y)
-            head.rotate(by: .degrees(-a))
-            let oval = Path(ellipseIn: CGRect(x: -5.5, y: -8, width: 11, height: 16))
-            head.fill(oval, with: .color(.white.opacity(0.35)))
-            var strings = Path()
-            for x in [-2.6, 0, 2.6] { strings.move(to: CGPoint(x: x, y: -7.4)); strings.addLine(to: CGPoint(x: x, y: 7.4)) }
-            for y in [-4.0, 0, 4] { strings.move(to: CGPoint(x: -5, y: y)); strings.addLine(to: CGPoint(x: 5, y: y)) }
-            head.stroke(strings, with: .color(.black.opacity(0.35)), lineWidth: 0.5)
-            head.stroke(oval, with: .color(look.accent == .white || look.accent == .black ? Swatch.red.color : look.accent.color),
-                        lineWidth: 2)
-
-        case .bat(let hands, let a):   // wooden bat: knob, thin handle, fat barrel
-            let knob = Pen.reach(hands, a, -3), end = Pen.reach(hands, a, 32)
-            let n = CGPoint(x: cos(a * .pi / 180), y: -sin(a * .pi / 180))   // across the bat
-            func side(_ q: CGPoint, _ w: Double) -> CGPoint { CGPoint(x: q.x + n.x * w, y: q.y + n.y * w) }
-            let neck = Pen.reach(hands, a, 13)
-            var bat = Path()
-            bat.move(to: side(knob, 1.1))
-            bat.addLine(to: side(neck, 1.3))
-            bat.addLine(to: side(end, 2.6))
-            bat.addLine(to: side(end, -2.6))
-            bat.addLine(to: side(neck, -1.3))
-            bat.addLine(to: side(knob, -1.1))
-            bat.closeSubpath()
-            ctx.fill(bat, with: .color(wood))
-            Pen.dot(&ctx, end, 2.6, wood)
-            Pen.dot(&ctx, knob, 1.8, Color(red: 0.45, green: 0.30, blue: 0.18))
-
-        case .flag(let bottom, let top, let flutter):
-            Pen.line(&ctx, bottom, top, Color(white: 0.9), 2)
-            Pen.line(&ctx, bottom, top, .black.opacity(0.2), 0.6)
-            let w = 3 * flutter
-            var cloth = Path()
-            cloth.move(to: top)
-            cloth.addQuadCurve(to: CGPoint(x: top.x + 15, y: top.y + 1 + w * 0.4),
-                               control: CGPoint(x: top.x + 7.5, y: top.y - w))
-            cloth.addLine(to: CGPoint(x: top.x + 15, y: top.y + 10 + w * 0.4))
-            cloth.addQuadCurve(to: CGPoint(x: top.x, y: top.y + 10),
-                               control: CGPoint(x: top.x + 7.5, y: top.y + 10 - w))
-            cloth.closeSubpath()
-            ctx.fill(cloth, with: .color(look.accent.color))
-            ctx.stroke(cloth, with: .color(.black.opacity(0.25)), lineWidth: 0.6)
-            Pen.dot(&ctx, top, 1.5, Color(white: 0.9))
-
-        case .speedLines(let k):
-            for (y, len) in [(66.0, 12.0), (80, 16), (94, 11)] {
-                Pen.line(&ctx, CGPoint(x: 22 - len * k, y: y), CGPoint(x: 22, y: y), .gray.opacity(0.55 * k), 2)
-            }
-        }
-    }
-
-    // MARK: Poses
-
-    static func ramp(_ p: Double, _ a: Double, _ b: Double) -> Double { min(1, max(0, (p - a) / (b - a))) }
-    static func smooth(_ x: Double) -> Double { x * x * (3 - 2 * x) }
-    static func easeIn(_ x: Double) -> Double { x * x }
-    static func easeOut(_ x: Double) -> Double { 1 - (1 - x) * (1 - x) }
-    static func mix(_ a: Double, _ b: Double, _ u: Double) -> Double { a + (b - a) * u }
-    static func mix(_ a: CGPoint, _ b: CGPoint, _ u: Double) -> CGPoint {
-        CGPoint(x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u)
-    }
-    static func pt(_ x: Double, _ y: Double) -> CGPoint { CGPoint(x: x, y: y) }
-    static func bez(_ a: CGPoint, _ c: CGPoint, _ b: CGPoint, _ u: Double) -> CGPoint {   // curved path a -> b
-        mix(mix(a, c, u), mix(c, b, u), u)
-    }
-
-    static func pose(_ m: SportMove, p: Double, t: Double) -> MovePose {
-        var o = MovePose()
-        let r = m.release
-        switch m {
-
-        case .golfSwing:   // backswing, hit at release, hold the finish
-            o.footL = pt(39, 128); o.footR = pt(61, 128)
-            // Arms and club move apart (wrist hinge), so the club cocks up early on the way back,
-            // unhinges late on the way down, and finishes up past the shoulder: it stays on the grid.
-            let a: Double, club: Double
-            if p < 0.4 {
-                let u = smooth(p / 0.4); a = -110 * u * u; club = -190 * pow(u, 0.6)
-            } else if p < r {
-                let v = 1 - easeIn(ramp(p, 0.4, r)); a = -110 * v * v; club = -190 * pow(v, 0.6)
-            } else {
-                let w = easeOut(ramp(p, r, 0.65)); a = 110 * w * w; club = 165 * pow(w, 0.6)
-            }
-            let hands = Pen.reach(pt(50, 60), a, 26)
-            o.handL = hands; o.handR = hands
-            o.holdL = true; o.holdR = true
-            o.elbowL = a < 0 ? -1 : 1; o.elbowR = a < 0 ? -1 : 1
-            let finish = ramp(p, r, 0.7)
-            o.footL = mix(pt(39, 128), pt(44, 126), finish)   // back heel comes up in the finish
-            o.headTilt = -4 * finish
-            o.items.append(.club(hands, club))
-            o.contact = pt(53, 122.5)
-            if p < r { o.items.append(.golfBall(o.contact)) }
-
-        case .kick, .fieldGoal:   // step in, plant, kicking leg swings through, ball at the foot until release
-            let step = ramp(p, 0, 0.3)
-            o.footL = pt(mix(42, 51, smooth(step)), 128 - 5 * sin(.pi * step))
-            o.bob = 2.5 * smooth(ramp(p, 0.15, 0.4)) * (1 - smooth(ramp(p, 0.75, 1)))
-            let cock = smooth(ramp(p, 0.08, 0.4))
-            let follow = easeOut(ramp(p, r, 0.8))
-            var f = mix(pt(58, 128), pt(40, 113), cock)
-            f.y -= 5 * sin(.pi * cock)
-            if p >= 0.4 { f = mix(pt(40, 113), pt(74, 123), easeIn(ramp(p, 0.4, r))) }
-            if p >= r { f = mix(pt(74, 123), pt(86, 103), follow) }
-            o.footR = f
-            o.kneeR = -1
-            o.lean = -5 * cock - 5 * follow
-            o.handL = mix(mix(pt(34, 84), pt(30, 74), cock), pt(24, 66), ramp(p, 0.4, r))
-            o.handR = mix(mix(pt(66, 84), pt(50, 80), cock), pt(78, 72), smooth(ramp(p, 0.4, 0.75)))
-            o.elbowL = 1; o.elbowR = -1
-            o.contact = pt(83, 123)
-            if p < r { o.items.append(m == .fieldGoal ? .football(o.contact) : .soccer(o.contact)) }
-
-        case .jumpShot:   // dip, jump, ball up over the head, release at the top, wrist follow-through
-            let dip = smooth(ramp(p, 0, 0.25)), rise = ramp(p, 0.25, 0.5)
-            if p < 0.25 { o.bob = 6 * dip }
-            else if p < 0.5 { o.bob = mix(6, -12, easeOut(rise)) }
-            else if p < 0.62 { o.bob = -12 }
-            else if p < 0.86 { o.bob = -12 * (1 - easeIn(ramp(p, 0.62, 0.86))) }
-            else { o.bob = 4 * sin(.pi * ramp(p, 0.86, 1)) }
-            let air = min(0, o.bob)
-            o.footL = pt(43 + 2 * ramp(-air, 0, 12), 128 + air)
-            o.footR = pt(57 - 1 * ramp(-air, 0, 12), 128 + air)
-            o.kneeL = 1; o.kneeR = -1
-            let up = smooth(rise)
-            let flick = smooth(ramp(p, r, r + 0.12))
-            let settle = smooth(ramp(p, 0.86, 1))
-            o.handL = mix(mix(pt(43, 78 + 3 * dip), pt(57, 33), up), pt(54, 40), flick * 0.6 + settle * 0.2)
-            o.handR = mix(mix(pt(58, 78 + 3 * dip), pt(65, 31), up), pt(72, 34), flick)
-            o.elbowL = up > 0.5 ? -1 : 1; o.elbowR = up > 0.5 ? 1 : -1
-            o.openR = p >= r
-            o.holdL = true; o.holdR = true
-            o.headTilt = -5 * up
-            let ball = mix(pt(51, 71 + 3 * dip), pt(65, 23), up)
-            o.contact = o.ground(ball)
-            if p < r { o.items.append(.basketball(o.contact)) }
-
-        case .serve:   // toss up, racket back, reach up and hit at release, follow through forward
-            let rise = ramp(p, 0.42, r), land = ramp(p, r, 0.8)
-            if p < 0.42 { o.bob = 3 * smooth(ramp(p, 0.15, 0.42)) }
-            else if p < r { o.bob = mix(3, -4, easeOut(rise)) }
-            else { o.bob = -4 * (1 - smooth(land)) + 2 * sin(.pi * land) }
-            let air = min(0, o.bob)
-            o.footL = pt(41, 128 + air); o.footR = pt(59 + 3 * smooth(land), 128 + air)
-            // Left hand tosses the ball, stays up pointing at it, then comes down.
-            // (swings round the outside of the shoulder, so it never crosses the face)
-            let toss = smooth(ramp(p, 0, 0.25))
-            var armL = mix(352, 167, toss)
-            if p > r { armL = mix(167, 352, smooth(ramp(p, r, 0.85))) }
-            o.handL = Pen.reach(pt(39, 57), armL, 26.7)
-            o.elbowL = 1
-            // Racket hand.
-            var a: Double
-            if p < 0.4 {
-                let u = smooth(ramp(p, 0.05, 0.4))
-                o.handR = mix(pt(67, 82), pt(72, 47), u); a = mix(40, -15, u)
-            } else if p < r {
-                let u = easeIn(ramp(p, 0.4, r))
-                o.handR = mix(pt(72, 47), pt(66, 30), u); a = mix(-15, 170, u)
-            } else {
-                let u = easeOut(ramp(p, r, 0.82))
-                o.handR = mix(pt(66, 30), pt(72, 76), u); a = mix(170, 55, u)
-            }
-            o.elbowR = p < 0.4 ? -1 : 1
-            o.holdR = true
-            o.holdL = true   // the toss hand (no jump when the ball leaves it)
-            let behind = a < 25 && p > 0.2
-            o.items.append(.racket(o.ground(o.handR), a, behind: behind))
-            o.contact = o.ground(Pen.reach(o.handR, a, 17))   // racket face (exact at release)
-            let hit = MovePose(bob: -4).ground(Pen.reach(pt(66, 30), 170, 17))
-            if p < 0.25 {
-                o.items.append(.tennis(o.ground(pt(o.handL.x + 1, o.handL.y - 5))))
-            } else if p < r {   // in the air: up past the racket, then down onto it
-                let u = ramp(p, 0.25, r)
-                let start = pt(46, 26), end = hit
-                o.items.append(.tennis(pt(mix(start.x, end.x, u), mix(start.y, end.y, u) - 12 * sin(.pi * u))))
-            }
-
-        case .batSwing:   // stance, bat back, swing through at release, finish high
-            let load = smooth(ramp(p, 0, 0.3)), swing = easeIn(ramp(p, 0.3, r)), follow = easeOut(ramp(p, r, 0.8))
-            let stride = ramp(p, 0.12, 0.38)
-            o.footL = pt(37, 128)
-            o.footR = pt(mix(61, 67, smooth(stride)), 128 - 6 * sin(.pi * stride))
-            o.kneeL = 1; o.kneeR = -1
-            o.bob = 2 * load * (1 - follow) + 1
-            o.lean = -6 * load * (1 - swing) + 6 * swing - 2 * follow
-            var hands: CGPoint, a: Double
-            if p < 0.3 { hands = mix(pt(45, 54), pt(41, 50), load); a = mix(212, 222, load) }
-            else if p < r { hands = mix(pt(41, 50), pt(58, 74), swing); a = mix(222, 90, swing) }
-            else { hands = mix(pt(58, 74), pt(66, 48), follow); a = mix(90, 150, follow) }
-            o.handL = hands; o.handR = Pen.reach(hands, a, 4)
-            o.holdL = true; o.holdR = true
-            o.elbowL = -1; o.elbowR = 1
-            o.items.append(.bat(o.ground(hands), a - o.lean))
-            o.contact = o.ground(Pen.reach(hands, a, 24))   // the bat's sweet spot (exact at release)
-
-        case .sprint:   // fast run with a forward lean, lean through the line at release
-            let run = min(p, r) / r
-            let phi = 2 * .pi * 3 * run
-            let finish = smooth(ramp(p, 0.7, 0.9))
-            o.lean = 13 + 10 * finish
-            o.bob = -2.5 * abs(sin(phi)) * (1 - finish) + 2 * finish
-            func foot(_ q: Double) -> CGPoint {
-                pt(50 + 18 * cos(q), 128 + min(0, o.bob) - 16 * max(0, -sin(q)))
-            }
-            o.footR = foot(phi); o.footL = foot(phi + .pi)
-            o.kneeL = -1; o.kneeR = -1
-            // Arms pump opposite to the legs: front hand up by the chin, back hand down behind.
-            let swingR = (1 - cos(phi)) / 2
-            o.handR = mix(mix(pt(55, 84), pt(76, 62), swingR), pt(44, 86), finish)
-            o.handL = mix(mix(pt(27, 82), pt(54, 64), 1 - swingR), pt(24, 80), finish)   // arms back to dip
-            o.elbowL = 1; o.elbowR = 1
-            if p < r { o.items.append(.speedLines(1 - finish)) }
-            o.contact = pt(68, 128)
-
-        case .hail:   // arm shoots up waving, other hand on the hip, little hop
-            let raise = easeOut(ramp(p, 0, r))
-            o.bob = -6 * sin(.pi * ramp(p, 0.2, 0.6))
-            let air = min(0, o.bob)
-            o.footL = pt(42, 128 + air); o.footR = pt(58, 128 + air)
-            o.kneeL = 1; o.kneeR = -1
-            let wave = 5 * sin(2 * .pi * 2 * ramp(p, r, 1))
-            o.handR = mix(pt(66, 84), pt(65 + wave, 27), raise)
-            o.elbowR = raise > 0.4 ? 1 : -1
-            o.openR = raise > 0.6
-            o.holdR = true
-            o.handL = mix(pt(34, 84), pt(43, 85), smooth(ramp(p, 0, 0.3)))
-            o.elbowL = 1
-            o.headTilt = -5 * raise
-            o.contact = o.ground(o.handR)
-
-        case .jog:   // easy jog, a friendly wave at release
-            let phi = 2 * .pi * 2 * p
-            o.lean = 4
-            o.bob = -2 * abs(sin(phi))
-            func foot(_ q: Double) -> CGPoint { pt(50 + 9 * cos(q), 128 + o.bob - 8 * max(0, -sin(q))) }
-            o.footR = foot(phi); o.footL = foot(phi + .pi)
-            o.kneeL = -1; o.kneeR = -1
-            let swingR = (1 - cos(phi)) / 2
-            o.handL = mix(pt(31, 80), pt(47, 70), 1 - swingR)
-            let jogR = mix(pt(58, 82), pt(71, 69), swingR)
-            let up = smooth(ramp(p, 0.42, r)) * (1 - smooth(ramp(p, 0.85, 1)))
-            let wave = 5 * sin(2 * .pi * 1.5 * ramp(p, r, 0.85))
-            o.handR = mix(jogR, pt(67 + wave, 30), up)
-            o.elbowL = 1; o.elbowR = up > 0.4 ? 1 : 1
-            o.openR = up > 0.6
-            o.headTilt = -3 * up
-            let atR = foot(2 * .pi * 2 * r), other = foot(2 * .pi * 2 * r + .pi)
-            o.contact = atR.x > other.x ? atR : other
-
-        case .throwDisc:   // backhand: disc across the body, uncoil, let go with the arm out front
-            let coil = smooth(ramp(p, 0, 0.35)), throwU = easeIn(ramp(p, 0.35, r)), follow = easeOut(ramp(p, r, 0.8))
-            let stride = ramp(p, 0.25, r)
-            o.footL = pt(41, 128)
-            o.footR = pt(mix(58, 68, smooth(stride)), 128 - 5 * sin(.pi * stride))
-            o.lean = -7 * coil * (1 - throwU) + 7 * throwU - 2 * follow
-            o.bob = 2 * coil * (1 - follow)
-            var h: CGPoint
-            if p < 0.35 { h = mix(pt(66, 84), pt(41, 73), coil) }
-            else if p < r { h = mix(pt(41, 73), pt(86, 64), throwU) }
-            else { h = mix(pt(86, 64), pt(82, 50), follow) }
-            o.handR = h
-            o.holdR = true
-            o.elbowR = p < 0.35 ? 1 : -1
-            o.handL = mix(mix(pt(34, 84), pt(36, 78), coil), pt(22, 70), smooth(ramp(p, 0.35, 0.7)))
-            o.elbowL = 1
-            o.contact = o.ground(pt(h.x + 3, h.y))
-            if p < r { o.items.append(.disc(o.contact)) }
-
-        case .plantFlag:   // lift the flag high, drive it into the ground, hands on hips
-            let lift = smooth(ramp(p, 0, 0.35)), drive = easeIn(ramp(p, 0.38, r)), proud = smooth(ramp(p, r + 0.05, 0.85))
-            o.bob = p < r ? -1.5 * lift * (1 - drive) + 9 * drive : 9 * (1 - proud)
-            o.lean = p < r ? -4 * lift * (1 - drive) + 14 * drive : 14 * (1 - proud) - 3 * proud
-            o.footL = pt(41, 128)
-            let stride = ramp(p, 0.36, r)
-            o.footR = pt(mix(59, 63, smooth(stride)) - 4 * proud, 128 - 4 * sin(.pi * stride))
-            o.kneeL = 1; o.kneeR = -1
-            let base = pt(76, 130)
-            o.holdR = true
-            if p < r {
-                var grip = mix(pt(70, 90), pt(71, 40), lift)
-                if p >= 0.38 { grip = mix(pt(71, 40), pt(76, 100), drive) }
-                o.handR = o.upper(grip)
-                o.elbowR = -1
-                o.items.append(.flag(bottom: pt(grip.x, grip.y + 30), top: pt(grip.x, grip.y - 10), flutter: sin(t * 7)))
-                o.handL = mix(pt(34, 84), pt(36, 78), lift)
-            } else {
-                let letGo = o.upper(pt(76, 100))
-                o.handR = mix(letGo, pt(57, 85), proud)
-                o.elbowR = -1
-                o.handL = mix(pt(36, 78), pt(43, 85), proud)
-                o.items.append(.flag(bottom: base, top: pt(76, 90), flutter: sin(t * 7)))
-            }
-            o.elbowL = 1
-            o.headTilt = -4 * proud
-            o.contact = base
-        }
-        return o
     }
 }

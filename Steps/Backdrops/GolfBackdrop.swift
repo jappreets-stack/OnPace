@@ -3,9 +3,6 @@ import SwiftUI
 // Golf: rolling fairway leading to a putting green with a waving flag, bunkers, a tree line and hills.
 // Light mode = sunny afternoon. Dark mode = dusk with a warm glow on the horizon, moon and stars.
 enum GolfBackdrop {
-    // The ball drops into the cup.
-    static func target(_ f: BackdropFrame) -> CGPoint { CGPoint(x: f.targetX, y: cupY(f)) }
-
     private static func cupY(_ f: BackdropFrame) -> Double { f.horizon - 6 }
     private static func rgb(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1) -> Color {
         Color(red: r, green: g, blue: b).opacity(a)

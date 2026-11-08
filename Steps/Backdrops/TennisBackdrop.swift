@@ -132,13 +132,6 @@ enum TennisBackdrop {
         Sketch.gradient(&ctx, vig, [.clear, rgb(0, 0, 0.05, dk ? 0.35 : 0.15)])
     }
 
-    // On the court, past the net, to the right: inside the far service box.
-    static func target(_ f: BackdropFrame) -> CGPoint {
-        let c = cam(f)
-        let d = 17.6
-        return CGPoint(x: f.targetX, y: c.y(d))
-    }
-
     // MARK: - Pieces
 
     private static func stands(_ ctx: inout GraphicsContext, _ f: BackdropFrame, bottom: Double) {
