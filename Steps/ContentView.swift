@@ -160,13 +160,6 @@ enum Theme: String, CaseIterable, Identifiable {
     var done: Color { .green }
 }
 
-// How much of the scene shows behind the Today screen.
-enum SceneStyle: String, CaseIterable, Identifiable {
-    case full, calm, plain
-    var id: String { rawValue }
-    var name: String { rawValue.capitalized }
-}
-
 // MARK: - Main screen
 
 struct ContentView: View {
@@ -174,7 +167,6 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("goal") private var goal = 10_000
     @AppStorage("theme") private var theme: Theme = .system
-    @AppStorage("sceneStyle") private var sceneStyle: SceneStyle = .calm
     @AppStorage("roundStart") private var roundStart: Double = 0
     @AppStorage("avatar") private var avatar: Avatar = .golfer
     @AppStorage("look") private var look: Look = .starter
@@ -250,12 +242,10 @@ struct ContentView: View {
         ZStack {
             // The golf course scene fills the whole screen; its ground lines up with your mini-me's feet.
             BackdropView(backdrop: backdrop, horizon: horizonY, signText: "",
-                         animated: sceneStyle == .full)
-                // Calm: the same scene, softly blurred and faded so the ring and numbers lead.
-                .blur(radius: sceneStyle == .calm ? 7 : 0)
-                .overlay { theme.background.opacity(sceneStyle == .calm ? 0.35 : 0).ignoresSafeArea() }
-                // Plain: just the theme color.
-                .overlay { if sceneStyle == .plain { theme.background.ignoresSafeArea() } }
+                         animated: false)
+                // Softly blurred and faded so the ring and numbers lead.
+                .blur(radius: 7)
+                .overlay { theme.background.opacity(0.35).ignoresSafeArea() }
             ScrollView {
                 VStack(spacing: 22) {
                     HStack {
@@ -723,7 +713,6 @@ struct SettingsView: View {
     @Binding var look: Look
     @AppStorage("importWorkouts") private var importWorkouts = true
     @AppStorage("didSetup") private var didSetup = true
-    @AppStorage("sceneStyle") private var sceneStyle: SceneStyle = .calm
     @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
     @Environment(\.dismiss) private var dismiss
 
@@ -764,18 +753,12 @@ struct SettingsView: View {
                         ForEach(Theme.allCases) { Text($0.name).tag($0) }
                     }
                     .pickerStyle(.segmented)
-                    if appStyle == .original {
-                        Picker("Background", selection: $sceneStyle) {
-                            ForEach(SceneStyle.allCases) { Text($0.name).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                    }
                 } header: {
                     Text("Look")
                 } footer: {
                     switch appStyle {
                     case .original:
-                        Text("Style changes how the whole app looks. Background: Full shows the whole scene, Calm softens it, Plain hides it.")
+                        Text("Style changes how the whole app looks. Original shows a soft golf course behind your mini-me.")
                     case .minimal:
                         Text("Style changes how the whole app looks. Clean minimal is simple and calm, with no scene behind your mini-me.")
                     case .retro16:
