@@ -13,6 +13,10 @@ import WidgetKit
 struct StepsWatch_Watch_AppApp: App {
     init() {
         WatchSync.shared.start()          // receives goal + mini-me from the iPhone
+        #if DEBUG
+        // Simulator testing: `-appStyle retro16` (the phone normally sends the style).
+        if let style = UserDefaults.standard.string(forKey: "appStyle") { Shared.defaults.set(style, forKey: Shared.appStyleKey) }
+        #endif
         FaceRefresher.shared.start()      // redraws complications when Health gets new steps
     }
 

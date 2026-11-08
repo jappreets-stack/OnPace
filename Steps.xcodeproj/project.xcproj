@@ -24,7 +24,9 @@
           "target": "StepsWatch Watch App",
           "inclusions": [
             "Characters.swift",
+            "MinimalStyle.swift",
             "Pace.swift",
+            "Retro16Style.swift",
             "SharedSettings.swift",
             "Walking.swift",
           ],

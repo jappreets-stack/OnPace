@@ -492,14 +492,20 @@ struct Retro16SceneWindow: View {
         stamp(cols - 9, horizon + 2)
     }
 
-    // Chunky gold blocks around the mini-me, filled as you walk (clockwise from the top).
     private func ring(_ px: Pix, _ cx: Int, _ cy: Int, _ night: Bool) {
+        Retro16.blockRing(px, cx: cx, cy: cy, radius: Self.radius, progress: progress, night: night)
+    }
+}
+
+extension Retro16 {
+    // Chunky gold blocks in a circle, filled as you walk (clockwise from the top). Phone scene + watch ring.
+    static func blockRing(_ px: Pix, cx: Int, cy: Int, radius: Int, progress: Double, night: Bool) {
         let blocks = 40
         let lit = Int((progress * Double(blocks)).rounded(.down))
         for i in 0..<blocks {
             let a = Double(i) / Double(blocks) * 2 * .pi - .pi / 2
-            let bx = cx + Int((cos(a) * Double(Self.radius)).rounded()) - 1
-            let by = cy + Int((sin(a) * Double(Self.radius)).rounded()) - 1
+            let bx = cx + Int((cos(a) * Double(radius)).rounded()) - 1
+            let by = cy + Int((sin(a) * Double(radius)).rounded()) - 1
             let on = i < lit || (i == 0 && progress > 0)
             px.rect(bx - 1, by - 1, 4, 4, Retro16.ink.opacity(on ? 1 : 0.6))
             if on {
@@ -510,6 +516,47 @@ struct Retro16SceneWindow: View {
                 px.rect(bx, by, 2, 2, night ? hex(0x4A5088) : Color.white.opacity(0.55))
             }
         }
+    }
+}
+
+// The gold block ring on its own, filling its square frame (the watch's ring page).
+struct Retro16BlockRing: View {
+    let progress: Double
+    var body: some View {
+        Canvas { ctx, size in
+            let side = min(size.width, size.height)
+            let p = max(2, (side / 80).rounded(.down))
+            let cols = Int(side / p)
+            ctx.translateBy(x: (size.width - CGFloat(cols) * p) / 2, y: (size.height - CGFloat(cols) * p) / 2)
+            Retro16.blockRing(Pix(ctx: ctx, p: p), cx: cols / 2, cy: cols / 2, radius: cols / 2 - 3,
+                              progress: progress, night: true)
+        }
+    }
+}
+
+// Your pixel mini-me on its own, animated at 8 fps (the watch's ring page). Feet on the bottom edge.
+struct Retro16Sprite: View {
+    let look: Look
+    let avatar: Avatar
+    let mood: Mood
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 8, paused: reduceMotion)) { tl in
+            Canvas { ctx, size in
+                let p = max(1, min(size.width / CGFloat(RetroSprite.width),
+                                   size.height / CGFloat(RetroSprite.height + 3)).rounded(.down))
+                ctx.translateBy(x: (size.width - CGFloat(RetroSprite.width) * p) / 2,
+                                y: size.height - CGFloat(RetroSprite.height + 3) * p)
+                let tick = reduceMotion ? 0 : Int(tl.date.timeIntervalSinceReferenceDate * 8)
+                let (grid, lift) = RetroSprite.frame(look, avatar: avatar, mood: mood, tick: tick)
+                let px = Pix(ctx: ctx, p: p)
+                let shadowY = RetroSprite.height + 2   // the row under the feet
+                px.rect(RetroSprite.centerX - 5 + lift / 2, shadowY, 10 - lift, 1, Color.white.opacity(0.18))
+                grid.draw(px, 0, 2 - lift, RetroSprite.palette(look))
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 

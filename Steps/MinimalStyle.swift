@@ -17,8 +17,13 @@ enum AppStyle: String, CaseIterable, Identifiable {
 // Clean minimal: plain system colors, one green accent, Apple-style grouped cards.
 enum Minimal {
     static let accent = Color(red: 0.19, green: 0.82, blue: 0.36)
+    #if os(iOS)
     static let background = Color(.systemGroupedBackground)
     static let card = Color(.secondarySystemGroupedBackground)
+    #else
+    static let background = Color.black
+    static let card = Color.white.opacity(0.12)
+    #endif
     static let ringWidth: CGFloat = 22
 }
 

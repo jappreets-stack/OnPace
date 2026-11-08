@@ -46,7 +46,7 @@ a hand-drawn animated character that reacts to how your day is going.
 - Ring page centered for the Ultra 2 screen, with your mini-me, step count, distance walked ("4.9 miles walked"), and pace
 - Mini-me walks when you walk (Core Motion), same moods as the phone
 - Stats page (streak, pace, forecast, distance) and a 7-day bar chart, paged with the Digital Crown
-- **Synced from the iPhone:** goal, mini-me (outfit + whole look), and with every refresh today's steps,
+- **Synced from the iPhone:** goal, mini-me (outfit + whole look), style (Clean minimal, 16-bit gold block ring + pixel mini-me, or Original), and with every refresh today's steps,
   distance, streak, last 7 days, your usual-day pace pattern, and today's sessions (the watch's own copy of Apple Health
   is missing steps the iPhone counted, so the watch and its complications use the phone's numbers when they're newer)
 - **Matches Apple Health exactly:** today's steps on the watch and its complications come only from the watch's
@@ -102,7 +102,7 @@ a hand-drawn animated character that reacts to how your day is going.
   minutes of walking would close the gap). One shared `Pace.swift` drives the phone, watch, and complications.
 - **Your look:** one `Look` struct (Codable, saved as JSON in `@AppStorage`) drives every drawing.
   Missing fields fall back to defaults when decoding, so adding new options never resets a saved look.
-- **Phone → watch sync:** the iPhone is the source of truth. `PhoneSync` sends goal and mini-me with
+- **Phone → watch sync:** the iPhone is the source of truth. `PhoneSync` sends goal, mini-me, and style with
   WatchConnectivity's application context (the watch always gets the latest copy, even if it was asleep).
   `WatchSync` saves them in an App Group, which both the watch app and its WidgetKit complications read.
 - **Workouts:** an `HKAnchoredObjectQueryDescriptor` picks up newly finished workouts each time the app refreshes.

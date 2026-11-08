@@ -192,8 +192,9 @@ struct ContentView: View {
     @AppStorage(Shared.goalKey, store: Shared.defaults) private var goal = 10_000
     @AppStorage(Shared.avatarKey, store: Shared.defaults) private var avatar: Avatar = .golfer
     @AppStorage(Shared.lookKey, store: Shared.defaults) private var look: Look = .starter
+    @AppStorage(Shared.appStyleKey, store: Shared.defaults) private var appStyle: AppStyle = .minimal
     private let funUnit = FunUnit.walked
-    // Watch only.
+    // Watch only (Original style).
     @AppStorage("ringStyle") private var style: RingStyle = .icon
     // Sent by the iPhone with every refresh (see PhoneSync): today's steps and sessions.
     @AppStorage(Shared.stepsDateKey, store: Shared.defaults) private var phoneStamp = ""   // changes with every phone refresh
@@ -254,30 +255,52 @@ struct ContentView: View {
             // the clock (top right) and page dots (right), measured on the Ultra 2.
             let d = min(screen.width * 0.77, screen.height - 88)
             let line = d * 0.08
-            let color = hitGoal ? style.done : style.ring
+            let retro = appStyle == .retro16
+            let color = retro ? Retro16.gold : appStyle == .minimal ? Minimal.accent : hitGoal ? style.done : style.ring
+            let design: Font.Design = retro ? .monospaced : .rounded
             ZStack {
-                Circle()
-                    .stroke(color.opacity(0.18), lineWidth: line)
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(AngularGradient(colors: [color.opacity(0.55), color],
-                                            center: .center,
-                                            startAngle: .degrees(0),
-                                            endAngle: .degrees(360 * max(progress, 0.01))),
-                            style: StrokeStyle(lineWidth: line, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .shadow(color: color.opacity(0.5), radius: 4)
-                    .animation(.easeOut(duration: 0.6), value: progress)
+                switch appStyle {
+                case .retro16:
+                    Retro16BlockRing(progress: progress)
+                case .minimal:
+                    // Clean minimal: one flat green ring, like the phone.
+                    Circle()
+                        .stroke(Color.white.opacity(0.12), lineWidth: line)
+                    Circle()
+                        .trim(from: 0, to: progress)
+                        .stroke(color, style: StrokeStyle(lineWidth: line, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .animation(.easeOut(duration: 0.6), value: progress)
+                case .original:
+                    Circle()
+                        .stroke(color.opacity(0.18), lineWidth: line)
+                    Circle()
+                        .trim(from: 0, to: progress)
+                        .stroke(AngularGradient(colors: [color.opacity(0.55), color],
+                                                center: .center,
+                                                startAngle: .degrees(0),
+                                                endAngle: .degrees(360 * max(progress, 0.01))),
+                                style: StrokeStyle(lineWidth: line, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .shadow(color: color.opacity(0.5), radius: 4)
+                        .animation(.easeOut(duration: 0.6), value: progress)
+                }
                 VStack(spacing: 0) {
-                    CharacterView(avatar: avatar, mood: mood, look: look)
-                        .frame(width: d * 0.36, height: d * 0.41)
+                    if retro {
+                        Retro16Sprite(look: look, avatar: avatar, mood: mood)
+                            .frame(width: d * 0.36, height: d * 0.41)
+                    } else {
+                        CharacterView(avatar: avatar, mood: mood, look: look)
+                            .frame(width: d * 0.36, height: d * 0.41)
+                    }
                     Text(store.today, format: .number)
-                        .font(.system(size: d * 0.17, weight: .bold, design: .rounded))
+                        .font(.system(size: d * (retro ? 0.15 : 0.17), weight: retro ? .heavy : .bold, design: design))
+                        .foregroundStyle(retro ? Retro16.goldLight : .white)
                         .monospacedDigit()
                         .minimumScaleFactor(0.6)
                     // How far you walked today, in your fun unit ("4.9 miles walked").
                     Text(funUnit.phrase(store.today, meters: store.todayMeters))
-                        .font(.system(size: d * 0.065, weight: .medium, design: .rounded))
+                        .font(.system(size: d * 0.065, weight: .medium, design: design))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
@@ -286,7 +309,7 @@ struct ContentView: View {
                     Text(hitGoal ? "🎉 Goal hit"
                          : onPace ? "✅ On pace"
                          : "⏳ \(pace.behindText) · walk \(pace.catchUpMinutes) min")
-                        .font(.system(size: d * 0.075, weight: .semibold, design: .rounded))
+                        .font(.system(size: d * 0.075, weight: .semibold, design: design))
                         .foregroundStyle(hitGoal || onPace ? color : .orange)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
@@ -401,11 +424,12 @@ struct ContentView: View {
                 HStack(spacing: 10) {
                     CharacterView(avatar: avatar, mood: .walk, look: look)
                         .frame(width: 30, height: 42)
-                    Text("Change your mini-me, goal and fun unit on your iPhone.")
+                    Text("Change your mini-me, goal and style on your iPhone.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
+            if appStyle == .original {
             Section("Ring color") {
                 ForEach(RingStyle.allCases) { option in
                     Button {
@@ -420,6 +444,7 @@ struct ContentView: View {
                         }
                     }
                 }
+            }
             }
         }
     }
