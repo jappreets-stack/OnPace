@@ -43,7 +43,7 @@ a hand-drawn animated character that reacts to how your day is going.
   (see below)
 
 **Apple Watch**
-- Ring page centered for the Ultra 2 screen, with your mini-me, step count, distance walked ("4.9 miles walked"), pace, and a small golf scene
+- Ring page centered for the Ultra 2 screen, with your mini-me, step count, distance walked ("4.9 miles walked"), and pace
 - Mini-me walks when you walk (Core Motion), same moods as the phone
 - Stats page (streak, pace, forecast, distance) and a 7-day bar chart, paged with the Digital Crown
 - **Synced from the iPhone:** goal, mini-me (outfit + whole look), and with every refresh today's steps,

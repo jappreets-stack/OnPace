@@ -273,7 +273,7 @@ struct ContentView: View {
     // Left to goal, pace, forecast, streak. Original uses emoji; Clean minimal and 16-bit use SF Symbols.
     private func infoRows(symbols: Bool, tint: Color = Minimal.accent) -> some View {
         return VStack(spacing: 0) {
-            InfoRow(icon: "👟", label: hitGoal ? "Goal hit 🎉" : "Left to reach goal",
+            InfoRow(icon: "👟", label: hitGoal ? "Goal hit 🎉" : "Left to goal",
                     value: hitGoal ? "+\((store.today - goal).formatted())"
                                    : (goal - store.today).formatted(),
                     symbol: symbols ? (hitGoal ? "checkmark.circle.fill" : "figure.walk") : nil, symbolTint: tint)

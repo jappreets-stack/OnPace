@@ -253,9 +253,6 @@ struct ContentView: View {
             let line = d * 0.08
             let color = hitGoal ? style.done : style.ring
             ZStack {
-                // Scene for your fun unit (soccer field, track, ...), same as the phone's ring.
-                UnitScene(unit: .holes, horizon: 124, lowMarks: false)
-                    .clipShape(Circle().inset(by: line / 2))
                 Circle()
                     .stroke(color.opacity(0.18), lineWidth: line)
                 Circle()
@@ -311,7 +308,7 @@ struct ContentView: View {
     // Same order as the phone's Today card: steps left, pace, finish time, streak.
     private var statsPage: some View {
         VStack(spacing: 5) {
-            StatRow(icon: "👟", title: hitGoal ? "Goal hit" : "Left to reach goal",
+            StatRow(icon: "👟", title: hitGoal ? "Goal hit" : "Left to goal",
                     value: hitGoal ? "+\((store.today - goal).formatted())" : (goal - store.today).formatted())
             StatRow(icon: onPace ? "✅" : "⏳",
                     title: (pace.isPersonal ? "Your pace" : "Pace") + (onPace ? "" : " · \(pace.behindText)"),
