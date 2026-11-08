@@ -57,12 +57,6 @@ struct StepsProvider: TimelineProvider {
     }
 
     nonisolated static func load() async -> StepsEntry {
-        let entry = await read()
-        FaceLog.add("face loaded \(entry.steps.formatted())")
-        return entry
-    }
-
-    nonisolated private static func read() async -> StepsEntry {
         let health = HKHealthStore()
         let stepType = HKQuantityType(.stepCount)
         let cal = Calendar.current

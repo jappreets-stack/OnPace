@@ -222,9 +222,6 @@ struct ContentView: View {
             if !sessions.isEmpty { sessionsPage }
             weekPage
             colorPage
-            #if DEBUG
-            faceLogPage
-            #endif
         }
         .tabViewStyle(.verticalPage)
         .task {
@@ -346,21 +343,6 @@ struct ContentView: View {
         }
         .padding(.horizontal, 4)
     }
-
-    #if DEBUG
-    // Debug only: when the watch face last updated, newest first.
-    private var faceLogPage: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Face updates").font(.headline)
-                ForEach(Array(FaceLog.lines.reversed().enumerated()), id: \.offset) { _, line in
-                    Text(line).font(.system(size: 12)).lineLimit(1).minimumScaleFactor(0.7)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-    #endif
 
     // Page 3: last 7 days as little bars, ✅ on goal days.
     // Today's sessions (yours and finished workouts from the Workout app), sent by the iPhone.

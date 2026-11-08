@@ -41,13 +41,10 @@ nonisolated final class FaceRefresher: @unchecked Sendable {
         started = true
         let steps = HKQuantityType(.stepCount)
         let query = HKObserverQuery(sampleType: steps, predicate: nil) { _, done, error in
-            FaceLog.add(error == nil ? "Health woke app" : "Health wake error")
             if error == nil { WidgetCenter.shared.reloadAllTimelines() }
             done()
         }
         health.execute(query)
-        health.enableBackgroundDelivery(for: steps, frequency: .immediate) { ok, error in
-            FaceLog.add(ok ? "wake-ups on" : "wake-ups OFF: \(error?.localizedDescription ?? "?")")
-        }
+        health.enableBackgroundDelivery(for: steps, frequency: .immediate) { _, _ in }
     }
 }

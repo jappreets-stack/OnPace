@@ -179,17 +179,3 @@ nonisolated struct WatchSession: Codable, Hashable {
     let steps: Int
     let distance: String
 }
-
-// Debug only: a short log of watch-face updates (when Health woke the app, when the face reloaded and
-// with how many steps), saved in the App Group so the watch app can show it. Nothing is logged in release builds.
-nonisolated enum FaceLog {
-    static let key = "faceLog"
-    static func add(_ text: String) {
-        #if DEBUG
-        let d = Shared.defaults
-        let time = Date.now.formatted(date: .omitted, time: .shortened)
-        d.set(Array(((d.stringArray(forKey: key) ?? []) + ["\(time) \(text)"]).suffix(40)), forKey: key)
-        #endif
-    }
-    static var lines: [String] { Shared.defaults.stringArray(forKey: key) ?? [] }
-}
