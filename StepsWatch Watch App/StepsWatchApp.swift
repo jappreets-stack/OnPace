@@ -14,8 +14,9 @@ struct StepsWatch_Watch_AppApp: App {
     init() {
         WatchSync.shared.start()          // receives goal + mini-me from the iPhone
         #if DEBUG
-        // Simulator testing: `-appStyle retro16` (the phone normally sends the style).
+        // Simulator testing: `-appStyle retro16`, `-look <json>` (the phone normally sends these).
         if let style = UserDefaults.standard.string(forKey: "appStyle") { Shared.defaults.set(style, forKey: Shared.appStyleKey) }
+        if let look = UserDefaults.standard.string(forKey: "look") { Shared.defaults.set(look, forKey: Shared.lookKey) }
         #endif
         FaceRefresher.shared.start()      // redraws complications when Health gets new steps
     }

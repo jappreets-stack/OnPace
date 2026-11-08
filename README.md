@@ -5,14 +5,21 @@ It reads your step count from Apple Health and shows progress toward a daily goa
 a hand-drawn animated character that reacts to how your day is going.
 
 <p align="center">
-  <img src="Screenshots/iphone-main.png" width="260" alt="iPhone Today screen in the Clean minimal style: green goal ring, mini-me, and a card of pace rows">
-  &nbsp;&nbsp;&nbsp;
-  <img src="Screenshots/watch-ring.png" width="220" alt="Apple Watch Ultra 2 ring screen">
-  &nbsp;&nbsp;&nbsp;
-  <img src="Screenshots/iphone-history.png" width="260" alt="History tab: last 7 days with a tiny you on each bar">
-  &nbsp;&nbsp;&nbsp;
-  <img src="Screenshots/iphone-builder.png" width="260" alt="Build your mini-me character builder">
+  <img src="Screenshots/iphone-main.png" width="240" alt="iPhone Today screen, Clean minimal style: green goal ring, character, and a card of pace rows">
+  &nbsp;
+  <img src="Screenshots/iphone-retro16.png" width="240" alt="iPhone Today screen, 16-bit adventure style: pixel castle world and a ring of gold blocks">
+  &nbsp;
+  <img src="Screenshots/iphone-original.png" width="240" alt="iPhone Today screen, Original style: blue ring and emoji icons">
 </p>
+<p align="center">
+  <img src="Screenshots/watch-ring.png" width="200" alt="Apple Watch ring screen, Clean minimal style">
+  &nbsp;
+  <img src="Screenshots/watch-retro16.png" width="200" alt="Apple Watch ring screen, 16-bit adventure style">
+  &nbsp;
+  <img src="Screenshots/iphone-history.png" width="240" alt="History tab: last 7 days with a tiny character on each bar">
+</p>
+
+<p align="center"><b>Now in TestFlight.</b> · <a href="https://jappreets-stack.github.io/OnPace/privacy.html">Privacy policy</a> (no account, no data collected, everything stays on your devices)</p>
 
 ## Features
 
@@ -25,7 +32,8 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Styles:** Clean minimal (default: Apple-style grouped cards, one green ring, SF Symbols), 16-bit adventure
   (original pixel art drawn in code: mountains and a castle by day or under the stars, a gold block ring, a pixel
   mini-me built from your look with walk / stand / slump / celebrate / swing frames, RPG-style menu panels), or
-  Original (emoji icons and a blue ring); theme Auto, Light, or Dark
+  Original (emoji icons and a blue ring); light or dark. The style is its own section at the top of Settings
+  and follows you to the Apple Watch
 - **Your mini-me walks when you walk:** Core Motion activity (walking / running) drives the animation only; when you
   stop it stands (on pace), slumps (behind), or celebrates (goal hit). Step counts still come only from Apple Health
 - **Home-screen widget:** a small ring with today's steps and how many are left (reads Apple Health, falls back to
@@ -74,10 +82,10 @@ a hand-drawn animated character that reacts to how your day is going.
 - Drawn entirely in code with SwiftUI `Canvas` + `TimelineView` on a 100×140 grid. No image assets.
 - Three outfits with the same poses: Golfer (pants or skort), Baller (jersey with your letter),
   and Gym (tank or sports top)
-- Build your mini-me: male or female body, 6 skin tones, 10 hair styles and head coverings (turban, hijab,
-  short, long, ponytail, braids, curly, bun, bald, cap), beard, glasses, eyelashes, lip color, and
-  main / accent / headwear colors from a 12-color palette
-- Male / Female sets matching defaults (body, hair, outfit), and every option stays open to change
+- Build your mini-me: male or female body, 6 skin tones, hair and head coverings that fit the body (male: turban,
+  short, curly, bald, cap; female: hijab, short, long, long curly, ponytail, braids, bun, cap), beard, glasses,
+  eyelashes, lip color, and one outfit color from a 12-color palette (the trim picks a matching color)
+- Male / Female sets matching defaults (body, hair, outfit)
 - Mood follows you: swings during a golf round, walks while you walk, celebrates at goal, stands when on pace, slumps when behind
 
 <p align="center">
@@ -116,6 +124,12 @@ a hand-drawn animated character that reacts to how your day is going.
 - **State:** settings and sessions are stored with `@AppStorage`; data refreshes whenever the app becomes active.
 - **Layout:** the watch ring is centered on the physical screen (`WKInterfaceDevice.screenBounds`)
   instead of the safe area, so it stays centered next to the clock and page indicator.
+
+## Privacy
+
+OnPace has no account, no servers, no ads and no analytics. It reads steps, walking distance and finished workouts
+from Apple Health on your device and never writes to Health. Full policy:
+[jappreets-stack.github.io/OnPace/privacy.html](https://jappreets-stack.github.io/OnPace/privacy.html)
 
 ## Tech
 
