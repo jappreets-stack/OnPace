@@ -6,7 +6,7 @@ import HealthKit
 // and the watch saves them in an App Group so the complications can read them too.
 // Shared by all three targets.
 nonisolated enum Shared {
-    static let appGroup = "group.com.js.personal.Steps"
+    static let appGroup = "group.com.jappreets.onpace"
 
     // Keys (the same names the iPhone uses in its own @AppStorage).
     static let goalKey = "goal"
