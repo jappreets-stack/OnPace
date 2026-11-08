@@ -172,7 +172,6 @@ struct ContentView: View {
     @AppStorage("look") private var look: Look = .starter
     @AppStorage("sessionKind") private var sessionKind: SessionKind = .golf
     private let funUnit = FunUnit.walked
-    @State private var miniMeFrame: CGRect = .zero   // where the mini-me is on screen (the scene's ground lines up with its feet)
     @State private var showSettings = false
     @AppStorage("didSetup") private var didSetup = true
     @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
@@ -240,12 +239,7 @@ struct ContentView: View {
     // Today: the ring, what's left, whether you're on pace, and sessions. Nothing else.
     private var today: some View {
         ZStack {
-            // The golf course scene fills the whole screen; its ground lines up with your mini-me's feet.
-            BackdropView(backdrop: backdrop, horizon: horizonY, signText: "",
-                         animated: false)
-                // Softly blurred and faded so the ring and numbers lead.
-                .blur(radius: 7)
-                .overlay { theme.background.opacity(0.35).ignoresSafeArea() }
+            theme.background.ignoresSafeArea()
             ScrollView {
                 VStack(spacing: 22) {
                     HStack {
@@ -432,12 +426,6 @@ struct ContentView: View {
         }
     }
 
-    // The scene behind everything (Original style): always the golf course.
-    private let backdrop = Backdrop.golf
-
-    // Where the scene's ground starts: your mini-me's feet (feet sit at about 96% of its frame's height).
-    private var horizonY: Double { miniMeFrame == .zero ? 330 : miniMeFrame.minY + miniMeFrame.height * 0.957 }
-
     private var ring: some View {
         ringLabel(ZStack {
             Circle()
@@ -476,7 +464,6 @@ struct ContentView: View {
         CharacterView(avatar: avatar, mood: mood, look: look,
                       prop: roundStart > 0 ? sessionKind.prop : nil)
             .frame(width: width, height: height)
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { miniMeFrame = $0 }
     }
 
     // VoiceOver reads the ring as one thing: steps, goal, distance. Shared by every style.
@@ -758,7 +745,7 @@ struct SettingsView: View {
                 } footer: {
                     switch appStyle {
                     case .original:
-                        Text("Style changes how the whole app looks. Original shows a soft golf course behind your mini-me.")
+                        Text("Style changes how the whole app looks. Original has emoji icons and a blue ring.")
                     case .minimal:
                         Text("Style changes how the whole app looks. Clean minimal is simple and calm, with no scene behind your mini-me.")
                     case .retro16:

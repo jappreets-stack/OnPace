@@ -5,7 +5,7 @@ It reads your step count from Apple Health and shows progress toward a daily goa
 a hand-drawn animated character that reacts to how your day is going.
 
 <p align="center">
-  <img src="Screenshots/iphone-main.png" width="260" alt="iPhone Today screen: full-screen night soccer stadium behind the goal ring and mini-me">
+  <img src="Screenshots/iphone-main.png" width="260" alt="iPhone Today screen in the Clean minimal style: green goal ring, mini-me, and a card of pace rows">
   &nbsp;&nbsp;&nbsp;
   <img src="Screenshots/watch-ring.png" width="220" alt="Apple Watch Ultra 2 ring screen">
   &nbsp;&nbsp;&nbsp;
@@ -25,16 +25,13 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Styles:** Clean minimal (default: Apple-style grouped cards, one green ring, SF Symbols), 16-bit adventure
   (original pixel art drawn in code: mountains and a castle by day or under the stars, a gold block ring, a pixel
   mini-me built from your look with walk / stand / slump / celebrate / swing frames, RPG-style menu panels), or
-  Original (a soft illustrated golf course behind your mini-me); theme Auto, Light, or Dark
+  Original (emoji icons and a blue ring); theme Auto, Light, or Dark
 - **Your mini-me walks when you walk:** Core Motion activity (walking / running) drives the animation only; when you
   stop it stands (on pace), slumps (behind), or celebrates (goal hit). Step counts still come only from Apple Health
 - **Home-screen widget:** a small ring with today's steps and how many are left (reads Apple Health, falls back to
   the last count the app saved when the phone is locked)
 - **Accessibility:** VoiceOver reads the ring and each day as one sentence; at the largest text sizes the numbers
   move under their labels instead of wrapping
-- **Full-screen scene (Original style):** an illustrated golf course fills the whole screen, with its ground lined up
-  with your mini-me's feet. Day scenes in light mode, night
-  (floodlights, moon, lit windows) in dark mode; cards sit on frosted glass so they stay readable
 - **Sessions:** golf (9 or 18 holes), hike, dog walk, shopping, theme park, workout, or a custom one you name.
   Counts only the steps between Start and End, with saved history. During a session your mini-me swings
   (golf) or walks with a prop: hiking stick + backpack, a dog on a leash, shopping bags, a balloon, or dumbbells
@@ -73,7 +70,7 @@ a hand-drawn animated character that reacts to how your day is going.
   <img src="Screenshots/setup-minime.png" width="23%" alt="Setup: build your mini-me">
 </p>
 
-**Animated characters** (`Characters.swift`, `CharacterBuilder.swift`, scenes in `Backdrops/`)
+**Animated characters** (`Characters.swift`, `CharacterBuilder.swift`)
 - Drawn entirely in code with SwiftUI `Canvas` + `TimelineView` on a 100×140 grid. No image assets.
 - Three outfits with the same poses: Golfer (pants or skort), Baller (jersey with your letter),
   and Gym (tank or sports top)
@@ -88,9 +85,6 @@ a hand-drawn animated character that reacts to how your day is going.
 </p>
 <p align="center">
   <img src="Screenshots/props.png" width="70%" alt="Session props: hiking stick, dog, shopping bags, balloon, dumbbells">
-</p>
-<p align="center">
-  <img src="Screenshots/scenes.png" width="100%" alt="All 11 full-screen scenes, light and dark">
 </p>
 
 ## How it works
@@ -117,10 +111,8 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Sessions:** one `SessionRecord` list (stored under the original golf-rounds key; old rounds
   load as golf). `FunUnit` converts the measured walking + running distance (HealthKit
   `distanceWalkingRunning`) into miles or km (from the phone's region), and golf sessions into holes; it falls back to ~0.76 m per step without it.
-- **Scenes:** each backdrop is a `GraphicsContext` drawing that takes the screen size, the y of the mini-me's feet, and
-  light/dark, so the same code fits any iPhone. Built in parallel by
-  helper agents against a shared contract and checked with Mac renders and the iOS Simulator (debug-only `-demoSteps`
-  and `-demoWalking` launch arguments fake steps and walking for screen recordings).
+- **Testing:** checked in the iOS Simulator with debug-only `-demoSteps`, `-appStyle`, and `-demoWalking` launch
+  arguments that fake steps, pick a style, and fake walking.
 - **State:** settings and sessions are stored with `@AppStorage`; data refreshes whenever the app becomes active.
 - **Layout:** the watch ring is centered on the physical screen (`WKInterfaceDevice.screenBounds`)
   instead of the safe area, so it stays centered next to the clock and page indicator.
