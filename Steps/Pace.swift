@@ -36,8 +36,17 @@ struct Pace {
     var onPace: Bool { steps >= expectedByNow }
     var behind: Int { max(expectedByNow - steps, 0) }
 
-    // Minutes of walking to get back on pace.
-    var catchUpMinutes: Int { Int((Double(behind) / Self.stepsPerMinute).rounded(.up)) }
+    // Minutes of walking to get back on pace. The "on pace" number keeps rising while you walk
+    // (fast in your busy hours), so this counts minute by minute until your steps pass it.
+    var catchUpMinutes: Int {
+        guard behind > 0 else { return 0 }
+        for m in 1...600 {
+            let t = now.addingTimeInterval(Double(m) * 60)
+            let walked = Double(steps) + Self.stepsPerMinute * Double(m)
+            if walked >= Double(goal) * dayFraction(at: t) { return m }
+        }
+        return walkMinutes(goal - steps)
+    }
 
     // "784 behind"
     var behindText: String { "\(behind.formatted()) behind" }
