@@ -23,8 +23,10 @@ a hand-drawn animated character that reacts to how your day is going.
   basketball courts, trips around the bases, track laps, city blocks, km, or miles (picked in Settings).
   Distances use the real distance Apple Health measured with your own stride; golf holes count steps
 - One **Start a session** button opens a "What are you doing?" sheet
-- **Styles:** Clean minimal (default: Apple-style grouped cards, one green ring, SF Symbols) or Original (illustrated
-  scenes with Full / Calm / Plain background); theme Auto, Light, or Dark
+- **Styles:** Clean minimal (default: Apple-style grouped cards, one green ring, SF Symbols), 16-bit adventure
+  (original pixel art drawn in code: mountains and a castle by day or under the stars, a gold block ring, a pixel
+  mini-me built from your look with walk / stand / slump / celebrate / swing frames, RPG-style menu panels), or
+  Original (illustrated scenes with Full / Calm / Plain background); theme Auto, Light, or Dark
 - **Your mini-me walks when you walk:** Core Motion activity (walking / running) drives the animation only; when you
   stop it stands (on pace), slumps (behind), or celebrates (goal hit). Step counts still come only from Apple Health
 - **Home-screen widget:** a small ring with today's steps and how many are left (reads Apple Health, falls back to

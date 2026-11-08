@@ -1,14 +1,15 @@
 import SwiftUI
 
-// The app's overall look (Settings → Look → Style). Add new styles here (e.g. cozy, retro16)
+// The app's overall look (Settings → Look → Style). Add new styles here
 // and handle them in ContentView's `today` / `history` switches.
 enum AppStyle: String, CaseIterable, Identifiable {
-    case original, minimal
+    case original, minimal, retro16
     var id: String { rawValue }
     var name: String {
         switch self {
         case .original: "Original"
         case .minimal: "Clean minimal"
+        case .retro16: "16-bit adventure"
         }
     }
 }

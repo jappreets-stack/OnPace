@@ -186,6 +186,8 @@ struct ContentView: View {
     @AppStorage("didSetup") private var didSetup = true
     @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
     @State private var tab = "today"
+    @Environment(\.colorScheme) private var colorScheme
+    @ScaledMetric(relativeTo: .largeTitle) private var retroNumberSize: CGFloat = 60
 
     private var progress: Double { min(Double(store.today) / Double(goal), 1) }
     private var hitGoal: Bool { store.today >= goal }
@@ -208,6 +210,7 @@ struct ContentView: View {
                 switch appStyle {
                 case .original: today
                 case .minimal: minimalToday
+                case .retro16: retroToday
                 }
             }
             Tab("History", systemImage: "calendar", value: "history") { history }
@@ -284,9 +287,8 @@ struct ContentView: View {
         }
     }
 
-    // Left to goal, pace, forecast, streak. Original uses emoji; Clean minimal uses SF Symbols.
-    private func infoRows(symbols: Bool) -> some View {
-        let tint = Minimal.accent
+    // Left to goal, pace, forecast, streak. Original uses emoji; Clean minimal and 16-bit use SF Symbols.
+    private func infoRows(symbols: Bool, tint: Color = Minimal.accent) -> some View {
         return VStack(spacing: 0) {
             InfoRow(icon: "👟", label: hitGoal ? "Goal hit 🎉" : "Left to reach goal",
                     value: hitGoal ? "+\((store.today - goal).formatted())"
@@ -342,6 +344,57 @@ struct ContentView: View {
         .background(Minimal.background.ignoresSafeArea())
     }
 
+    // 16-bit adventure Today: a pixel world with a gold block ring, the big number, then blue menu panels.
+    private var retroToday: some View {
+        let night = colorScheme == .dark
+        let ink = Retro16.text(night: night)
+        return ScrollView {
+            VStack(spacing: 18) {
+                HStack {
+                    Spacer()
+                    Retro16GearButton { showSettings = true }
+                }
+                .padding(.bottom, -8)
+                ringLabel(
+                    VStack(spacing: 10) {
+                        Retro16SceneWindow(look: look, avatar: avatar, mood: mood, progress: progress)
+                        VStack(spacing: 2) {
+                            Text(store.today, format: .number)
+                                .font(.system(size: min(retroNumberSize, 84), weight: .heavy, design: .rounded).monospacedDigit())
+                                .foregroundStyle(ink)
+                                .shadow(color: Retro16.textShadow(night: night), radius: 0, x: 2, y: 2)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.6)
+                            Text("of \(goal.formatted()) steps")
+                                .font(.headline)
+                                .foregroundStyle(ink.opacity(0.8))
+                            Text(funUnit.phrase(store.today, meters: store.todayMeters))
+                                .font(.subheadline)
+                                .foregroundStyle(ink.opacity(0.7))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .multilineTextAlignment(.center)
+                    }
+                )
+                if store.week.isEmpty == false && store.week.allSatisfy({ $0.steps == 0 }) {
+                    NoStepsHelp()
+                }
+                infoRows(symbols: true, tint: Retro16.gold)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 6)
+                    .retro16Panel()
+                SessionCard(store: store, theme: theme)
+                if let error = store.error {
+                    Text(error).font(.footnote).foregroundStyle(.red)
+                }
+            }
+            .padding()
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .background(Retro16.page(night: night).ignoresSafeArea())
+    }
+
     private var minimalRing: some View {
         ringLabel(
             MinimalRing(progress: progress) {
@@ -370,7 +423,14 @@ struct ContentView: View {
     private var history: some View {
         NavigationStack {
             ZStack {
-                (appStyle == .minimal ? Minimal.background : theme.background).ignoresSafeArea()
+                Group {
+                    switch appStyle {
+                    case .original: theme.background
+                    case .minimal: Minimal.background
+                    case .retro16: Retro16.page(night: colorScheme == .dark)
+                    }
+                }
+                .ignoresSafeArea()
                 ScrollView {
                     VStack(spacing: 20) {
                         weekTable
@@ -439,8 +499,20 @@ struct ContentView: View {
             .accessibilityLabel("\(store.today.formatted()) of \(goal.formatted()) steps. \(funUnit.phrase(store.today, meters: store.todayMeters)).")
     }
 
-    // Last 7 days: a summary row, then one line per day (newest first).
-    private var weekTable: some View {
+    // Last 7 days, in each style's card.
+    @ViewBuilder private var weekTable: some View {
+        switch appStyle {
+        case .original:
+            weekContent.padding().background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+        case .minimal:
+            weekContent.padding().background(Minimal.card, in: RoundedRectangle(cornerRadius: 22))
+        case .retro16:
+            weekContent.padding(20).retro16Panel()
+        }
+    }
+
+    // A summary row, then one line per day (newest first).
+    private var weekContent: some View {
         let days = Array(store.week.reversed())
         let daysHit = store.week.filter { $0.steps >= goal }.count
         let average = store.week.isEmpty ? 0 : store.week.map(\.steps).reduce(0, +) / store.week.count
@@ -449,9 +521,10 @@ struct ContentView: View {
             Text("Last 7 days").font(.title2.weight(.bold))
 
             HStack(spacing: 0) {
-                BigNumber(value: average.formatted(), label: "Daily average", color: appStyle == .minimal ? .primary : theme.ring)
+                BigNumber(value: average.formatted(), label: "Daily average", color: appStyle == .original ? theme.ring : .primary)
                 Divider().frame(height: 60)
-                BigNumber(value: "\(daysHit) of \(store.week.count)", label: "Days at goal", color: appStyle == .minimal ? Minimal.accent : theme.done)
+                BigNumber(value: "\(daysHit) of \(store.week.count)", label: "Days at goal",
+                          color: appStyle == .retro16 ? Retro16.gold : appStyle == .minimal ? Minimal.accent : theme.done)
             }
             .padding(.vertical, 8)
 
@@ -469,11 +542,16 @@ struct ContentView: View {
                             .foregroundStyle(Color.primary.opacity(0.6))
                     }
                     .frame(width: 64, alignment: .leading)
-                    MiniBar(fraction: min(Double(day.steps) / Double(goal), 1),
-                            color: appStyle == .minimal ? Minimal.accent.opacity(hit ? 1 : 0.55)
-                                                    : (hit ? theme.done : theme.ring.opacity(0.6)),
-                            avatar: avatar, look: look,
-                            mood: hit ? .celebrate : isToday ? .walk : .slump)
+                    if appStyle == .retro16 {
+                        Retro16DayBar(fraction: min(Double(day.steps) / Double(goal), 1), look: look, avatar: avatar,
+                                      mood: hit ? .celebrate : isToday ? .walk : .slump)
+                    } else {
+                        MiniBar(fraction: min(Double(day.steps) / Double(goal), 1),
+                                color: appStyle == .minimal ? Minimal.accent.opacity(hit ? 1 : 0.55)
+                                                        : (hit ? theme.done : theme.ring.opacity(0.6)),
+                                avatar: avatar, look: look,
+                                mood: hit ? .celebrate : isToday ? .walk : .slump)
+                    }
                     VStack(alignment: .trailing, spacing: 1) {
                         Text(day.steps.formatted())
                             .font(.title3.weight(.semibold).monospacedDigit())
@@ -490,9 +568,6 @@ struct ContentView: View {
                                     + (hit ? "goal hit" : "\((goal - day.steps).formatted()) short"))
             }
         }
-        .padding()
-        .background(appStyle == .minimal ? AnyShapeStyle(Minimal.card) : AnyShapeStyle(Color.primary.opacity(0.08)),
-                    in: RoundedRectangle(cornerRadius: 22))
     }
 }
 
@@ -727,9 +802,14 @@ struct SettingsView: View {
                 } header: {
                     Text("Look")
                 } footer: {
-                    Text(appStyle == .original
-                         ? "Style changes how the whole app looks. Background: Full shows the whole scene, Calm softens it, Plain hides it."
-                         : "Style changes how the whole app looks. Clean minimal is simple and calm, with no scene behind your mini-me.")
+                    switch appStyle {
+                    case .original:
+                        Text("Style changes how the whole app looks. Background: Full shows the whole scene, Calm softens it, Plain hides it.")
+                    case .minimal:
+                        Text("Style changes how the whole app looks. Clean minimal is simple and calm, with no scene behind your mini-me.")
+                    case .retro16:
+                        Text("Style changes how the whole app looks. 16-bit adventure draws everything like an old video game: your mini-me in pixels, a castle world, and a ring of gold blocks.")
+                    }
                 }
                 Section {
                     Button("Show setup again") {

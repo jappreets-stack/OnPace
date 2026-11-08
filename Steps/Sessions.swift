@@ -132,8 +132,22 @@ struct SessionCard: View {
                     .controlSize(.large)
                     .tint(.red)
                 }
-                .padding()
-                .background(appStyle == .minimal ? Minimal.card : Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+                .padding(appStyle == .retro16 ? 20 : 16)
+                .styleCard(appStyle)
+            } else if appStyle == .retro16 {
+                // 16-bit adventure: the same button as a blue menu panel.
+                Button { showPicker = true } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "play.fill").foregroundStyle(Retro16.gold)
+                        Text("Start a session").foregroundStyle(.white)
+                    }
+                    .font(.title3.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .retro16Panel()
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             } else {
                 // Not in a session: one big button; the choices are in a sheet.
                 Button { showPicker = true } label: {
@@ -323,9 +337,9 @@ struct SessionHistory: View {
                 }
             }
         }
-        .padding()
+        .padding(appStyle == .retro16 ? 20 : 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(appStyle == .minimal ? Minimal.card : Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+        .styleCard(appStyle)
     }
 
     private func delete(_ record: SessionRecord) {
@@ -436,6 +450,17 @@ extension StepStore {
         }
         if let data = try? NSKeyedArchiver.archivedData(withRootObject: result.newAnchor, requiringSecureCoding: true) {
             d.set(data, forKey: "workoutAnchor")
+        }
+    }
+}
+
+extension View {
+    // The card behind sessions: rounded gray (Original), white/dark gray (Clean minimal), blue menu panel (16-bit).
+    @ViewBuilder func styleCard(_ style: AppStyle) -> some View {
+        switch style {
+        case .original: background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+        case .minimal: background(Minimal.card, in: RoundedRectangle(cornerRadius: 22))
+        case .retro16: retro16Panel()
         }
     }
 }
