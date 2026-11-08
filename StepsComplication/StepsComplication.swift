@@ -57,10 +57,37 @@ struct StepsProvider: TimelineProvider {
     }
 
     nonisolated static func load() async -> StepsEntry {
+        let entry = await read()
+        FaceLog.add("face loaded \(entry.steps.formatted())")
+        return entry
+    }
+
+    nonisolated private static func read() async -> StepsEntry {
         let health = HKHealthStore()
         let stepType = HKQuantityType(.stepCount)
         let cal = Calendar.current
         let todayStart = cal.startOfDay(for: .now)
+        let goal = Shared.goal   // sent from the iPhone (see WatchSync)
+        let d = Shared.defaults
+
+        // Fast path (watchOS gives a watch face only a moment to load): when the phone already sent
+        // today's streak and your usual day, only today's steps are read. Still straight from Apple Health.
+        let stamp = Double(d.string(forKey: Shared.stepsDateKey) ?? "")
+        let fromPhoneToday = stamp.map { cal.isDateInToday(Date(timeIntervalSince1970: $0)) } ?? false
+        let phoneStreak = Int(d.string(forKey: Shared.streakKey) ?? "")
+        let phoneCurve = (d.string(forKey: Shared.curveKey) ?? "").split(separator: ",").compactMap { Double($0) }
+        if fromPhoneToday, let phoneStreak {
+            let query = HKStatisticsQueryDescriptor(
+                predicate: .quantitySample(type: stepType,
+                                           predicate: HKQuery.predicateForSamples(withStart: todayStart, end: .now)),
+                options: .cumulativeSum)
+            if let result = try? await query.result(for: health) {
+                let today = Int(result.sumQuantity()?.doubleValue(for: .count()) ?? 0)
+                return StepsEntry(date: .now, steps: today, streak: phoneStreak,
+                                  curve: phoneCurve.count == 24 ? phoneCurve : nil, goal: goal)
+            }
+        }
+
         let from = cal.date(byAdding: .day, value: -60, to: todayStart)!
         let query = HKStatisticsCollectionQueryDescriptor(
             predicate: .quantitySample(
@@ -80,10 +107,6 @@ struct StepsProvider: TimelineProvider {
         }
         // Today's steps: Apple Health on the watch only, so it matches the Health app exactly.
         let today = days.last ?? 0
-        let goal = Shared.goal   // sent from the iPhone (see WatchSync)
-        let d = Shared.defaults
-        let stamp = Double(d.string(forKey: Shared.stepsDateKey) ?? "")
-        let fromPhoneToday = stamp.map { Calendar.current.isDateInToday(Date(timeIntervalSince1970: $0)) } ?? false
 
         // Streak: days in a row at goal. Today only counts once you've hit it.
         var past = days
@@ -93,11 +116,7 @@ struct StepsProvider: TimelineProvider {
             if d >= goal { streak += 1 } else { break }
         }
         var curve = await Pace.learnCurve(from: health)
-        if fromPhoneToday {
-            if let phoneStreak = Int(d.string(forKey: Shared.streakKey) ?? "") { streak = phoneStreak }
-            let phoneCurve = (d.string(forKey: Shared.curveKey) ?? "").split(separator: ",").compactMap { Double($0) }
-            if phoneCurve.count == 24 { curve = phoneCurve }
-        }
+        if fromPhoneToday, phoneCurve.count == 24 { curve = phoneCurve }
         return StepsEntry(date: .now, steps: today, streak: streak, curve: curve, goal: goal)
     }
 }

@@ -37,19 +37,13 @@ nonisolated final class FaceRefresher: @unchecked Sendable {
         started = true
         let steps = HKQuantityType(.stepCount)
         let query = HKObserverQuery(sampleType: steps, predicate: nil) { _, done, error in
-            if error == nil { Self.redrawFaces() }
+            FaceLog.add(error == nil ? "Health woke app" : "Health wake error")
+            if error == nil { WidgetCenter.shared.reloadAllTimelines() }
             done()
         }
         health.execute(query)
-        health.enableBackgroundDelivery(for: steps, frequency: .immediate) { _, _ in }
-    }
-
-    // At most once every 3 minutes, so we don't use up watchOS's redraw allowance early in the day.
-    private static func redrawFaces() {
-        let d = UserDefaults.standard
-        let last = d.double(forKey: "lastFaceRedraw")
-        guard Date.now.timeIntervalSince1970 - last > 3 * 60 else { return }
-        d.set(Date.now.timeIntervalSince1970, forKey: "lastFaceRedraw")
-        WidgetCenter.shared.reloadAllTimelines()
+        health.enableBackgroundDelivery(for: steps, frequency: .immediate) { ok, error in
+            FaceLog.add(ok ? "wake-ups on" : "wake-ups OFF: \(error?.localizedDescription ?? "?")")
+        }
     }
 }
