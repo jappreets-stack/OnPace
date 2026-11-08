@@ -11,7 +11,6 @@ struct Onboarding: View {
     @AppStorage("avatar") private var avatar: Avatar = .golfer
     @AppStorage("look") private var look: Look = .starter
     @AppStorage("funUnit") private var funUnit: FunUnit = .holes
-    @AppStorage("distancePlace") private var place: DistancePlace = .road
     @State private var page = 0
     @State private var asking = false
 
@@ -256,15 +255,10 @@ struct Onboarding: View {
                     .accessibilityAddTraits(funUnit == unit ? .isSelected : [])
                 }
             }
-            if funUnit == .km || funUnit == .mi {
-                Picker("Where", selection: $place) {
-                    ForEach(DistancePlace.allCases) { Text("\($0.emoji) \($0.name)").tag($0) }
-                }
-                .pickerStyle(.segmented)
-            }
-            UnitScene(unit: funUnit, place: place)
-                .frame(width: 120, height: 120)
-                .clipShape(Circle())
+            // What the pick does: the line under your step count.
+            Text("10,000 steps ≈ \(funUnit.phrase(10_000).replacingOccurrences(of: "~", with: ""))")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(theme.done)
         }
     }
 }

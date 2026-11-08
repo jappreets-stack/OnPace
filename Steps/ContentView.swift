@@ -757,12 +757,11 @@ struct SettingsView: View {
                 Section {
                     Picker("Show steps as", selection: $funUnit) {
                         ForEach(FunUnit.allCases) { unit in
-                            // Make it obvious that km / miles come with a choice of scene.
-                            Text("\(unit.emoji) \(unit.name)" + (unit == .km || unit == .mi ? " (road, beach or trail)" : ""))
-                                .tag(unit)
+                            Text("\(unit.emoji) \(unit.name)").tag(unit)
                         }
                     }
-                    if funUnit == .km || funUnit == .mi {
+                    // The road / beach / trail scene only shows in the Original style.
+                    if appStyle == .original && (funUnit == .km || funUnit == .mi) {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Walk along a")
                                 .font(.subheadline)
@@ -776,7 +775,9 @@ struct SettingsView: View {
                 } header: {
                     Text("Fun unit")
                 } footer: {
-                    Text("Turns your steps into something you can picture, and picks the scene behind your mini-me. Kilometers and Miles let you walk a road, a beach or a mountain trail.")
+                    // Live example, so picking a unit visibly changes something here too.
+                    Text("Shown under your step count. Your goal of \(goal.formatted()) steps is about \(funUnit.phrase(goal).replacingOccurrences(of: "~", with: ""))."
+                         + (appStyle == .original ? " Also picks the scene behind your mini-me." : ""))
                 }
                 Section {
                     Toggle("Add workouts automatically", isOn: $importWorkouts)
