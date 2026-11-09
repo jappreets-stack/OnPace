@@ -197,14 +197,32 @@ nonisolated enum LiveTopUp {
     }
 
     // One-off: motion-chip steps since Health's last save (0 if motion isn't available or allowed).
+    // Never waits more than 2 seconds: a watch face that doesn't finish loading keeps showing old numbers.
     static func extraSteps(_ health: HKHealthStore) async -> Int {
-        guard CMPedometer.isStepCountingAvailable() else { return 0 }
+        guard CMPedometer.isStepCountingAvailable(),
+              CMPedometer.authorizationStatus() == .authorized else { return 0 }
         let dayStart = Calendar.current.startOfDay(for: .now)
         let from = min(await lastSavedEnd(health, since: dayStart) ?? dayStart, .now)
+        let pedometer = CMPedometer()
+        let answer = AnswerOnce()
         return await withCheckedContinuation { done in
-            CMPedometer().queryPedometerData(from: from, to: .now) { data, _ in
-                done.resume(returning: data?.numberOfSteps.intValue ?? 0)
+            answer.set(done)
+            pedometer.queryPedometerData(from: from, to: .now) { data, _ in
+                _ = pedometer   // keep the pedometer alive until it answers
+                answer.finish(data?.numberOfSteps.intValue ?? 0)
             }
+            DispatchQueue.global().asyncAfter(deadline: .now() + 2) { answer.finish(0) }
         }
+    }
+}
+
+// Resumes a waiting call exactly once: with the pedometer's answer, or 0 if the time limit hits first.
+nonisolated final class AnswerOnce: @unchecked Sendable {
+    private let lock = NSLock()
+    private var done: CheckedContinuation<Int, Never>?
+    func set(_ continuation: CheckedContinuation<Int, Never>) { lock.lock(); done = continuation; lock.unlock() }
+    func finish(_ value: Int) {
+        lock.lock(); let d = done; done = nil; lock.unlock()
+        d?.resume(returning: value)
     }
 }
