@@ -24,6 +24,9 @@ final class StepStore: ObservableObject {
     let health = HKHealthStore()
     private let stepType = HKQuantityType(.stepCount)
     private var ready = false
+    private var healthToday = 0            // today's steps exactly as Apple Health has saved them
+    private let live = LiveSteps()         // + steps counted since Health's last save (see Walking.swift)
+    private var liveQuery: HKObserverQuery?
 
     func start(goal: Int) async {
         #if DEBUG
@@ -36,11 +39,32 @@ final class StepStore: ObservableObject {
         do {
             try await health.requestAuthorization(toShare: [], read: [stepType, WalkDistance.type, HKObjectType.workoutType()])
             ready = true
+            live.onChange = { [weak self] extra in
+                guard let self else { return }
+                self.today = self.healthToday + extra
+            }
+            startLiveUpdates()
             await refresh(goal: goal)
         } catch {
             self.error = error.localizedDescription
         }
     }
+
+    // While the app is open, re-read Health every time it saves new steps.
+    private func startLiveUpdates() {
+        guard liveQuery == nil else { return }
+        let query = HKObserverQuery(sampleType: stepType, predicate: nil) { [weak self] _, done, _ in
+            Task { @MainActor in
+                if let self { await self.refresh(goal: Shared.goal) }
+            }
+            done()
+        }
+        liveQuery = query
+        health.execute(query)
+    }
+
+    // App went to the background: stop the live step counter (it restarts on the next refresh).
+    func pause() { live.stop() }
 
     func refresh(goal: Int) async {
         #if DEBUG
@@ -78,7 +102,9 @@ final class StepStore: ObservableObject {
                 let n = collection.statistics(for: day)?.sumQuantity()?.doubleValue(for: .count()) ?? 0
                 days.append(DaySteps(date: day, steps: Int(n)))
             }
-            today = days.last?.steps ?? 0
+            healthToday = days.last?.steps ?? 0
+            await live.follow(health)
+            today = healthToday + live.extra
             week = Array(days.suffix(7))
 
             // Streak: days in a row at goal. Today only counts once you've hit it.
@@ -93,7 +119,7 @@ final class StepStore: ObservableObject {
             curve = await Pace.learnCurve(from: health)
             // For the home-screen widget: today's steps and the goal, in the shared App Group.
             let shared = Shared.defaults
-            shared.set(today, forKey: Shared.stepsKey)
+            shared.set(healthToday, forKey: Shared.stepsKey)
             shared.set(Date.now.timeIntervalSince1970, forKey: Shared.stepsDateKey)
             if let todayMeters { shared.set(todayMeters, forKey: Shared.metersKey) }
             // The watch shows the same streak, week and forecast as the phone.
@@ -229,6 +255,7 @@ struct ContentView: View {
                 if didSetup { walking.start() }
             } else if phase == .background {
                 walking.stop()
+                store.pause()
             }
         }
         .onChange(of: goal) { _, newGoal in

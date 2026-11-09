@@ -23,6 +23,11 @@ final class WatchStepStore: ObservableObject {
     private let stepType = HKQuantityType(.stepCount)
     private var ready = false
     var liveQuery: HKObserverQuery?
+    private var healthToday = 0        // today's steps exactly as Apple Health has saved them
+    private let live = LiveSteps()     // + steps counted since Health's last save (see Walking.swift)
+
+    // App went to the background: stop the live step counter (it restarts on the next refresh).
+    func pause() { live.stop() }
 
     func start(goal: Int) async {
         #if DEBUG
@@ -47,6 +52,13 @@ final class WatchStepStore: ObservableObject {
         do {
             try await health.requestAuthorization(toShare: [], read: [stepType, WalkDistance.type])
             ready = true
+            live.onChange = { [weak self] extra in
+                guard let self else { return }
+                self.today = self.healthToday + extra
+                if let last = self.week.indices.last {
+                    self.week[last] = WatchDay(date: self.week[last].date, steps: self.today)
+                }
+            }
             startLiveUpdates()
             await refresh(goal: goal)
         } catch {
@@ -76,9 +88,11 @@ final class WatchStepStore: ObservableObject {
                 days.append(WatchDay(date: day, steps: Int(n)))
             }
             todayMeters = await WalkDistance.meters(health, from: todayStart)
-            // Today's steps and distance come only from Apple Health on the watch, so they always match
-            // the Health app (and other step apps). Mixing in other counters made it too high.
-            today = days.last?.steps ?? 0
+            // Today's steps: Apple Health on the watch, plus only the steps the motion chip counted after
+            // Health's last save (so it moves like the Fitness app and settles back to Health's total).
+            healthToday = days.last?.steps ?? 0
+            await live.follow(health)
+            today = healthToday + live.extra
             week = Array(days.suffix(7))
 
             // Streak: days in a row at goal. Today only counts once you've hit it.
@@ -237,6 +251,7 @@ struct ContentView: View {
                 walking.start()
             } else if phase == .background {
                 walking.stop()
+                store.pause()
             }
         }
         // The phone's latest steps show up right away.

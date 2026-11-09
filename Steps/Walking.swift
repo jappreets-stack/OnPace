@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import CoreMotion
+import HealthKit
 
 // Is the person walking right now? Only used to animate the mini-me (it walks when you walk).
 // It never touches the step count: steps always come from Apple Health.
@@ -40,5 +41,55 @@ extension Mood {
         if walking { return .walk }
         if hitGoal { return .celebrate }
         return onPace ? .stand : .slump
+    }
+}
+
+// Apple Health saves steps in batches every few minutes, while the motion chip counts every step right away
+// (that's why the Fitness app ticks up live). LiveSteps adds only the steps the motion chip counted AFTER
+// Health's last saved step sample: the number moves while you walk, never counts a step twice, and goes back
+// to Health's exact total each time Health saves (the window then starts again from the new save).
+// Shared by the iPhone and the watch app. Only runs while the app is open.
+final class LiveSteps {
+    private let pedometer = CMPedometer()
+    private var since: Date?
+    private(set) var extra = 0
+    var onChange: ((Int) -> Void)?
+
+    // Call after every Health read. Restarts counting from Health's newest saved step sample.
+    func follow(_ health: HKHealthStore) async {
+        guard CMPedometer.isStepCountingAvailable() else { return }
+        let dayStart = Calendar.current.startOfDay(for: .now)
+        let saved = await Self.lastSavedEnd(health, since: dayStart) ?? dayStart
+        let from = min(saved, .now)
+        guard from != since else { return }
+        since = from
+        pedometer.stopUpdates()
+        set(0)
+        pedometer.startUpdates(from: from) { [weak self] data, _ in
+            let steps = data?.numberOfSteps.intValue ?? 0
+            DispatchQueue.main.async { self?.set(steps) }
+        }
+    }
+
+    func stop() {
+        pedometer.stopUpdates()
+        since = nil
+        set(0)
+    }
+
+    private func set(_ steps: Int) {
+        guard steps != extra else { return }
+        extra = steps
+        onChange?(steps)
+    }
+
+    // When Health's newest saved step sample ends (nil if nothing saved today yet).
+    nonisolated static func lastSavedEnd(_ health: HKHealthStore, since start: Date) async -> Date? {
+        let query = HKSampleQueryDescriptor(
+            predicates: [.quantitySample(type: HKQuantityType(.stepCount),
+                                         predicate: HKQuery.predicateForSamples(withStart: start, end: nil))],
+            sortDescriptors: [SortDescriptor(\.endDate, order: .reverse)],
+            limit: 1)
+        return try? await query.result(for: health).first?.endDate
     }
 }
