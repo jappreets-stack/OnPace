@@ -143,7 +143,7 @@
         "INFOPLIST_KEY_ITSAppUsesNonExemptEncryption": "NO",
         "INFOPLIST_KEY_NSHealthShareUsageDescription": "OnPace reads your steps, walking distance and finished workouts to show your progress, pace and sessions. Your data stays on your devices.",
         "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "OnPace only reads from Apple Health. It never adds to or changes your Health data.",
-        "INFOPLIST_KEY_NSMotionUsageDescription": "OnPace uses motion to see when you're walking, so your mini-me walks with you. Your step count still comes from Apple Health.",
+        "INFOPLIST_KEY_NSMotionUsageDescription": "OnPace uses motion to count your newest steps live (Apple Health saves them every few minutes) and to make your mini-me walk with you.",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation": "YES",
         "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents": "YES",
         "INFOPLIST_KEY_UILaunchScreen_Generation": "YES",
@@ -195,7 +195,7 @@
         "INFOPLIST_KEY_CFBundleDisplayName": "OnPace",
         "INFOPLIST_KEY_NSHealthShareUsageDescription": "OnPace reads your steps and walking distance to show your progress and pace. Your data stays on your devices.",
         "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "OnPace only reads from Apple Health. It never adds to or changes your Health data.",
-        "INFOPLIST_KEY_NSMotionUsageDescription": "OnPace uses motion to see when you're walking, so your mini-me walks with you. Your step count still comes from Apple Health.",
+        "INFOPLIST_KEY_NSMotionUsageDescription": "OnPace uses motion to count your newest steps live (Apple Health saves them every few minutes) and to make your mini-me walk with you.",
         "INFOPLIST_KEY_UISupportedInterfaceOrientations": "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown",
         "INFOPLIST_KEY_WKCompanionAppBundleIdentifier": "com.jappreets.onpace",
         "LD_RUNPATH_SEARCH_PATHS": [
@@ -240,7 +240,7 @@
         "INFOPLIST_KEY_NSHealthShareUsageDescription": "OnPace reads your steps and walking distance to show your progress and pace. Your data stays on your devices.",
         "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "OnPace only reads from Apple Health. It never adds to or changes your Health data.",
         "INFOPLIST_KEY_NSHumanReadableCopyright": "",
-        "INFOPLIST_KEY_NSMotionUsageDescription": "OnPace uses motion to see when you're walking, so your mini-me walks with you. Your step count still comes from Apple Health.",
+        "INFOPLIST_KEY_NSMotionUsageDescription": "OnPace uses motion to count your newest steps live (Apple Health saves them every few minutes) and to make your mini-me walk with you.",
         "LD_RUNPATH_SEARCH_PATHS": [
           "$(inherited)",
           "@executable_path/Frameworks",

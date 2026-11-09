@@ -1,5 +1,6 @@
 import SwiftUI
 import HealthKit
+import CoreMotion
 
 // Settings the iPhone shares with the watch and its watch-face complications.
 // The iPhone is the boss: it sends goal, mini-me and style to the watch (WatchConnectivity),
@@ -178,4 +179,31 @@ nonisolated struct WatchSession: Codable, Hashable {
     let title: String
     let steps: Int
     let distance: String
+}
+
+// Apple Health saves steps in batches; the motion chip has every step right away. These helpers find Health's
+// newest saved step sample and count the motion-chip steps after it, so a number can be live without ever
+// counting a step twice. Used by the apps (LiveSteps, Walking.swift) and the watch faces.
+nonisolated enum LiveTopUp {
+    // When Health's newest saved step sample today ends (nil if nothing saved yet today).
+    static func lastSavedEnd(_ health: HKHealthStore, since start: Date) async -> Date? {
+        let query = HKSampleQueryDescriptor(
+            predicates: [.quantitySample(type: HKQuantityType(.stepCount),
+                                         predicate: HKQuery.predicateForSamples(withStart: start, end: nil))],
+            sortDescriptors: [SortDescriptor(\.endDate, order: .reverse)],
+            limit: 1)
+        return try? await query.result(for: health).first?.endDate
+    }
+
+    // One-off: motion-chip steps since Health's last save (0 if motion isn't available or allowed).
+    static func extraSteps(_ health: HKHealthStore) async -> Int {
+        guard CMPedometer.isStepCountingAvailable() else { return 0 }
+        let dayStart = Calendar.current.startOfDay(for: .now)
+        let from = min(await lastSavedEnd(health, since: dayStart) ?? dayStart, .now)
+        return await withCheckedContinuation { done in
+            CMPedometer().queryPedometerData(from: from, to: .now) { data, _ in
+                done.resume(returning: data?.numberOfSteps.intValue ?? 0)
+            }
+        }
+    }
 }

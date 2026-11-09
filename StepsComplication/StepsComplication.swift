@@ -76,7 +76,8 @@ struct StepsProvider: TimelineProvider {
                                            predicate: HKQuery.predicateForSamples(withStart: todayStart, end: .now)),
                 options: .cumulativeSum)
             if let result = try? await query.result(for: health) {
-                let today = Int(result.sumQuantity()?.doubleValue(for: .count()) ?? 0)
+                // Health's saved total + steps the motion chip counted since Health's last save (live, never twice).
+                let today = Int(result.sumQuantity()?.doubleValue(for: .count()) ?? 0) + (await LiveTopUp.extraSteps(health))
                 return StepsEntry(date: .now, steps: today, streak: phoneStreak,
                                   curve: phoneCurve.count == 24 ? phoneCurve : nil, goal: goal)
             }
@@ -100,7 +101,7 @@ struct StepsProvider: TimelineProvider {
             days.append(Int(collection.statistics(for: day)?.sumQuantity()?.doubleValue(for: .count()) ?? 0))
         }
         // Today's steps: Apple Health on the watch only, so it matches the Health app exactly.
-        let today = days.last ?? 0
+        let today = (days.last ?? 0) + (await LiveTopUp.extraSteps(health))
 
         // Streak: days in a row at goal. Today only counts once you've hit it.
         var past = days

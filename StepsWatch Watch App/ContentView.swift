@@ -221,9 +221,13 @@ struct ContentView: View {
                 Task { await store.refresh(goal: goal) }
                 WatchSync.shared.askPhone()   // the phone replies in the background with its latest count
                 walking.start()
-            } else if phase == .background {
-                walking.stop()
-                store.pause()
+            } else if phase == .inactive || phase == .background {
+                // Leaving the app (wrist down / back to the face): redraw the face with the live number now.
+                WidgetCenter.shared.reloadAllTimelines()
+                if phase == .background {
+                    walking.stop()
+                    store.pause()
+                }
             }
         }
         // The phone's latest steps show up right away.

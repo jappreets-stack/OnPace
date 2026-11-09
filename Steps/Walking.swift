@@ -59,7 +59,7 @@ final class LiveSteps {
     func follow(_ health: HKHealthStore) async {
         guard CMPedometer.isStepCountingAvailable() else { return }
         let dayStart = Calendar.current.startOfDay(for: .now)
-        let saved = await Self.lastSavedEnd(health, since: dayStart) ?? dayStart
+        let saved = await LiveTopUp.lastSavedEnd(health, since: dayStart) ?? dayStart
         let from = min(saved, .now)
         guard from != since else { return }
         since = from
@@ -81,15 +81,5 @@ final class LiveSteps {
         guard steps != extra else { return }
         extra = steps
         onChange?(steps)
-    }
-
-    // When Health's newest saved step sample ends (nil if nothing saved today yet).
-    nonisolated static func lastSavedEnd(_ health: HKHealthStore, since start: Date) async -> Date? {
-        let query = HKSampleQueryDescriptor(
-            predicates: [.quantitySample(type: HKQuantityType(.stepCount),
-                                         predicate: HKQuery.predicateForSamples(withStart: start, end: nil))],
-            sortDescriptors: [SortDescriptor(\.endDate, order: .reverse)],
-            limit: 1)
-        return try? await query.result(for: health).first?.endDate
     }
 }
