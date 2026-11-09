@@ -9,7 +9,7 @@ a hand-drawn animated character that reacts to how your day is going.
   &nbsp;
   <img src="Screenshots/iphone-retro16.png" width="240" alt="iPhone Today screen, 16-bit adventure style: pixel castle world and a ring of gold blocks">
   &nbsp;
-  <img src="Screenshots/iphone-original.png" width="240" alt="iPhone Today screen, Original style: blue ring and emoji icons">
+  <img src="Screenshots/iphone-cozy.png" width="240" alt="iPhone Today screen, Cozy pastel style: cream page, peach-to-lavender ring, white rounded cards">
 </p>
 <p align="center">
   <img src="Screenshots/watch-ring.png" width="200" alt="Apple Watch ring screen, Clean minimal style">
@@ -32,8 +32,11 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Styles:** Clean minimal (default: Apple-style grouped cards, one green ring, SF Symbols), 16-bit adventure
   (original pixel art drawn in code: mountains and a castle by day or under the stars, a gold block ring, a pixel
   mini-me built from your look with walk / stand / slump / celebrate / swing frames, RPG-style menu panels), or
-  Original (emoji icons and a blue ring); light or dark. The style is its own section at the top of Settings
+  Cozy pastel (warm cream page, a peach → pink → lavender ring, white rounded cards); light or dark. The style is its own section at the top of Settings
   and follows you to the Apple Watch
+- **Live step count:** Apple Health saves steps in batches, so while OnPace is open it adds only the steps your
+  phone or watch motion chip counted after Health's last save. The number ticks up as you walk like the Fitness app,
+  never counts a step twice, and settles back to Health's exact total
 - **Your mini-me walks when you walk:** Core Motion activity (walking / running) drives the animation only; when you
   stop it stands (on pace), slumps (behind), or celebrates (goal hit). Step counts still come only from Apple Health
 - **Home-screen widget:** a small ring with today's steps and how many are left (reads Apple Health, falls back to
@@ -54,7 +57,7 @@ a hand-drawn animated character that reacts to how your day is going.
 - Ring page centered for the Ultra 2 screen, with your mini-me, step count, distance walked ("4.9 miles walked"), and pace
 - Mini-me walks when you walk (Core Motion), same moods as the phone
 - Stats page (streak, pace, forecast, distance) and a 7-day bar chart, paged with the Digital Crown
-- **Synced from the iPhone:** goal, mini-me (outfit + whole look), style (Clean minimal, 16-bit gold block ring + pixel mini-me, or Original), and with every refresh today's steps,
+- **Synced from the iPhone:** goal, mini-me (outfit + whole look), style (Clean minimal, Cozy pastel ring, or 16-bit gold block ring + pixel mini-me), and with every refresh today's steps,
   distance, streak, last 7 days, your usual-day pace pattern, and today's sessions (the watch's own copy of Apple Health
   is missing steps the iPhone counted, so the watch and its complications use the phone's numbers when they're newer)
 - **Matches Apple Health exactly:** today's steps on the watch and its complications come only from the watch's

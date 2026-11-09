@@ -148,6 +148,20 @@ struct SessionCard: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+            } else if appStyle == .cozy {
+                // Cozy pastel: a soft peach-to-pink pill.
+                Button { showPicker = true } label: {
+                    Label("Start a session", systemImage: "play.fill")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .background(LinearGradient(colors: [Cozy.peach, Cozy.rose], startPoint: .leading, endPoint: .trailing),
+                                    in: Capsule())
+                        .shadow(color: Cozy.rose.opacity(0.35), radius: 10, y: 5)
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
             } else {
                 // Not in a session: one big button; the choices are in a sheet.
                 Button { showPicker = true } label: {
@@ -458,7 +472,8 @@ extension View {
     // The card behind sessions: rounded gray (Original), white/dark gray (Clean minimal), blue menu panel (16-bit).
     @ViewBuilder func styleCard(_ style: AppStyle) -> some View {
         switch style {
-        case .original: background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+        case .cozy: background(Cozy.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .shadow(color: Cozy.rose.opacity(0.12), radius: 14, y: 6)
         case .minimal: background(Minimal.card, in: RoundedRectangle(cornerRadius: 22))
         case .retro16: retro16Panel()
         }

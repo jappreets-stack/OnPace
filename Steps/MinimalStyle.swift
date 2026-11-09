@@ -1,13 +1,14 @@
 import SwiftUI
 
 // The app's overall look (Settings → Look → Style). Add new styles here
-// and handle them in ContentView's `today` / `history` switches.
+// and handle them in ContentView's Today / History switches. ("Original" was replaced by Cozy pastel;
+// old saves fall back to Clean minimal.)
 enum AppStyle: String, CaseIterable, Identifiable {
-    case original, minimal, retro16
+    case minimal, cozy, retro16
     var id: String { rawValue }
     var name: String {
         switch self {
-        case .original: "Original"
+        case .cozy: "Cozy pastel"
         case .minimal: "Clean minimal"
         case .retro16: "16-bit adventure"
         }
@@ -15,7 +16,7 @@ enum AppStyle: String, CaseIterable, Identifiable {
     // One line under the name in Settings.
     var blurb: String {
         switch self {
-        case .original: "Emoji icons and a blue ring"
+        case .cozy: "Soft pastels, a warm cream page and rounded cards"
         case .minimal: "Simple and calm, one green ring"
         case .retro16: "Pixel art: a castle world and a ring of gold blocks"
         }

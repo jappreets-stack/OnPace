@@ -165,40 +165,6 @@ extension WatchStepStore {
     }
 }
 
-// Ring colors you can pick on the last page.
-enum RingStyle: String, CaseIterable, Identifiable {
-    case icon, purpleGold, classic, ocean, golf
-    var id: String { rawValue }
-
-    var name: String {
-        switch self {
-        case .icon: "App icon green"
-        case .purpleGold: "Purple & gold"
-        case .classic: "Orange"
-        case .ocean: "Blue"
-        case .golf: "Golf"
-        }
-    }
-    var ring: Color {
-        switch self {
-        case .icon: Color(red: 0.19, green: 0.82, blue: 0.36)
-        case .purpleGold: Color(red: 0.42, green: 0.22, blue: 0.68)
-        case .classic: .orange
-        case .ocean: .blue
-        case .golf: .white
-        }
-    }
-    // Color once you hit your goal.
-    var done: Color {
-        switch self {
-        case .icon: .mint
-        case .purpleGold: Color(red: 0.99, green: 0.73, blue: 0.15)
-        case .classic, .ocean: .green
-        case .golf: .yellow
-        }
-    }
-}
-
 struct ContentView: View {
     @StateObject private var store = WatchStepStore()
     @Environment(\.scenePhase) private var scenePhase
@@ -208,8 +174,14 @@ struct ContentView: View {
     @AppStorage(Shared.lookKey, store: Shared.defaults) private var look: Look = .starter
     @AppStorage(Shared.appStyleKey, store: Shared.defaults) private var appStyle: AppStyle = .minimal
     private let funUnit = FunUnit.walked
-    // Watch only (Original style).
-    @AppStorage("ringStyle") private var style: RingStyle = .icon
+    // The ring color for the phone's style (Cozy pastel uses a gradient, see ringPage).
+    private var accent: Color {
+        switch appStyle {
+        case .minimal: Minimal.accent
+        case .cozy: Cozy.rose
+        case .retro16: Retro16.gold
+        }
+    }
     // Sent by the iPhone with every refresh (see PhoneSync): today's steps and sessions.
     @AppStorage(Shared.stepsDateKey, store: Shared.defaults) private var phoneStamp = ""   // changes with every phone refresh
     @AppStorage(Shared.sessionsKey, store: Shared.defaults) private var sessionsJSON = ""
@@ -268,7 +240,7 @@ struct ContentView: View {
             let d = min(screen.width * 0.77, screen.height - 88)
             let line = d * 0.08
             let retro = appStyle == .retro16
-            let color = retro ? Retro16.gold : appStyle == .minimal ? Minimal.accent : hitGoal ? style.done : style.ring
+            let color = accent
             let design: Font.Design = retro ? .monospaced : .rounded
             ZStack {
                 switch appStyle {
@@ -283,19 +255,9 @@ struct ContentView: View {
                         .stroke(color, style: StrokeStyle(lineWidth: line, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                         .animation(.easeOut(duration: 0.6), value: progress)
-                case .original:
-                    Circle()
-                        .stroke(color.opacity(0.18), lineWidth: line)
-                    Circle()
-                        .trim(from: 0, to: progress)
-                        .stroke(AngularGradient(colors: [color.opacity(0.55), color],
-                                                center: .center,
-                                                startAngle: .degrees(0),
-                                                endAngle: .degrees(360 * max(progress, 0.01))),
-                                style: StrokeStyle(lineWidth: line, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .shadow(color: color.opacity(0.5), radius: 4)
-                        .animation(.easeOut(duration: 0.6), value: progress)
+                case .cozy:
+                    // Cozy pastel: the phone's soft peach → pink → lavender ring.
+                    CozyRing(progress: progress, hitGoal: hitGoal, lineWidth: line) { EmptyView() }
                 }
                 VStack(spacing: 0) {
                     if retro {
@@ -397,7 +359,7 @@ struct ContentView: View {
                         // Flag in the hole on goal days.
                         Text(hit ? funUnit.goalFlag : " ").font(.system(size: 11))
                         Capsule()
-                            .fill(hit ? style.done : style.ring.opacity(0.6))
+                            .fill(appStyle == .cozy ? (hit ? Cozy.mint : Cozy.lavender) : accent.opacity(hit ? 1 : 0.55))
                             .frame(width: 14,
                                    height: max(6, 70 * min(Double(day.steps) / Double(goal), 1)))
                         Text(Calendar.current.isDateInToday(day.date)
@@ -414,7 +376,7 @@ struct ContentView: View {
         }
     }
 
-    // Page 4: your mini-me (set on the iPhone) and the ring color (watch only).
+    // Last page: your mini-me (set on the iPhone).
     private var colorPage: some View {
         List {
             Section("Your mini-me") {
@@ -425,23 +387,6 @@ struct ContentView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
-            }
-            if appStyle == .original {
-            Section("Ring color") {
-                ForEach(RingStyle.allCases) { option in
-                    Button {
-                        style = option
-                    } label: {
-                        HStack {
-                            Circle().fill(option.ring).frame(width: 14, height: 14)
-                            Circle().fill(option.done).frame(width: 14, height: 14)
-                            Text(option.name)
-                            Spacer()
-                            if option == style { Image(systemName: "checkmark") }
-                        }
-                    }
-                }
-            }
             }
         }
     }

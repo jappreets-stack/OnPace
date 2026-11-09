@@ -224,7 +224,7 @@ struct ContentView: View {
         TabView(selection: $tab) {
             Tab("Today", systemImage: "figure.walk", value: "today") {
                 switch appStyle {
-                case .original: today
+                case .cozy: cozyToday
                 case .minimal: minimalToday
                 case .retro16: retroToday
                 }
@@ -263,41 +263,7 @@ struct ContentView: View {
         }
     }
 
-    // Today: the ring, what's left, whether you're on pace, and sessions. Nothing else.
-    private var today: some View {
-        ZStack {
-            theme.background.ignoresSafeArea()
-            ScrollView {
-                VStack(spacing: 22) {
-                    HStack {
-                        Spacer()
-                        Button { showSettings = true } label: {
-                            Image(systemName: "gearshape.fill").font(.title2)
-                                .padding(10)
-                                .background(.ultraThinMaterial, in: Circle())
-                        }
-                        .accessibilityLabel("Settings")
-                    }
-                    ring
-                    if store.week.isEmpty == false && store.week.allSatisfy({ $0.steps == 0 }) {
-                        NoStepsHelp()
-                    }
-                    // One card of plain rows: label on the left, number on the right.
-                    infoRows(symbols: false)
-                        .padding(.horizontal)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
-                    SessionCard(store: store, theme: theme)
-                    if let error = store.error {
-                        Text(error).font(.footnote).foregroundStyle(.red)
-                    }
-                }
-                .padding()
-            }
-            .scrollBounceBehavior(.basedOnSize)
-        }
-    }
-
-    // Left to goal, pace, forecast, streak. Original uses emoji; Clean minimal and 16-bit use SF Symbols.
+    // Left to goal, pace, forecast, streak (SF Symbols tinted per style).
     private func infoRows(symbols: Bool, tint: Color = Minimal.accent) -> some View {
         return VStack(spacing: 0) {
             InfoRow(icon: "👟", label: hitGoal ? "Goal hit 🎉" : "Left to goal",
@@ -322,6 +288,61 @@ struct ContentView: View {
             InfoRow(icon: "🔥", label: "Streak", value: "\(store.streak) \(store.streak == 1 ? "day" : "days")",
                     symbol: symbols ? "flame.fill" : nil, symbolTint: .orange)
         }
+    }
+
+    // Cozy pastel Today: warm cream page, a soft pastel ring, white rounded cards, rounded type.
+    private var cozyToday: some View {
+        ScrollView {
+            VStack(spacing: 22) {
+                HStack {
+                    Spacer()
+                    Button { showSettings = true } label: {
+                        Image(systemName: "gearshape.fill").font(.title3)
+                            .foregroundStyle(Cozy.rose)
+                            .padding(10)
+                            .background(Cozy.card, in: Circle())
+                            .shadow(color: Cozy.rose.opacity(0.15), radius: 6, y: 3)
+                    }
+                    .accessibilityLabel("Settings")
+                }
+                ringLabel(
+                    CozyRing(progress: progress, hitGoal: hitGoal) {
+                        VStack(spacing: 2) {
+                            miniMe(width: 72, height: 100)
+                            Text(store.today, format: .number)
+                                .font(.system(size: 44, weight: .heavy, design: .rounded).monospacedDigit())
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.6)
+                            Text("of \(goal.formatted()) steps")
+                                .font(.subheadline.weight(.medium))
+                                .opacity(0.7)
+                            Text(funUnit.phrase(store.today, meters: store.todayMeters))
+                                .font(.footnote)
+                                .opacity(0.6)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .frame(maxWidth: 170)
+                    }
+                    .frame(width: 270, height: 270)
+                    .padding(8)
+                )
+                if store.week.isEmpty == false && store.week.allSatisfy({ $0.steps == 0 }) {
+                    NoStepsHelp()
+                }
+                infoRows(symbols: true, tint: Cozy.rose)
+                    .cozyCard()
+                SessionCard(store: store, theme: theme)
+                if let error = store.error {
+                    Text(error).font(.footnote).foregroundStyle(.red)
+                }
+            }
+            .padding()
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .foregroundStyle(Cozy.ink)
+        .fontDesign(.rounded)
+        .background(Cozy.page.ignoresSafeArea())
     }
 
     // Clean minimal Today: no scene, grouped background, a thick ring and one card of rows.
@@ -435,7 +456,7 @@ struct ContentView: View {
             ZStack {
                 Group {
                     switch appStyle {
-                    case .original: theme.background
+                    case .cozy: Cozy.page
                     case .minimal: Minimal.background
                     case .retro16: Retro16.page(night: colorScheme == .dark)
                     }
@@ -451,39 +472,6 @@ struct ContentView: View {
             }
             .navigationTitle("History")
         }
-    }
-
-    private var ring: some View {
-        ringLabel(ZStack {
-            Circle()
-                .stroke(.ultraThinMaterial, lineWidth: 20)
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(hitGoal ? theme.done : theme.ring,
-                        style: StrokeStyle(lineWidth: 20, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .animation(.easeOut(duration: 0.6), value: progress)
-            VStack(spacing: 4) {
-                miniMe(width: 110, height: 125)
-                // Today's steps and distance, on a frosted chip so they read over any scene.
-                VStack(spacing: 0) {
-                    Text(store.today, format: .number)
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                    // How far you walked today, in your fun unit ("4.9 miles walked").
-                    Text(funUnit.phrase(store.today, meters: store.todayMeters))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.primary.opacity(0.75))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .frame(maxWidth: 140)       // stays well inside the ring
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 3)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 11))
-            }
-        }
-        .frame(width: 270, height: 270)
-        )
     }
 
     // Your mini-me inside the ring.
@@ -503,8 +491,9 @@ struct ContentView: View {
     // Last 7 days, in each style's card.
     @ViewBuilder private var weekTable: some View {
         switch appStyle {
-        case .original:
-            weekContent.padding().background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+        case .cozy:
+            weekContent.padding().background(Cozy.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .shadow(color: Cozy.rose.opacity(0.12), radius: 14, y: 6)
         case .minimal:
             weekContent.padding().background(Minimal.card, in: RoundedRectangle(cornerRadius: 22))
         case .retro16:
@@ -522,10 +511,10 @@ struct ContentView: View {
             Text("Last 7 days").font(.title2.weight(.bold))
 
             HStack(spacing: 0) {
-                BigNumber(value: average.formatted(), label: "Daily average", color: appStyle == .original ? theme.ring : .primary)
+                BigNumber(value: average.formatted(), label: "Daily average", color: appStyle == .cozy ? Cozy.rose : .primary)
                 Divider().frame(height: 60)
                 BigNumber(value: "\(daysHit) of \(store.week.count)", label: "Days at goal",
-                          color: appStyle == .retro16 ? Retro16.gold : appStyle == .minimal ? Minimal.accent : theme.done)
+                          color: appStyle == .retro16 ? Retro16.gold : appStyle == .minimal ? Minimal.accent : Cozy.mintDeep)
             }
             .padding(.vertical, 8)
 
@@ -549,7 +538,7 @@ struct ContentView: View {
                     } else {
                         MiniBar(fraction: min(Double(day.steps) / Double(goal), 1),
                                 color: appStyle == .minimal ? Minimal.accent.opacity(hit ? 1 : 0.55)
-                                                        : (hit ? theme.done : theme.ring.opacity(0.6)),
+                                                        : (hit ? Cozy.mint : Cozy.lavender.opacity(0.75)),
                                 avatar: avatar, look: look,
                                 mood: hit ? .celebrate : isToday ? .walk : .slump)
                     }
