@@ -17,6 +17,7 @@ struct StepsWatch_Watch_AppApp: App {
         // Simulator testing: `-appStyle retro16`, `-look <json>` (the phone normally sends these).
         if let style = UserDefaults.standard.string(forKey: "appStyle") { Shared.defaults.set(style, forKey: Shared.appStyleKey) }
         if let look = UserDefaults.standard.string(forKey: "look") { Shared.defaults.set(look, forKey: Shared.lookKey) }
+        if let p = UserDefaults.standard.string(forKey: "cozyPalette") { Shared.defaults.set(p, forKey: Shared.cozyPaletteKey) }
         #endif
         FaceRefresher.shared.start()      // redraws complications when Health gets new steps
     }

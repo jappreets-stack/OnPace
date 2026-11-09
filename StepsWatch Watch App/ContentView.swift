@@ -173,12 +173,13 @@ struct ContentView: View {
     @AppStorage(Shared.avatarKey, store: Shared.defaults) private var avatar: Avatar = .golfer
     @AppStorage(Shared.lookKey, store: Shared.defaults) private var look: Look = .starter
     @AppStorage(Shared.appStyleKey, store: Shared.defaults) private var appStyle: AppStyle = .minimal
+    @AppStorage(Shared.cozyPaletteKey, store: Shared.defaults) private var cozyPalette: CozyPalette = .peach   // redraws on change
     private let funUnit = FunUnit.walked
     // The ring color for the phone's style (Cozy pastel uses a gradient, see ringPage).
     private var accent: Color {
         switch appStyle {
         case .minimal: Minimal.accent
-        case .cozy: Cozy.rose
+        case .cozy: Cozy.accent
         case .retro16: Retro16.gold
         }
     }
@@ -363,7 +364,7 @@ struct ContentView: View {
                         // Flag in the hole on goal days.
                         Text(hit ? funUnit.goalFlag : " ").font(.system(size: 11))
                         Capsule()
-                            .fill(appStyle == .cozy ? (hit ? Cozy.mint : Cozy.lavender) : accent.opacity(hit ? 1 : 0.55))
+                            .fill(appStyle == .cozy ? (hit ? Cozy.done : Cozy.end) : accent.opacity(hit ? 1 : 0.55))
                             .frame(width: 14,
                                    height: max(6, 70 * min(Double(day.steps) / Double(goal), 1)))
                         Text(Calendar.current.isDateInToday(day.date)

@@ -81,6 +81,7 @@ struct SessionCard: View {
     @AppStorage("sessionName") private var customName = ""
     private let funUnit = FunUnit.walked
     @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
+    @AppStorage(Shared.cozyPaletteKey) private var cozyPalette: CozyPalette = .peach   // redraws when the Cozy colors change
     @State private var sessionSteps = 0
     @State private var sessionMeters: Double?
     @State private var confirmEnd = false
@@ -156,9 +157,9 @@ struct SessionCard: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
-                        .background(LinearGradient(colors: [Cozy.peach, Cozy.rose], startPoint: .leading, endPoint: .trailing),
+                        .background(LinearGradient(colors: [Cozy.start, Cozy.accent], startPoint: .leading, endPoint: .trailing),
                                     in: Capsule())
-                        .shadow(color: Cozy.rose.opacity(0.35), radius: 10, y: 5)
+                        .shadow(color: Cozy.accent.opacity(0.35), radius: 10, y: 5)
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -301,6 +302,7 @@ struct SessionHistory: View {
     @AppStorage("rounds") private var recordsData = Data()
     private let funUnit = FunUnit.walked
     @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
+    @AppStorage(Shared.cozyPaletteKey) private var cozyPalette: CozyPalette = .peach   // redraws when the Cozy colors change
 
     private var records: [SessionRecord] {
         (try? JSONDecoder().decode([SessionRecord].self, from: recordsData)) ?? []
@@ -473,7 +475,7 @@ extension View {
     @ViewBuilder func styleCard(_ style: AppStyle) -> some View {
         switch style {
         case .cozy: background(Cozy.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .shadow(color: Cozy.rose.opacity(0.12), radius: 14, y: 6)
+            .shadow(color: Cozy.accent.opacity(0.12), radius: 14, y: 6)
         case .minimal: background(Minimal.card, in: RoundedRectangle(cornerRadius: 22))
         case .retro16: retro16Panel()
         }

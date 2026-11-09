@@ -13,7 +13,8 @@ nonisolated enum Shared {
     static let goalKey = "goal"
     static let avatarKey = "avatar"
     static let lookKey = "look"
-    static let appStyleKey = "appStyle"   // Clean minimal / 16-bit adventure / Original
+    static let appStyleKey = "appStyle"   // Clean minimal / Cozy pastel / 16-bit adventure
+    static let cozyPaletteKey = "cozyPalette"   // Cozy pastel colors
     // The iPhone app saves today's steps here for its home-screen widget (used when Health is locked).
     static let stepsKey = "todaySteps"
     static let stepsDateKey = "todayStepsDate"
@@ -25,7 +26,7 @@ nonisolated enum Shared {
     static let curveKey = "phoneCurve"     // your usual day (24 numbers), so the watch's forecast matches
     static let weekKey = "phoneWeek"       // last 7 days of steps, oldest first, ending today
     static let liveKeys = [stepsKey, stepsDateKey, metersKey, sessionsKey, streakKey, curveKey, weekKey]
-    static let syncedKeys = [goalKey, avatarKey, lookKey, appStyleKey]
+    static let syncedKeys = [goalKey, avatarKey, lookKey, appStyleKey, cozyPaletteKey]
 
     // On the watch: the App Group storage both the app and the complications read.
     static var defaults: UserDefaults { UserDefaults(suiteName: appGroup) ?? .standard }

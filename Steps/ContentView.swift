@@ -201,6 +201,7 @@ struct ContentView: View {
     @State private var showSettings = false
     @AppStorage("didSetup") private var didSetup = true
     @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
+    @AppStorage(Shared.cozyPaletteKey) private var cozyPalette: CozyPalette = .peach   // redraws when the Cozy colors change
     @State private var tab = "today"
     @Environment(\.colorScheme) private var colorScheme
     @ScaledMetric(relativeTo: .largeTitle) private var retroNumberSize: CGFloat = 60
@@ -298,10 +299,10 @@ struct ContentView: View {
                     Spacer()
                     Button { showSettings = true } label: {
                         Image(systemName: "gearshape.fill").font(.title3)
-                            .foregroundStyle(Cozy.rose)
+                            .foregroundStyle(Cozy.accent)
                             .padding(10)
                             .background(Cozy.card, in: Circle())
-                            .shadow(color: Cozy.rose.opacity(0.15), radius: 6, y: 3)
+                            .shadow(color: Cozy.accent.opacity(0.15), radius: 6, y: 3)
                     }
                     .accessibilityLabel("Settings")
                 }
@@ -330,7 +331,7 @@ struct ContentView: View {
                 if store.week.isEmpty == false && store.week.allSatisfy({ $0.steps == 0 }) {
                     NoStepsHelp()
                 }
-                infoRows(symbols: true, tint: Cozy.rose)
+                infoRows(symbols: true, tint: Cozy.accent)
                     .cozyCard()
                 SessionCard(store: store, theme: theme)
                 if let error = store.error {
@@ -493,7 +494,7 @@ struct ContentView: View {
         switch appStyle {
         case .cozy:
             weekContent.padding().background(Cozy.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .shadow(color: Cozy.rose.opacity(0.12), radius: 14, y: 6)
+                .shadow(color: Cozy.accent.opacity(0.12), radius: 14, y: 6)
         case .minimal:
             weekContent.padding().background(Minimal.card, in: RoundedRectangle(cornerRadius: 22))
         case .retro16:
@@ -511,10 +512,10 @@ struct ContentView: View {
             Text("Last 7 days").font(.title2.weight(.bold))
 
             HStack(spacing: 0) {
-                BigNumber(value: average.formatted(), label: "Daily average", color: appStyle == .cozy ? Cozy.rose : .primary)
+                BigNumber(value: average.formatted(), label: "Daily average", color: appStyle == .cozy ? Cozy.accent : .primary)
                 Divider().frame(height: 60)
                 BigNumber(value: "\(daysHit) of \(store.week.count)", label: "Days at goal",
-                          color: appStyle == .retro16 ? Retro16.gold : appStyle == .minimal ? Minimal.accent : Cozy.mintDeep)
+                          color: appStyle == .retro16 ? Retro16.gold : appStyle == .minimal ? Minimal.accent : Cozy.doneDeep)
             }
             .padding(.vertical, 8)
 
@@ -538,7 +539,7 @@ struct ContentView: View {
                     } else {
                         MiniBar(fraction: min(Double(day.steps) / Double(goal), 1),
                                 color: appStyle == .minimal ? Minimal.accent.opacity(hit ? 1 : 0.55)
-                                                        : (hit ? Cozy.mint : Cozy.lavender.opacity(0.75)),
+                                                        : (hit ? Cozy.done : Cozy.end.opacity(0.75)),
                                 avatar: avatar, look: look,
                                 mood: hit ? .celebrate : isToday ? .walk : .slump)
                     }
@@ -717,6 +718,7 @@ struct SettingsView: View {
     @AppStorage("importWorkouts") private var importWorkouts = true
     @AppStorage("didSetup") private var didSetup = true
     @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
+    @AppStorage(Shared.cozyPaletteKey) private var cozyPalette: CozyPalette = .peach   // redraws when the Cozy colors change
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -738,6 +740,28 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.inline)
                     .labelsHidden()
+                    if appStyle == .cozy {
+                        // Cozy pastel colors: a row of little rings to tap.
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Colors: \(cozyPalette.name)").font(.subheadline)
+                            HStack(spacing: 14) {
+                                ForEach(CozyPalette.allCases) { p in
+                                    Button { cozyPalette = p } label: {
+                                        Circle()
+                                            .stroke(AngularGradient(colors: p.ring.map { Color(red: $0.0, green: $0.1, blue: $0.2) } + [Color(red: p.ring[0].0, green: p.ring[0].1, blue: p.ring[0].2)],
+                                                                    center: .center), lineWidth: 7)
+                                            .frame(width: 34, height: 34)
+                                            .padding(5)
+                                            .overlay(Circle().stroke(Color.primary, lineWidth: p == cozyPalette ? 2.5 : 0))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel(p.name)
+                                    .accessibilityAddTraits(p == cozyPalette ? .isSelected : [])
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
                 } header: {
                     Text("App style")
                 } footer: {
