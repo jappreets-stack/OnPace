@@ -225,7 +225,7 @@ struct ContentView: View {
         TabView(selection: $tab) {
             Tab("Today", systemImage: "figure.walk", value: "today") {
                 switch appStyle {
-                case .cozy: cozyToday
+                case .cozy: cozyToday.id(cozyPalette)   // redraw right away when you pick new colors
                 case .minimal: minimalToday
                 case .retro16: retroToday
                 }
@@ -471,6 +471,7 @@ struct ContentView: View {
                     .padding()
                 }
             }
+            .id(appStyle == .cozy ? cozyPalette.rawValue : appStyle.rawValue)   // new colors show right away
             .navigationTitle("History")
         }
     }

@@ -204,7 +204,7 @@ struct ContentView: View {
     var body: some View {
         // Scroll the Digital Crown to move between pages.
         TabView {
-            ringPage
+            ringPage.id(cozyPalette)   // redraw when the phone sends new Cozy colors
             statsPage
             if !sessions.isEmpty { sessionsPage }
             weekPage
