@@ -220,6 +220,7 @@ struct ContentView: View {
         return .everyday(walking: walking.isWalking, hitGoal: hitGoal, onPace: onPace)
     }
     @StateObject private var walking = WalkingDetector()   // walks while you walk (Walking.swift)
+    private var nightRed: Bool { appStyle == .cozy && cozyPalette == .nightRed }
 
     var body: some View {
         TabView(selection: $tab) {
@@ -237,7 +238,9 @@ struct ContentView: View {
         .onAppear { if let t = UserDefaults.standard.string(forKey: "startTab") { tab = t } }
         #endif
         .tint(Color.primary)
-        .preferredColorScheme(theme.scheme)
+        // Cozy pastel → Night red: the whole app in red on black, like the Ultra's Night Mode.
+        .nightRed(nightRed)
+        .preferredColorScheme(nightRed ? .dark : theme.scheme)
         .sheet(isPresented: $showSettings) {
             SettingsView(goal: $goal, theme: $theme, avatar: $avatar, look: $look)
         }
@@ -749,7 +752,7 @@ struct SettingsView: View {
                                 ForEach(CozyPalette.allCases) { p in
                                     Button { cozyPalette = p } label: {
                                         Circle()
-                                            .stroke(AngularGradient(colors: p.ring.map { Color(red: $0.0, green: $0.1, blue: $0.2) } + [Color(red: p.ring[0].0, green: p.ring[0].1, blue: p.ring[0].2)],
+                                            .stroke(AngularGradient(colors: p.swatch.map { Color(red: $0.0, green: $0.1, blue: $0.2) } + [Color(red: p.swatch[0].0, green: p.swatch[0].1, blue: p.swatch[0].2)],
                                                                     center: .center), lineWidth: 7)
                                             .frame(width: 34, height: 34)
                                             .padding(5)

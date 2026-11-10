@@ -157,7 +157,10 @@ struct SessionCard: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
-                        .background(LinearGradient(colors: [Cozy.start, Cozy.accent], startPoint: .leading, endPoint: .trailing),
+                        .background(Cozy.palette == .nightRed
+                                    ? AnyShapeStyle(Color(white: 0.22))   // Night red: dark pill so the text reads
+                                    : AnyShapeStyle(LinearGradient(colors: [Cozy.start, Cozy.accent],
+                                                                   startPoint: .leading, endPoint: .trailing)),
                                     in: Capsule())
                         .shadow(color: Cozy.accent.opacity(0.35), radius: 10, y: 5)
                         .contentShape(Capsule())

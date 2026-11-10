@@ -213,9 +213,9 @@ struct ContentView: View {
             colorPage
         }
         .tabViewStyle(.verticalPage)
-        // Night red: turn every color into a shade of red (whites become bright red, black stays black).
-        .grayscale(nightRed ? 1 : 0)
-        .colorMultiply(nightRed ? Color(red: 1, green: 0.12, blue: 0.08) : .white)
+        // Night red: every color in a shade of red. On with the switch below, or when the phone picks
+        // Cozy pastel → Night red.
+        .nightRed(nightRed || (appStyle == .cozy && cozyPalette == .nightRed))
         .task {
             await store.start(goal: goal)
             WatchSync.shared.askPhone()
