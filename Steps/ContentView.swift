@@ -748,7 +748,7 @@ struct SettingsView: View {
                         // Cozy pastel colors: a row of little rings to tap.
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Colors: \(cozyPalette.name)").font(.subheadline)
-                            HStack(spacing: 14) {
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 10) {
                                 ForEach(CozyPalette.allCases) { p in
                                     Button { cozyPalette = p } label: {
                                         Circle()

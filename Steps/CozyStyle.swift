@@ -1,10 +1,10 @@
 import SwiftUI
 
 // "Cozy pastel" style (Settings → App style): a soft pastel page, a pastel gradient ring, rounded text in a
-// warm brown, and white pillowy cards. Four color sets (CozyPalette), picked in Settings and synced to the watch.
+// warm brown, and white pillowy cards. Several color sets (CozyPalette), picked in Settings and synced to the watch.
 // Shared with the watch (ring colors only).
 enum CozyPalette: String, CaseIterable, Identifiable {
-    case peach, mint, lilac, butter, nightRed
+    case peach, mint, lilac, butter, dusk, rain, matcha, nightRed
     var id: String { rawValue }
     var name: String {
         switch self {
@@ -12,6 +12,9 @@ enum CozyPalette: String, CaseIterable, Identifiable {
         case .mint: "Mint & sky"
         case .lilac: "Lilac & rose"
         case .butter: "Butter & coral"
+        case .dusk: "Dusk & lamp glow"
+        case .rain: "Rainy window"
+        case .matcha: "Matcha & cream"
         case .nightRed: "Night red"
         }
     }
@@ -23,6 +26,12 @@ enum CozyPalette: String, CaseIterable, Identifiable {
         case .mint: [(0.52, 0.86, 0.72), (0.45, 0.80, 0.88), (0.52, 0.64, 0.95)]
         case .lilac: [(0.80, 0.68, 0.97), (0.88, 0.58, 0.88), (0.97, 0.58, 0.70)]
         case .butter: [(1.00, 0.84, 0.42), (1.00, 0.68, 0.48), (0.97, 0.50, 0.50)]
+        // Lo-fi evening: dusty purple sky, rosy clouds, a warm desk lamp.
+        case .dusk: [(0.62, 0.56, 0.86), (0.92, 0.62, 0.76), (1.00, 0.74, 0.50)]
+        // Lo-fi rainy night: muted teal, periwinkle, soft lavender.
+        case .rain: [(0.48, 0.74, 0.78), (0.60, 0.68, 0.92), (0.78, 0.66, 0.90)]
+        // Lo-fi café: sage, matcha, cream.
+        case .matcha: [(0.66, 0.82, 0.62), (0.80, 0.84, 0.60), (0.96, 0.84, 0.64)]
         case .nightRed: [(0.75, 0.75, 0.75), (0.90, 0.90, 0.90), (1.00, 1.00, 1.00)]   // turned red by the Night red tint
         }
     }
@@ -35,6 +44,9 @@ enum CozyPalette: String, CaseIterable, Identifiable {
         case .mint: (0.26, 0.66, 0.70)
         case .lilac: (0.70, 0.46, 0.88)
         case .butter: (0.95, 0.48, 0.42)
+        case .dusk: (0.74, 0.52, 0.80)
+        case .rain: (0.42, 0.58, 0.82)
+        case .matcha: (0.48, 0.66, 0.44)
         case .nightRed: (1.00, 1.00, 1.00)
         }
     }
@@ -42,6 +54,7 @@ enum CozyPalette: String, CaseIterable, Identifiable {
     var done: RGB {
         switch self {
         case .mint: (1.00, 0.78, 0.36)
+        case .matcha: (0.97, 0.60, 0.52)
         case .nightRed: (1.00, 1.00, 1.00)
         default: (0.45, 0.80, 0.64)
         }
@@ -49,6 +62,7 @@ enum CozyPalette: String, CaseIterable, Identifiable {
     var doneDeep: RGB {   // readable on the page
         switch self {
         case .mint: (0.80, 0.55, 0.10)
+        case .matcha: (0.82, 0.40, 0.32)
         case .nightRed: (1.00, 1.00, 1.00)
         default: (0.24, 0.62, 0.46)
         }
@@ -60,6 +74,9 @@ enum CozyPalette: String, CaseIterable, Identifiable {
         case .mint: ((0.95, 0.99, 0.97), (0.90, 0.96, 0.99))
         case .lilac: ((0.99, 0.96, 1.00), (0.96, 0.91, 0.98))
         case .butter: ((1.00, 0.99, 0.91), (1.00, 0.93, 0.86))
+        case .dusk: ((0.97, 0.94, 1.00), (1.00, 0.91, 0.88))
+        case .rain: ((0.93, 0.96, 0.99), (0.94, 0.92, 0.99))
+        case .matcha: ((0.96, 0.98, 0.92), (0.99, 0.95, 0.88))
         case .nightRed: ((0, 0, 0), (0, 0, 0))
         }
     }
@@ -69,6 +86,9 @@ enum CozyPalette: String, CaseIterable, Identifiable {
         case .mint: ((0.07, 0.16, 0.17), (0.10, 0.19, 0.24))
         case .lilac: ((0.16, 0.12, 0.24), (0.22, 0.15, 0.30))
         case .butter: ((0.19, 0.14, 0.10), (0.26, 0.17, 0.14))
+        case .dusk: ((0.12, 0.10, 0.24), (0.26, 0.15, 0.28))
+        case .rain: ((0.07, 0.10, 0.19), (0.12, 0.14, 0.27))
+        case .matcha: ((0.10, 0.14, 0.10), (0.17, 0.18, 0.13))
         case .nightRed: ((0, 0, 0), (0, 0, 0))
         }
     }
