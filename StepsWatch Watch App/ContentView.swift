@@ -174,6 +174,8 @@ struct ContentView: View {
     @AppStorage(Shared.lookKey, store: Shared.defaults) private var look: Look = .starter
     @AppStorage(Shared.appStyleKey, store: Shared.defaults) private var appStyle: AppStyle = .minimal
     @AppStorage(Shared.cozyPaletteKey, store: Shared.defaults) private var cozyPalette: CozyPalette = .peach   // redraws on change
+    // Watch only: everything in red on black, like the Ultra's Night Mode (switch on the last page).
+    @AppStorage("nightRed") private var nightRed = false
     private let funUnit = FunUnit.walked
     // The ring color for the phone's style (Cozy pastel uses a gradient, see ringPage).
     private var accent: Color {
@@ -211,6 +213,9 @@ struct ContentView: View {
             colorPage
         }
         .tabViewStyle(.verticalPage)
+        // Night red: turn every color into a shade of red (whites become bright red, black stays black).
+        .grayscale(nightRed ? 1 : 0)
+        .colorMultiply(nightRed ? Color(red: 1, green: 0.12, blue: 0.08) : .white)
         .task {
             await store.start(goal: goal)
             WatchSync.shared.askPhone()
@@ -381,9 +386,14 @@ struct ContentView: View {
         }
     }
 
-    // Last page: your mini-me (set on the iPhone).
+    // Last page: Night red, and your mini-me (set on the iPhone).
     private var colorPage: some View {
         List {
+            Section {
+                Toggle("Night red", isOn: $nightRed)
+            } footer: {
+                Text("Everything in red, like Ultra Night Mode. Easy on your eyes in the dark.")
+            }
             Section("Your mini-me") {
                 HStack(spacing: 10) {
                     CharacterView(avatar: avatar, mood: .walk, look: look)
