@@ -389,7 +389,8 @@ extension StepStore {
         let unit = FunUnit.walked
         let today = records.filter { Calendar.current.isDateInToday($0.start) }.map { r in
             WatchSession(emoji: r.sessionKind.emoji, title: r.title, steps: r.steps,
-                         distance: (r.sessionKind == .golf ? FunUnit.holes : unit).phrase(r.steps, meters: r.meters))
+                         distance: (r.sessionKind == .golf ? FunUnit.holes : unit).phrase(r.steps, meters: r.meters),
+                         id: r.id, start: r.start, end: r.end)
         }
         if let data = try? JSONEncoder().encode(today), let text = String(data: data, encoding: .utf8) {
             Shared.defaults.set(text, forKey: Shared.sessionsKey)

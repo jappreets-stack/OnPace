@@ -188,8 +188,19 @@ struct ContentView: View {
     // Sent by the iPhone with every refresh (see PhoneSync): today's steps and sessions.
     @AppStorage(Shared.stepsDateKey, store: Shared.defaults) private var phoneStamp = ""   // changes with every phone refresh
     @AppStorage(Shared.sessionsKey, store: Shared.defaults) private var sessionsJSON = ""
-    private var sessions: [WatchSession] {
+    private var phoneSessions: [WatchSession] {
         (try? JSONDecoder().decode([WatchSession].self, from: Data(sessionsJSON.utf8))) ?? []
+    }
+    // Workouts you finished today on this watch, read straight from its Health (no need to open the iPhone app).
+    @State private var watchWorkouts: [WatchSession] = []
+    private var sessions: [WatchSession] {
+        let phone = phoneSessions
+        let extra = watchWorkouts.filter { w in
+            !phone.contains { p in
+                p.id == w.id || (p.start.map { $0 < (w.end ?? .now) } ?? false && p.end.map { $0 > (w.start ?? .now) } ?? false)
+            }
+        }
+        return (phone + extra).sorted { ($0.start ?? .distantPast) < ($1.start ?? .distantPast) }
     }
 
     private var progress: Double { min(Double(store.today) / Double(goal), 1) }
@@ -350,8 +361,8 @@ struct ContentView: View {
                             Text("\(s.steps.formatted()) steps · \(s.distance)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     .accessibilityElement(children: .combine)
@@ -360,6 +371,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 4)
         }
+        .task { watchWorkouts = await TodaysWorkouts.load() }
     }
 
     private var weekPage: some View {
@@ -435,4 +447,43 @@ struct StatRow: View {
 
 #Preview {
     ContentView()
+}
+
+// Today's finished workouts from this watch's own Health, as sessions (same kinds the iPhone adds:
+// Golf, Hike, Walk, Run, Strength). The iPhone only adds them when its app is opened; this shows them right away.
+enum TodaysWorkouts {
+    static func load() async -> [WatchSession] {
+        let health = HKHealthStore()
+        try? await health.requestAuthorization(toShare: [], read: [HKObjectType.workoutType()])
+        let start = Calendar.current.startOfDay(for: .now)
+        let query = HKSampleQueryDescriptor(
+            predicates: [.workout(HKQuery.predicateForSamples(withStart: start, end: .now))],
+            sortDescriptors: [SortDescriptor(\.startDate)])
+        guard let workouts = try? await query.result(for: health) else { return [] }
+        var list: [WatchSession] = []
+        for w in workouts {
+            let hours = w.endDate.timeIntervalSince(w.startDate) / 3600
+            let (emoji, title): (String, String)
+            switch w.workoutActivityType {
+            case .golf: (emoji, title) = ("⛳️", hours < 2.5 ? "9 holes" : "18 holes")
+            case .hiking: (emoji, title) = ("🥾", "Hike")
+            case .walking: (emoji, title) = ("✨", "Walk")
+            case .running: (emoji, title) = ("✨", "Run")
+            case .traditionalStrengthTraining, .functionalStrengthTraining,
+                 .highIntensityIntervalTraining, .crossTraining: (emoji, title) = ("💪", "Workout")
+            default: continue
+            }
+            let stepsQuery = HKStatisticsQueryDescriptor(
+                predicate: .quantitySample(type: HKQuantityType(.stepCount),
+                                           predicate: HKQuery.predicateForSamples(withStart: w.startDate, end: w.endDate)),
+                options: .cumulativeSum)
+            let steps = Int((try? await stepsQuery.result(for: health))?.sumQuantity()?.doubleValue(for: .count()) ?? 0)
+            let meters = await WalkDistance.meters(health, from: w.startDate, to: w.endDate)
+            let unit = w.workoutActivityType == .golf ? FunUnit.holes : FunUnit.walked
+            list.append(WatchSession(emoji: emoji, title: title, steps: steps,
+                                     distance: unit.phrase(steps, meters: meters),
+                                     id: w.uuid, start: w.startDate, end: w.endDate))
+        }
+        return list
+    }
 }

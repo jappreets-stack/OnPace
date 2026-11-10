@@ -180,6 +180,9 @@ nonisolated struct WatchSession: Codable, Hashable {
     let title: String
     let steps: Int
     let distance: String
+    var id: UUID? = nil      // same as the Apple workout's id, so the watch never lists a workout twice
+    var start: Date? = nil
+    var end: Date? = nil
 }
 
 // Apple Health saves steps in batches; the motion chip has every step right away. These helpers find Health's
