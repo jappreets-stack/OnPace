@@ -208,7 +208,7 @@ struct ContentView: View {
         TabView {
             ringPage.id(cozyPalette)   // redraw when the phone sends new Cozy colors
             statsPage
-            if !sessions.isEmpty { sessionsPage }
+            sessionsPage
             weekPage
             colorPage
         }
@@ -331,12 +331,17 @@ struct ContentView: View {
         .padding(.horizontal, 4)
     }
 
-    // Page 3: last 7 days as little bars, ✅ on goal days.
-    // Today's sessions (yours and finished workouts from the Workout app), sent by the iPhone.
+    // Page 3: today's sessions (yours and finished workouts from the Workout app), sent by the iPhone.
     private var sessionsPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Today's sessions").font(.headline)
+                if sessions.isEmpty {
+                    Text("No sessions yet today. Start one on your iPhone, or finish a workout in the Workout app.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 ForEach(sessions, id: \.self) { s in
                     HStack(spacing: 8) {
                         Text(s.emoji).font(.title3)
