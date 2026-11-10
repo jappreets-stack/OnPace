@@ -32,7 +32,7 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Styles:** Clean minimal (default: Apple-style grouped cards, one green ring, SF Symbols), 16-bit adventure
   (original pixel art drawn in code: mountains and a castle by day or under the stars, a gold block ring, a pixel
   mini-me built from your look with walk / stand / slump / celebrate / swing frames, RPG-style menu panels), or
-  Cozy pastel (soft pastel page, a pastel gradient ring and white rounded cards, in eight color sets: Peach & lavender, Mint & sky, Lilac & rose, Butter & coral, three lo-fi sets (Dusk & lamp glow, Rainy window, Matcha & cream), and Night red, which turns the whole app and the watch red on black like the Ultra's Night Mode); light or dark. The style is its own section at the top of Settings
+  Cozy pastel (soft pastel page, a pastel gradient ring and white rounded cards, in eight color sets, each its own hue: Peach & coral, Butter & honey, Matcha, Mint & teal, Rainy blue, Lilac & violet, Lo-fi sunset, and Night red, which turns the whole app and the watch red on black like the Ultra's Night Mode); light or dark. The style is its own section at the top of Settings
   and follows you to the Apple Watch
 - **Live step count:** Apple Health saves steps in batches, so while OnPace is open it adds only the steps your
   phone or watch motion chip counted after Health's last save. The number ticks up as you walk like the Fitness app,

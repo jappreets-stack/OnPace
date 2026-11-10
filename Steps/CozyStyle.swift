@@ -4,17 +4,18 @@ import SwiftUI
 // warm brown, and white pillowy cards. Several color sets (CozyPalette), picked in Settings and synced to the watch.
 // Shared with the watch (ring colors only).
 enum CozyPalette: String, CaseIterable, Identifiable {
-    case peach, mint, lilac, butter, dusk, rain, matcha, nightRed
+    // Each set is its own hue, in rainbow order in Settings. (The saved names stay the same for old settings.)
+    case peach, butter, matcha, mint, rain, lilac, dusk, nightRed
     var id: String { rawValue }
     var name: String {
         switch self {
-        case .peach: "Peach & lavender"
-        case .mint: "Mint & sky"
-        case .lilac: "Lilac & rose"
-        case .butter: "Butter & coral"
-        case .dusk: "Dusk & lamp glow"
-        case .rain: "Rainy window"
-        case .matcha: "Matcha & cream"
+        case .peach: "Peach & coral"
+        case .butter: "Butter & honey"
+        case .matcha: "Matcha"
+        case .mint: "Mint & teal"
+        case .rain: "Rainy blue"
+        case .lilac: "Lilac & violet"
+        case .dusk: "Lo-fi sunset"
         case .nightRed: "Night red"
         }
     }
@@ -22,16 +23,14 @@ enum CozyPalette: String, CaseIterable, Identifiable {
     // The ring fades start → middle → end.
     var ring: [RGB] {
         switch self {
-        case .peach: [(1.00, 0.72, 0.60), (0.95, 0.55, 0.66), (0.70, 0.62, 0.93)]
-        case .mint: [(0.52, 0.86, 0.72), (0.45, 0.80, 0.88), (0.52, 0.64, 0.95)]
-        case .lilac: [(0.80, 0.68, 0.97), (0.88, 0.58, 0.88), (0.97, 0.58, 0.70)]
-        case .butter: [(1.00, 0.84, 0.42), (1.00, 0.68, 0.48), (0.97, 0.50, 0.50)]
-        // Lo-fi evening: dusty purple sky, rosy clouds, a warm desk lamp.
-        case .dusk: [(0.62, 0.56, 0.86), (0.92, 0.62, 0.76), (1.00, 0.74, 0.50)]
-        // Lo-fi rainy night: muted teal, periwinkle, soft lavender.
-        case .rain: [(0.48, 0.74, 0.78), (0.60, 0.68, 0.92), (0.78, 0.66, 0.90)]
-        // Lo-fi café: sage, matcha, cream.
-        case .matcha: [(0.66, 0.82, 0.62), (0.80, 0.84, 0.60), (0.96, 0.84, 0.64)]
+        case .peach: [(1.00, 0.78, 0.64), (1.00, 0.60, 0.52), (0.96, 0.44, 0.48)]
+        case .butter: [(1.00, 0.92, 0.52), (1.00, 0.80, 0.36), (0.98, 0.66, 0.24)]
+        case .matcha: [(0.80, 0.88, 0.52), (0.62, 0.80, 0.40), (0.42, 0.68, 0.34)]
+        case .mint: [(0.56, 0.94, 0.86), (0.34, 0.82, 0.80), (0.20, 0.66, 0.72)]
+        case .rain: [(0.62, 0.80, 1.00), (0.42, 0.62, 0.96), (0.30, 0.44, 0.88)]
+        case .lilac: [(0.86, 0.76, 1.00), (0.72, 0.58, 0.98), (0.56, 0.42, 0.92)]
+        // Lo-fi evening: indigo sky, magenta clouds, warm orange lamp.
+        case .dusk: [(0.40, 0.38, 0.82), (0.88, 0.42, 0.70), (1.00, 0.64, 0.36)]
         case .nightRed: [(0.75, 0.75, 0.75), (0.90, 0.90, 0.90), (1.00, 1.00, 1.00)]   // turned red by the Night red tint
         }
     }
@@ -40,55 +39,53 @@ enum CozyPalette: String, CaseIterable, Identifiable {
     // Icons, the gear and the "Daily average" number.
     var accent: RGB {
         switch self {
-        case .peach: (0.95, 0.55, 0.66)
-        case .mint: (0.26, 0.66, 0.70)
-        case .lilac: (0.70, 0.46, 0.88)
-        case .butter: (0.95, 0.48, 0.42)
-        case .dusk: (0.74, 0.52, 0.80)
-        case .rain: (0.42, 0.58, 0.82)
-        case .matcha: (0.48, 0.66, 0.44)
+        case .peach: (0.94, 0.48, 0.46)
+        case .butter: (0.90, 0.60, 0.16)
+        case .matcha: (0.42, 0.64, 0.30)
+        case .mint: (0.16, 0.62, 0.64)
+        case .rain: (0.30, 0.50, 0.90)
+        case .lilac: (0.58, 0.44, 0.90)
+        case .dusk: (0.80, 0.40, 0.66)
         case .nightRed: (1.00, 1.00, 1.00)
         }
     }
-    // Goal hit: the ring, bars and "Days at goal" turn this color.
+    // Goal hit: the ring, bars and "Days at goal" turn this color (never the same hue as the set).
     var done: RGB {
         switch self {
-        case .mint: (1.00, 0.78, 0.36)
-        case .matcha: (0.97, 0.60, 0.52)
+        case .matcha, .mint: (1.00, 0.70, 0.40)
         case .nightRed: (1.00, 1.00, 1.00)
         default: (0.45, 0.80, 0.64)
         }
     }
     var doneDeep: RGB {   // readable on the page
         switch self {
-        case .mint: (0.80, 0.55, 0.10)
-        case .matcha: (0.82, 0.40, 0.32)
+        case .matcha, .mint: (0.84, 0.46, 0.16)
         case .nightRed: (1.00, 1.00, 1.00)
         default: (0.24, 0.62, 0.46)
         }
     }
-    // Page gradient, light (top, bottom) and dark (top, bottom).
+    // Page gradient, light (top, bottom) and dark (top, bottom), tinted with the set's hue.
     var pageLight: (RGB, RGB) {
         switch self {
-        case .peach: ((1.00, 0.97, 0.93), (0.99, 0.91, 0.90))
-        case .mint: ((0.95, 0.99, 0.97), (0.90, 0.96, 0.99))
-        case .lilac: ((0.99, 0.96, 1.00), (0.96, 0.91, 0.98))
-        case .butter: ((1.00, 0.99, 0.91), (1.00, 0.93, 0.86))
-        case .dusk: ((0.97, 0.94, 1.00), (1.00, 0.91, 0.88))
-        case .rain: ((0.93, 0.96, 0.99), (0.94, 0.92, 0.99))
-        case .matcha: ((0.96, 0.98, 0.92), (0.99, 0.95, 0.88))
+        case .peach: ((1.00, 0.96, 0.93), (1.00, 0.90, 0.88))
+        case .butter: ((1.00, 0.99, 0.90), (1.00, 0.95, 0.82))
+        case .matcha: ((0.97, 0.99, 0.91), (0.92, 0.96, 0.86))
+        case .mint: ((0.93, 0.99, 0.98), (0.86, 0.96, 0.95))
+        case .rain: ((0.94, 0.97, 1.00), (0.88, 0.92, 1.00))
+        case .lilac: ((0.98, 0.95, 1.00), (0.93, 0.90, 1.00))
+        case .dusk: ((0.94, 0.92, 1.00), (1.00, 0.89, 0.86))
         case .nightRed: ((0, 0, 0), (0, 0, 0))
         }
     }
     var pageDark: (RGB, RGB) {
         switch self {
-        case .peach: ((0.17, 0.13, 0.22), (0.24, 0.17, 0.27))
-        case .mint: ((0.07, 0.16, 0.17), (0.10, 0.19, 0.24))
-        case .lilac: ((0.16, 0.12, 0.24), (0.22, 0.15, 0.30))
-        case .butter: ((0.19, 0.14, 0.10), (0.26, 0.17, 0.14))
-        case .dusk: ((0.12, 0.10, 0.24), (0.26, 0.15, 0.28))
-        case .rain: ((0.07, 0.10, 0.19), (0.12, 0.14, 0.27))
-        case .matcha: ((0.10, 0.14, 0.10), (0.17, 0.18, 0.13))
+        case .peach: ((0.20, 0.11, 0.10), (0.28, 0.14, 0.14))
+        case .butter: ((0.19, 0.15, 0.07), (0.26, 0.19, 0.08))
+        case .matcha: ((0.09, 0.14, 0.08), (0.14, 0.19, 0.10))
+        case .mint: ((0.05, 0.15, 0.16), (0.07, 0.20, 0.21))
+        case .rain: ((0.06, 0.09, 0.20), (0.09, 0.13, 0.29))
+        case .lilac: ((0.13, 0.10, 0.24), (0.19, 0.13, 0.32))
+        case .dusk: ((0.11, 0.09, 0.26), (0.30, 0.13, 0.26))
         case .nightRed: ((0, 0, 0), (0, 0, 0))
         }
     }
