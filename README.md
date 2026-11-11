@@ -28,7 +28,7 @@ a hand-drawn animated character that reacts to how your day is going.
   ("4.9 miles walked", or km where you use metric), then one card of rows: steps left, how far behind pace you are and
   the minutes of walking to catch up, the time you'll finish at this pace, and your streak.
   Distance is the real distance Apple Health measured with your own stride, golf rounds included (their title says 9 or 18 holes)
-- One **Start a session** button opens a "What are you doing?" sheet
+- One **Count steps for an activity** button opens a "What are you doing?" sheet
 - **Styles:** Clean minimal (default: Apple-style grouped cards, one green ring, SF Symbols), 16-bit adventure
   (original pixel art drawn in code: mountains and a castle by day or under the stars, a gold block ring, a pixel
   mini-me built from your look with walk / stand / slump / celebrate / swing frames, RPG-style menu panels), or

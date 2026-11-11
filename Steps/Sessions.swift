@@ -140,7 +140,7 @@ struct SessionCard: View {
                 Button { showPicker = true } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "play.fill").foregroundStyle(Retro16.gold)
-                        Text("Start a session").foregroundStyle(.white)
+                        Text("Count steps for an activity").foregroundStyle(.white)
                     }
                     .font(.title3.weight(.semibold))
                     .frame(maxWidth: .infinity)
@@ -152,7 +152,7 @@ struct SessionCard: View {
             } else if appStyle == .cozy {
                 // Cozy pastel: a soft peach-to-pink pill.
                 Button { showPicker = true } label: {
-                    Label("Start a session", systemImage: "play.fill")
+                    Label("Count steps for an activity", systemImage: "play.fill")
                         .font(.title3.weight(.bold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -169,7 +169,7 @@ struct SessionCard: View {
             } else {
                 // Not in a session: one big button; the choices are in a sheet.
                 Button { showPicker = true } label: {
-                    Label("Start a session", systemImage: "play.fill")
+                    Label("Count steps for an activity", systemImage: "play.fill")
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(.black)
                         .frame(maxWidth: .infinity)
@@ -242,6 +242,12 @@ struct SessionPicker: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 18) {
+                    // So nobody mistakes OnPace for a workout tracker.
+                    Text("OnPace counts your steps until you tap End. It doesn't track workouts.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.primary.opacity(0.65))
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(SessionKind.allCases) { option in
                             Button { kind = option } label: {
@@ -284,9 +290,6 @@ struct SessionPicker: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .tint(theme.done)
-                    Text("Counts only the steps you take until you tap End.")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.primary.opacity(0.6))
                 }
                 .padding()
             }
