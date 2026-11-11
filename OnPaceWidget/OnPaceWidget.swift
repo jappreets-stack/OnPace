@@ -29,7 +29,7 @@ struct OnPaceEntry: TimelineEntry {
         steps < 1000 ? "\(steps)" : (Double(steps) / 1000).formatted(.number.precision(.fractionLength(1))) + "K"
     }
 
-    static let sample = OnPaceEntry(date: .now, steps: 6_400, goal: 10_000, meters: 4_600, unit: .soccerFields)
+    static let sample = OnPaceEntry(date: .now, steps: 6_400, goal: 10_000, meters: 4_600, unit: .walked)
 }
 
 struct OnPaceProvider: TimelineProvider {
@@ -166,7 +166,7 @@ struct OnPaceMiniMeView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
-                Text("\(entry.unit.emoji) \(entry.unit.phrase(entry.steps, meters: entry.meters))")
+                Text("📏 \(entry.unit.phrase(entry.steps, meters: entry.meters))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

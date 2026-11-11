@@ -102,9 +102,9 @@ struct SessionCard: View {
         }
     }
 
-    // Golf always counts holes; other sessions use your fun unit.
+    // Real distance walked (miles or km). Golf rounds too: the title already says how many holes you played.
     private func distance(_ steps: Int, meters: Double?, kind: SessionKind) -> String {
-        (kind == .golf ? FunUnit.holes : funUnit).phrase(steps, meters: meters)
+        funUnit.phrase(steps, meters: meters)
     }
 
     var body: some View {
@@ -312,7 +312,7 @@ struct SessionHistory: View {
     }
 
     private func distance(_ r: SessionRecord) -> String {
-        (r.sessionKind == .golf ? FunUnit.holes : funUnit).phrase(r.steps, meters: r.meters)
+        funUnit.phrase(r.steps, meters: r.meters)
     }
 
     var body: some View {
@@ -389,7 +389,7 @@ extension StepStore {
         let unit = FunUnit.walked
         let today = records.filter { Calendar.current.isDateInToday($0.start) }.map { r in
             WatchSession(emoji: r.sessionKind.emoji, title: r.title, steps: r.steps,
-                         distance: (r.sessionKind == .golf ? FunUnit.holes : unit).phrase(r.steps, meters: r.meters),
+                         distance: unit.phrase(r.steps, meters: r.meters),
                          id: r.id, start: r.start, end: r.end)
         }
         if let data = try? JSONEncoder().encode(today), let text = String(data: data, encoding: .utf8) {

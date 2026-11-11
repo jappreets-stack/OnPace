@@ -479,7 +479,7 @@ enum TodaysWorkouts {
                 options: .cumulativeSum)
             let steps = Int((try? await stepsQuery.result(for: health))?.sumQuantity()?.doubleValue(for: .count()) ?? 0)
             let meters = await WalkDistance.meters(health, from: w.startDate, to: w.endDate)
-            let unit = w.workoutActivityType == .golf ? FunUnit.holes : FunUnit.walked
+            let unit = FunUnit.walked   // real miles or km, golf too (the title says the holes)
             list.append(WatchSession(emoji: emoji, title: title, steps: steps,
                                      distance: unit.phrase(steps, meters: meters),
                                      id: w.uuid, start: w.startDate, end: w.endDate))
