@@ -192,9 +192,9 @@ struct ContentView: View {
     // yesterday's sessions: keep only ones that started today.
     private var phoneSessions: [WatchSession] {
         let all = (try? JSONDecoder().decode([WatchSession].self, from: Data(sessionsJSON.utf8))) ?? []
-        // Lists saved by an older iPhone build have no start time: trust them only if the phone saved them today.
-        let savedToday = Double(phoneStamp).map { Calendar.current.isDateInToday(Date(timeIntervalSince1970: $0)) } ?? false
-        return all.filter { $0.start.map { Calendar.current.isDateInToday($0) } ?? savedToday }
+        // Sessions saved by an older iPhone build have no start time, so there's no way to tell their day: skip them.
+        // (The phone's background reply can resend an old list with a fresh "today" stamp.)
+        return all.filter { $0.start.map { Calendar.current.isDateInToday($0) } ?? false }
     }
     // Workouts you finished today on this watch, read straight from its Health (no need to open the iPhone app).
     @State private var watchWorkouts: [WatchSession] = []
