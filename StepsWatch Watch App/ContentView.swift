@@ -188,8 +188,11 @@ struct ContentView: View {
     // Sent by the iPhone with every refresh (see PhoneSync): today's steps and sessions.
     @AppStorage(Shared.stepsDateKey, store: Shared.defaults) private var phoneStamp = ""   // changes with every phone refresh
     @AppStorage(Shared.sessionsKey, store: Shared.defaults) private var sessionsJSON = ""
+    // The phone's list is only replaced when its app refreshes, so after midnight it can still hold
+    // yesterday's sessions: keep only ones that started today.
     private var phoneSessions: [WatchSession] {
-        (try? JSONDecoder().decode([WatchSession].self, from: Data(sessionsJSON.utf8))) ?? []
+        let all = (try? JSONDecoder().decode([WatchSession].self, from: Data(sessionsJSON.utf8))) ?? []
+        return all.filter { $0.start.map { Calendar.current.isDateInToday($0) } ?? true }
     }
     // Workouts you finished today on this watch, read straight from its Health (no need to open the iPhone app).
     @State private var watchWorkouts: [WatchSession] = []
@@ -293,7 +296,7 @@ struct ContentView: View {
                         .foregroundStyle(retro ? Retro16.goldLight : .white)
                         .monospacedDigit()
                         .minimumScaleFactor(0.6)
-                    // How far you walked today, in your fun unit ("4.9 miles walked").
+                    // How far you walked today ("4.9 miles walked").
                     Text(funUnit.phrase(store.today, meters: store.todayMeters))
                         .font(.system(size: d * 0.065, weight: .medium, design: design))
                         .foregroundStyle(.secondary)
@@ -372,6 +375,10 @@ struct ContentView: View {
             .padding(.horizontal, 4)
         }
         .task { watchWorkouts = await TodaysWorkouts.load() }
+        // Read again each time you raise your wrist into the app (a workout may have ended since).
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { watchWorkouts = await TodaysWorkouts.load() } }
+        }
     }
 
     private var weekPage: some View {

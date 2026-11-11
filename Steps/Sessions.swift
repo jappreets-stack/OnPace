@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 import HealthKit
 
-// MARK: - Session types and fun units
+// MARK: - Session types
 
 // What you're doing during a session. Golf counts holes; the rest give your mini-me a prop.
 enum SessionKind: String, Codable, CaseIterable, Identifiable {

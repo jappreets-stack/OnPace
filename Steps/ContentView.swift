@@ -811,7 +811,7 @@ struct SettingsView: View {
                         }
                     }
                 } footer: {
-                    Text("Walks you through goal, mini-me and fun unit again. Your steps and sessions stay.")
+                    Text("Walks you through Health access, goal and mini-me again. Your steps and sessions stay.")
                 }
             }
             .navigationTitle("Settings")
