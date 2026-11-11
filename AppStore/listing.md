@@ -1,6 +1,6 @@
 # OnPace: App Store listing (version 1.0)
 
-Copy each block into App Store Connect. Screenshots: `AppStore/iphone-1206x2622/` (6.3" box, in this order: styles, Night red, catch-up minutes, workouts) and `AppStore/watch/` (Ultra, 422×514).
+Copy each block into App Store Connect. Screenshots: `AppStore/iphone-1206x2622/` (6.3" box, in this order: styles, Night red on iPhone + Watch, catch-up minutes, workouts, Apple Watch) and `AppStore/watch/` (Ultra 422×514: Night red first, then Cozy, Clean minimal, 16-bit).
 
 ## App Information
 - **Name:** OnPace Step Tracker
