@@ -1,11 +1,11 @@
 # OnPace: App Store listing (version 1.0)
 
-Copy each block into App Store Connect. Screenshots: `AppStore/iphone/` (6.9", 1320×2868) and `AppStore/watch/` (Ultra, 422×514).
+Copy each block into App Store Connect. Screenshots: `AppStore/iphone-1206x2622/` (6.3" box, in this order: styles, Night red, catch-up minutes, workouts) and `AppStore/watch/` (Ultra, 422×514).
 
 ## App Information
 - **Name:** OnPace Step Tracker
-- **Subtitle (30 max):** Steps, pace & a walking buddy
-- **Category:** Health & Fitness (secondary: Sports)
+- **Subtitle (30 max):** Pedometer: hit your step goal
+- **Category:** Health & Fitness (secondary: Lifestyle)
 - **Privacy Policy URL:** https://jappreets-stack.github.io/OnPace/privacy.html
 - **Content rights:** No third-party content
 - **Age rating:** answer "None" / "No" to everything → 4+
@@ -25,9 +25,10 @@ OnPace answers one question at a glance: are you on pace for today's step goal?
 • Pace that learns your usual day from your last 30 days
 • Your streak and your last 7 days at a glance
 • A mini-me you design (skin tone, hair, outfit, glasses and more) that walks when you walk and celebrates when you hit your goal
-• Three styles: Clean minimal, 16-bit adventure, or Original
-• Sessions for golf rounds, hikes, dog walks, shopping and more, counting just the steps in between
-• Workouts you finish in Apple's Workout app show up as sessions automatically
+• Workouts you finish on Apple Watch show up with the steps you took during them
+• Count the steps of anything: a hike, a dog walk, shopping, a theme park day
+• Night red: the whole app and watch in red on black, easy on your eyes after dark
+• Three styles (Clean minimal, Cozy pastel, 16-bit adventure) and 8 color sets
 
 APPLE WATCH
 • The same ring and pace on your wrist, in your style
@@ -37,9 +38,9 @@ APPLE WATCH
 PRIVATE BY DESIGN
 No account, no ads, no tracking. OnPace reads your steps from Apple Health, and everything stays on your iPhone and Apple Watch.
 
-**Keywords (100 max)**
+**Keywords (100 max)** (no spaces after commas; never repeat words already in the name or subtitle: Apple indexes those already)
 
-pedometer,steps,walking,step counter,goal,golf,fitness,health,watch,complication,streak,pace,walk
+walk,counter,daily,pace,streak,fitness,health,widget,complication,night,red,miles,10000,habit,km
 
 **Support URL:** https://jappreets-stack.github.io/OnPace/
 **Marketing URL:** https://jappreets-stack.github.io/OnPace/
