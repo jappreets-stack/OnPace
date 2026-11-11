@@ -196,7 +196,7 @@ struct ContentView: View {
     @AppStorage("roundStart") private var roundStart: Double = 0
     @AppStorage("avatar") private var avatar: Avatar = .golfer
     @AppStorage("look") private var look: Look = .starter
-    @AppStorage("sessionKind") private var sessionKind: SessionKind = .golf
+    @AppStorage("sessionKind") private var sessionKind: SessionKind = .dogWalk
     private let funUnit = FunUnit.walked
     @State private var showSettings = false
     @AppStorage("didSetup") private var didSetup = true
@@ -213,10 +213,10 @@ struct ContentView: View {
     private var pace: Pace { Pace(steps: store.today, goal: goal, curve: store.curve) }
     private var onPace: Bool { pace.onPace }
 
-    // What your character does: swing in a golf round, walk with a prop in other sessions,
+    // What your character does: walk with a prop in a session,
     // walk while you walk, celebrate at goal, stand on pace, slump behind.
     private var mood: Mood {
-        if roundStart > 0 { return sessionKind == .golf ? .swing : .walk }
+        if roundStart > 0 { return .walk }
         return .everyday(walking: walking.isWalking, hitGoal: hitGoal, onPace: onPace)
     }
     @StateObject private var walking = WalkingDetector()   // walks while you walk (Walking.swift)
@@ -799,7 +799,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Apple Workout app")
                 } footer: {
-                    Text("When you end a Golf, Hike, Walk, Run or Strength workout in Apple's Workout app, it shows up here as a session with its steps.")
+                    Text("When you end a walk, run, hike, strength or golf workout in Apple's Workout app, it shows up here as a session with its steps.")
                 }
                 Section {
                     Button("Show setup again") {

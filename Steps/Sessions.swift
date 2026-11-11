@@ -4,10 +4,13 @@ import HealthKit
 
 // MARK: - Session types
 
-// What you're doing during a session. Golf counts holes; the rest give your mini-me a prop.
+// What you're doing during a session; each gives your mini-me a prop. Golf only appears when Apple's
+// Workout app recorded a golf workout (it's not a choice when you start a session yourself).
 enum SessionKind: String, Codable, CaseIterable, Identifiable {
     case golf, hike, dogWalk, shopping, themePark, workout, custom
     var id: String { rawValue }
+    // What you can pick on the "What are you doing?" sheet.
+    static var choices: [SessionKind] { allCases.filter { $0 != .golf } }
 
     var name: String {
         switch self {
@@ -33,7 +36,7 @@ enum SessionKind: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    // What your mini-me carries (golf swings instead, custom just walks).
+    // What your mini-me carries (custom just walks).
     var prop: Prop? {
         switch self {
         case .golf, .custom: nil
@@ -77,7 +80,7 @@ struct SessionCard: View {
     @AppStorage("roundStart") private var roundStart: Double = 0   // 0 = no session going
     @AppStorage("roundHoles") private var holes = 18
     @AppStorage("rounds") private var recordsData = Data()
-    @AppStorage("sessionKind") private var kind: SessionKind = .golf
+    @AppStorage("sessionKind") private var kind: SessionKind = .dogWalk
     @AppStorage("sessionName") private var customName = ""
     private let funUnit = FunUnit.walked
     @AppStorage("appStyle") private var appStyle: AppStyle = .minimal
@@ -233,7 +236,7 @@ struct SessionPicker: View {
     let start: () -> Void
     @Environment(\.dismiss) private var dismiss
     @AppStorage("roundHoles") private var holes = 18
-    @AppStorage("sessionKind") private var kind: SessionKind = .golf
+    @AppStorage("sessionKind") private var kind: SessionKind = .dogWalk
     @AppStorage("sessionName") private var customName = ""
 
     private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
@@ -249,7 +252,7 @@ struct SessionPicker: View {
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                     LazyVGrid(columns: columns, spacing: 12) {
-                        ForEach(SessionKind.allCases) { option in
+                        ForEach(SessionKind.choices) { option in
                             Button { kind = option } label: {
                                 VStack(spacing: 6) {
                                     Text(option.emoji).font(.system(size: 38))
@@ -293,6 +296,7 @@ struct SessionPicker: View {
                 }
                 .padding()
             }
+            .onAppear { if kind == .golf { kind = .dogWalk } }   // golf is no longer a choice
             .navigationTitle("What are you doing?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { Button("Cancel") { dismiss() } }

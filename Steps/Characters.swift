@@ -18,7 +18,7 @@ enum Avatar: String, CaseIterable, Identifiable {
 
     var name: String {
         switch self {
-        case .golfer: "Golfer"
+        case .golfer: "Casual"   // saved as "golfer" in older versions
         case .baller: "Baller"
         case .ripped: "Gym"
         }

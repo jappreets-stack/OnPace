@@ -27,7 +27,7 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Today:** the goal ring (2,000–30,000, default 10,000) with today's steps and how far you walked under them
   ("4.9 miles walked", or km where you use metric), then one card of rows: steps left, how far behind pace you are and
   the minutes of walking to catch up, the time you'll finish at this pace, and your streak.
-  Distance is the real distance Apple Health measured with your own stride, golf rounds included (their title says 9 or 18 holes)
+  Distance is the real distance Apple Health measured with your own stride, golf workouts from the Workout app included
 - One **Count steps for an activity** button opens a "What are you doing?" sheet
 - **Styles:** Clean minimal (default: Apple-style grouped cards, one green ring, SF Symbols), 16-bit adventure
   (original pixel art drawn in code: mountains and a castle by day or under the stars, a gold block ring, a pixel
@@ -43,11 +43,11 @@ a hand-drawn animated character that reacts to how your day is going.
   the last count the app saved when the phone is locked)
 - **Accessibility:** VoiceOver reads the ring and each day as one sentence; at the largest text sizes the numbers
   move under their labels instead of wrapping
-- **Sessions:** golf (9 or 18 holes), hike, dog walk, shopping, theme park, workout, or a custom one you name.
-  Counts only the steps between Start and End, with saved history. During a session your mini-me swings
-  (golf) or walks with a prop: hiking stick + backpack, a dog on a leash, shopping bags, a balloon, or dumbbells
-- **Apple Workout app:** when you end a Golf, Hike, Walk, Run, or Strength workout, it's saved as a session
-  with its steps automatically (golf guesses 9 or 18 holes from the length; press and hold to change it)
+- **Sessions:** hike, dog walk, shopping, theme park, workout, or a custom one you name.
+  Counts only the steps between Start and End, with saved history. During a session your mini-me
+  walks with a prop: hiking stick + backpack, a dog on a leash, shopping bags, a balloon, or dumbbells
+- **Apple Workout app:** when you end a Walk, Run, Hike, Strength or Golf workout, it's saved as a session
+  with its steps automatically, labeled as the workout you actually recorded (golf shows 9 or 18 holes, guessed from the length)
 - **History:** last 7 days (daily average, days at goal, and a segmented bar per day with a tiny
   animated you on it: celebrating on goal days, slumped where you stopped on missed days), then every past session
 - **Build your mini-me:** a character builder with a live animated preview in every pose
@@ -84,13 +84,13 @@ a hand-drawn animated character that reacts to how your day is going.
 
 **Animated characters** (`Characters.swift`, `CharacterBuilder.swift`)
 - Drawn entirely in code with SwiftUI `Canvas` + `TimelineView` on a 100×140 grid. No image assets.
-- Three outfits with the same poses: Golfer (pants or skort), Baller (jersey with your letter),
+- Three outfits with the same poses: Casual (polo with pants or skort), Baller (jersey with your letter),
   and Gym (tank or sports top)
 - Build your mini-me: male or female body, 6 skin tones, hair and head coverings that fit the body (male: turban,
   short, curly, bald, cap; female: hijab, short, long, long curly, ponytail, braids, bun, cap), beard, glasses,
   eyelashes, lip color, and one outfit color from a 12-color palette (the trim picks a matching color)
 - Male / Female sets matching defaults (body, hair, outfit)
-- Mood follows you: swings during a golf round, walks while you walk, celebrates at goal, stands when on pace, slumps when behind
+- Mood follows you: walks during a session or while you walk, celebrates at goal, stands when on pace, slumps when behind
 
 <p align="center">
   <img src="Screenshots/characters.png" width="100%" alt="All hair styles and outfits drawn by the character code">
@@ -102,7 +102,7 @@ a hand-drawn animated character that reacts to how your day is going.
 ## How it works
 
 - **HealthKit:** `HKStatisticsCollectionQueryDescriptor` sums steps per day for the last 61 days
-  (for the streak and 7-day history); `HKStatisticsQueryDescriptor` sums steps between two times for golf rounds.
+  (for the streak and 7-day history); `HKStatisticsQueryDescriptor` sums steps between two times for sessions.
 - **Personal pace curve:** learns your usual day from the last 30 days of hourly HealthKit data
   (the share of a day's steps you've usually done by each hour, averaged over days with 2,000+ steps).
   "On pace" means on track compared with your own normal day, not a flat line. Until there are 7 such
@@ -120,9 +120,8 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Workouts:** an `HKAnchoredObjectQueryDescriptor` picks up newly finished workouts each time the app refreshes.
   The saved anchor means each workout is looked at once (a deleted session never comes back, and a workout that
   syncs from the watch late still counts). Workouts that overlap a session you tracked in the app are skipped.
-- **Sessions:** one `SessionRecord` list (stored under the original golf-rounds key; old rounds
-  load as golf). `FunUnit` converts the measured walking + running distance (HealthKit
-  `distanceWalkingRunning`) into miles or km (from the phone's region), and golf sessions into holes; it falls back to ~0.76 m per step without it.
+- **Sessions:** one `SessionRecord` list (stored under the original "rounds" key). `FunUnit` converts the measured walking + running distance (HealthKit
+  `distanceWalkingRunning`) into miles or km (from the phone's region), and falls back to ~0.76 m per step without it.
 - **Testing:** checked in the iOS Simulator with debug-only `-demoSteps`, `-appStyle`, and `-demoWalking` launch
   arguments that fake steps, pick a style, and fake walking.
 - **State:** settings and sessions are stored with `@AppStorage`; data refreshes whenever the app becomes active.

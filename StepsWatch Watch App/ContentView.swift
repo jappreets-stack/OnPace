@@ -192,7 +192,9 @@ struct ContentView: View {
     // yesterday's sessions: keep only ones that started today.
     private var phoneSessions: [WatchSession] {
         let all = (try? JSONDecoder().decode([WatchSession].self, from: Data(sessionsJSON.utf8))) ?? []
-        return all.filter { $0.start.map { Calendar.current.isDateInToday($0) } ?? true }
+        // Lists saved by an older iPhone build have no start time: trust them only if the phone saved them today.
+        let savedToday = Double(phoneStamp).map { Calendar.current.isDateInToday(Date(timeIntervalSince1970: $0)) } ?? false
+        return all.filter { $0.start.map { Calendar.current.isDateInToday($0) } ?? savedToday }
     }
     // Workouts you finished today on this watch, read straight from its Health (no need to open the iPhone app).
     @State private var watchWorkouts: [WatchSession] = []
@@ -390,7 +392,7 @@ struct ContentView: View {
                 ForEach(store.week) { day in
                     let hit = day.steps >= goal
                     VStack(spacing: 3) {
-                        // Flag in the hole on goal days.
+                        // Flag on goal days.
                         Text(hit ? funUnit.goalFlag : " ").font(.system(size: 11))
                         Capsule()
                             .fill(appStyle == .cozy ? (hit ? Cozy.done : Cozy.end) : accent.opacity(hit ? 1 : 0.55))
