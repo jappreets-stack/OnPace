@@ -176,6 +176,8 @@ struct ContentView: View {
     @AppStorage(Shared.cozyPaletteKey, store: Shared.defaults) private var cozyPalette: CozyPalette = .peach   // redraws on change
     // Watch only: everything in red on black, like the Ultra's Night Mode (switch on the last page).
     @AppStorage("nightRed") private var nightRed = false
+    // Watch only: turn Night red on by itself after sunset (apps can't read the Ultra's Night Mode, so we use the sun).
+    @AppStorage("autoNightRed") private var autoNightRed = true
     private let funUnit = FunUnit.walked
     // The ring color for the phone's style (Cozy pastel uses a gradient, see ringPage).
     private var accent: Color {
@@ -219,8 +221,8 @@ struct ContentView: View {
     @StateObject private var walking = WalkingDetector()
     private var mood: Mood { .everyday(walking: walking.isWalking, hitGoal: hitGoal, onPace: onPace) }
 
-    var body: some View {
-        // Scroll the Digital Crown to move between pages.
+    // Scroll the Digital Crown to move between pages.
+    private var pages: some View {
         TabView {
             ringPage.id(cozyPalette)   // redraw when the phone sends new Cozy colors
             statsPage
@@ -229,9 +231,17 @@ struct ContentView: View {
             colorPage
         }
         .tabViewStyle(.verticalPage)
-        // Night red: every color in a shade of red. On with the switch below, or when the phone picks
-        // Cozy pastel → Night red.
-        .nightRed(nightRed || (appStyle == .cozy && cozyPalette == .nightRed))
+    }
+
+    var body: some View {
+        // Checks once a minute whether the sun has set (Red after sunset).
+        TimelineView(.everyMinute) { context in
+            pages
+                // Night red: every color in a shade of red. On with the switch on the last page, after sunset
+                // (Red after sunset), or when the phone picks Cozy pastel → Night red.
+                .nightRed(nightRed || (autoNightRed && SunClock.isDark(context.date))
+                          || (appStyle == .cozy && cozyPalette == .nightRed))
+        }
         .task {
             await store.start(goal: goal)
             WatchSync.shared.askPhone()
@@ -417,8 +427,11 @@ struct ContentView: View {
         List {
             Section {
                 Toggle("Night red", isOn: $nightRed)
+                Toggle("Red after sunset", isOn: $autoNightRed)
             } footer: {
-                Text("Everything in red, like Ultra Night Mode. Easy on your eyes in the dark.")
+                Text(autoNightRed
+                     ? "Everything in red, like Ultra Night Mode. Turns on by itself from about \(SunClock.tonight)."
+                     : "Everything in red, like Ultra Night Mode. Easy on your eyes in the dark.")
             }
             Section("Your mini-me") {
                 HStack(spacing: 10) {
@@ -496,5 +509,44 @@ enum TodaysWorkouts {
                                      id: w.uuid, start: w.startDate, end: w.endDate))
         }
         return list
+    }
+}
+
+// Red after sunset: rough sunset and sunrise for today, worked out from the date and your time zone only
+// (no location needed; usually within ~30 min). "Dark" starts 15 min after sunset and ends 15 min before sunrise.
+enum SunClock {
+    private static let latitude = 37.0   // middle of the US; good enough for "is it dark yet"
+
+    // Minutes after local midnight for sunrise and sunset on that day.
+    static func times(on date: Date, in tz: TimeZone = .current) -> (rise: Double, set: Double) {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = tz
+        let day = Double(cal.ordinality(of: .day, in: .year, for: date) ?? 172)
+        let b = 2 * Double.pi / 365 * (day - 81)
+        let declination = 23.44 * Double.pi / 180 * sin(b)
+        let equationOfTime = 9.87 * sin(2 * b) - 7.53 * cos(b) - 1.5 * sin(b)   // minutes
+        let lat = latitude * Double.pi / 180
+        let cosH = (sin(-0.833 * Double.pi / 180) - sin(lat) * sin(declination)) / (cos(lat) * cos(declination))
+        let halfDay = acos(max(-1, min(1, cosH))) * 180 / Double.pi * 4   // minutes from solar noon
+        // Assume you're near the middle of your time zone, so solar noon ≈ 12:00 standard time (+1 h in summer time).
+        let dst = tz.daylightSavingTimeOffset(for: date) / 60
+        let noon = 720 - equationOfTime + dst
+        return (noon - halfDay, noon + halfDay)
+    }
+
+    static func isDark(_ date: Date = .now) -> Bool {
+        let t = times(on: date)
+        let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+        let minute = Double((c.hour ?? 0) * 60 + (c.minute ?? 0))
+        return minute >= t.set + 15 || minute < t.rise - 15
+    }
+
+    // "7:05 PM to 6:40 AM", for the footer.
+    static var tonight: String {
+        let t = times(on: .now)
+        let midnight = Calendar.current.startOfDay(for: .now)
+        let on = midnight.addingTimeInterval((t.set + 15) * 60)
+        let off = midnight.addingTimeInterval((t.rise - 15) * 60)
+        let f = Date.FormatStyle(date: .omitted, time: .shortened)
+        return "\(on.formatted(f)) to \(off.formatted(f))"
     }
 }
