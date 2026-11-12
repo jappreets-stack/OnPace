@@ -236,11 +236,17 @@ struct ContentView: View {
     var body: some View {
         // Checks once a minute whether the sun has set (Red after sunset).
         TimelineView(.everyMinute) { context in
+            // Night red: every color in a shade of red. On with the switch on the last page, after sunset
+            // (Red after sunset), or when the phone picks Cozy pastel → Night red.
+            let red = nightRed || (autoNightRed && SunClock.isDark(context.date))
+                || (appStyle == .cozy && cozyPalette == .nightRed)
             pages
-                // Night red: every color in a shade of red. On with the switch on the last page, after sunset
-                // (Red after sunset), or when the phone picks Cozy pastel → Night red.
-                .nightRed(nightRed || (autoNightRed && SunClock.isDark(context.date))
-                          || (appStyle == .cozy && cozyPalette == .nightRed))
+                .nightRed(red)
+                // watchOS draws the clock, page dots and scroll bars itself (the red filter can't reach them):
+                // hide the page dots and scroll bars while red. (The clock can't be hidden or recolored by apps.)
+                .persistentSystemOverlays(red ? .hidden : .automatic)
+                .scrollIndicators(red ? .hidden : .automatic)
+                .tint(red ? Cozy.nightRedTint : nil)
         }
         .task {
             await store.start(goal: goal)
