@@ -66,7 +66,7 @@ a hand-drawn animated character that reacts to how your day is going.
 - **Faces stay fresh:** HealthKit background delivery wakes the watch app when new steps are saved and redraws
   the complications right away (they still read Apple Health directly)
 - **Today's sessions** page: sessions you tracked and workouts from the Workout app; pick the ring color on the watch
-- Watch face complications (WidgetKit): ring, steps left, and pace, for circle, corner, inline,
+- Watch face complications (WidgetKit): Steps (ring), Steps left, and Walk to catch up (minutes to walk as the big number, or a check when on pace), for circle, corner, inline,
   and rectangle slots; they read HealthKit directly, use the goal synced from the phone, and refresh when the app opens
 
 **First-time setup** (`Onboarding.swift`, shown once to new people)

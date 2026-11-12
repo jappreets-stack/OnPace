@@ -258,16 +258,93 @@ struct StepsNumberComplication: Widget {
     }
 }
 
+// Walk to catch up: the minutes to walk are the big number (the other two lead with steps).
+// Same kind as the old "Steps pace" so faces that already use it keep working.
 struct StepsPaceComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "StepsPace", provider: StepsProvider()) { entry in
-            NumberWithLineView(entry: entry, line: entry.paceLine,
-                               lineColor: entry.hitGoal || entry.onPace ? ringGreen : .orange)
+            CatchUpView(entry: entry)
                 .containerBackground(for: .widget) { Color.clear }
         }
-        .configurationDisplayName("Steps pace")
-        .description("Today's steps and whether you're on pace.")
+        .configurationDisplayName("Walk to catch up")
+        .description("Minutes to walk to get back on pace, or a check when you're on pace.")
         .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryInline, .accessoryRectangular])
+    }
+}
+
+struct CatchUpView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: StepsEntry
+
+    private var minutes: Int { entry.pace.catchUpMinutes }
+    private var behind: Bool { !entry.hitGoal && !entry.onPace }
+    private var color: Color { behind ? .orange : ringGreen }
+    // "On pace" / "Goal hit" / "Walk 9 min"
+    private var headline: String { entry.hitGoal ? "Goal hit" : entry.onPace ? "On pace" : "Walk \(minutes) min" }
+
+    var body: some View {
+        switch family {
+        case .accessoryCorner:
+            Group {
+                if behind { Text("\(minutes)m") } else { Image(systemName: entry.hitGoal ? "star.fill" : "checkmark") }
+            }
+            .font(.system(.title3, design: .rounded).weight(.bold))
+            .foregroundStyle(color)
+            .widgetCurvesContent()
+            .widgetLabel {
+                Text(behind ? "walk \(minutes) min to catch up" : headline)
+            }
+
+        case .accessoryInline:
+            Text(behind ? "Walk \(minutes) min to catch up" : "\(headline) · \(entry.steps.formatted())")
+
+        case .accessoryRectangular:
+            HStack(spacing: 8) {
+                Image(systemName: behind ? "figure.walk" : entry.hitGoal ? "star.fill" : "checkmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(color)
+                    .widgetAccentable()
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(headline)
+                        .font(.headline)
+                        .foregroundStyle(color)
+                    Text(behind ? "\(entry.pace.behindText) · \(entry.steps.formatted()) steps"
+                                : "\(entry.steps.formatted()) steps")
+                        .font(.caption)
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 0)
+            }
+
+        default:
+            ZStack {
+                AccessoryWidgetBackground()
+                if behind {
+                    VStack(spacing: -2) {
+                        Image(systemName: "figure.walk")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("\(minutes)")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .minimumScaleFactor(0.5)
+                            .foregroundStyle(color)
+                            .widgetAccentable()
+                        Text("min")
+                            .font(.system(size: 9, weight: .semibold))
+                    }
+                    .padding(.horizontal, 4)
+                } else {
+                    VStack(spacing: 0) {
+                        Image(systemName: entry.hitGoal ? "star.fill" : "checkmark")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(ringGreen)
+                            .widgetAccentable()
+                        Text(entry.hitGoal ? "goal" : "on pace")
+                            .font(.system(size: 9, weight: .semibold))
+                    }
+                }
+            }
+        }
     }
 }
 
