@@ -261,10 +261,10 @@ struct StepsNumberComplication: Widget {
 }
 
 // Walk to catch up: the minutes to walk are the big number (the other two lead with steps).
-// Same kind as the old "Steps pace" so faces that already use it keep working.
+// New kind ("CatchUp", was "StepsPace"): the watch kept showing the old name "Steps pace" in the face picker.
 struct StepsPaceComplication: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "StepsPace", provider: StepsProvider()) { entry in
+        StaticConfiguration(kind: "CatchUp", provider: StepsProvider()) { entry in
             CatchUpView(entry: entry)
                 .containerBackground(for: .widget) { Color.clear }
         }
@@ -287,14 +287,21 @@ struct CatchUpView: View {
     var body: some View {
         switch family {
         case .accessoryCorner:
+            // Corner: walking figure + "10 min" in the middle, "833 behind" along the edge (it only fits ~13 letters).
             Group {
-                if behind { Text("\(minutes)m") } else { Image(systemName: entry.hitGoal ? "star.fill" : "checkmark") }
+                if behind {
+                    Text("\(Image(systemName: "figure.walk")) \(minutes) min")
+                        .font(.system(.body, design: .rounded).weight(.bold))
+                        .minimumScaleFactor(0.6)
+                } else {
+                    Image(systemName: entry.hitGoal ? "star.fill" : "checkmark")
+                        .font(.system(.title3, design: .rounded).weight(.bold))
+                }
             }
-            .font(.system(.title3, design: .rounded).weight(.bold))
             .foregroundStyle(color)
             .widgetCurvesContent()
             .widgetLabel {
-                Text(behind ? "walk \(minutes) min to catch up" : headline)
+                Text(behind ? entry.pace.behindText : headline)
             }
 
         case .accessoryInline:
