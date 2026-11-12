@@ -287,12 +287,12 @@ struct CatchUpView: View {
     var body: some View {
         switch family {
         case .accessoryCorner:
-            // Corner: walking figure + "10 min" in the middle, "833 behind" along the edge (it only fits ~13 letters).
+            // Corner: "10 min" in the middle, "833 behind" along the edge. watchOS sets the size of curved text:
+            // the middle fits ~7 letters and the edge ~13 ("WALK 31 MIN" was cut to "WALK 31…"), and symbols don't draw.
             Group {
                 if behind {
-                    Text("\(Image(systemName: "figure.walk")) \(minutes) min")
+                    Text("\(minutes) min")
                         .font(.system(.body, design: .rounded).weight(.bold))
-                        .minimumScaleFactor(0.6)
                 } else {
                     Image(systemName: entry.hitGoal ? "star.fill" : "checkmark")
                         .font(.system(.title3, design: .rounded).weight(.bold))
@@ -338,8 +338,11 @@ struct CatchUpView: View {
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundStyle(color)
                             .widgetAccentable()
-                        Text(entry.pace.behindText)
+                        // The bottom of the circle is narrow: "2,689 behind" becomes "2.7K behind".
+                        Text(entry.pace.behind < 1000 ? entry.pace.behindText
+                             : (Double(entry.pace.behind) / 1000).formatted(.number.precision(.fractionLength(1))) + "K behind")
                             .font(.system(size: 8, weight: .semibold))
+                            .padding(.horizontal, 5)
                     }
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
