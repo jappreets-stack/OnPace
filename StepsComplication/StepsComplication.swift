@@ -29,7 +29,9 @@ struct StepsEntry: TimelineEntry {
             : (Double(steps) / 1000).formatted(.number.precision(.fractionLength(1))) + "K"
     }
 
-    static let sample = StepsEntry(date: .now, steps: 6214, streak: 5)
+    // Shown in the face picker: 3 PM and a bit behind, so "Walk to catch up" shows its minutes there.
+    static let sample = StepsEntry(date: Calendar.current.startOfDay(for: .now).addingTimeInterval(15 * 3600),
+                                   steps: 4500, streak: 5)
 }
 
 let ringGreen = Color(red: 0.19, green: 0.82, blue: 0.36)
@@ -213,9 +215,7 @@ struct NumberWithLineView: View {
                     Text(line).foregroundStyle(lineColor)
                 }
         } else if family == .accessoryInline {
-            // Steps left leads with what's left (Steps leads with steps, Walk to catch up with minutes).
-            Text(entry.hitGoal ? "Goal hit · \(entry.steps.formatted()) steps"
-                               : "\((entry.goal - entry.steps).formatted()) steps to go")
+            Text("\(entry.steps.formatted()) · \(line)")
         } else if family == .accessoryRectangular {
             VStack(alignment: .leading, spacing: 1) {
                 Text("\(entry.steps.formatted()) steps")
@@ -323,18 +323,20 @@ struct CatchUpView: View {
             ZStack {
                 AccessoryWidgetBackground()
                 if behind {
-                    VStack(spacing: -2) {
-                        Image(systemName: "figure.walk")
-                            .font(.system(size: 10, weight: .bold))
-                        Text("\(minutes)")
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .minimumScaleFactor(0.5)
+                    // "walk / 10 min / 833 behind": the reason stays visible even in the tiny round slot.
+                    VStack(spacing: -1) {
+                        Text("walk")
+                            .font(.system(size: 9, weight: .semibold))
+                        Text("\(minutes) min")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundStyle(color)
                             .widgetAccentable()
-                        Text("min")
-                            .font(.system(size: 9, weight: .semibold))
+                        Text(entry.pace.behindText)
+                            .font(.system(size: 8, weight: .semibold))
                     }
-                    .padding(.horizontal, 4)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .padding(.horizontal, 3)
                 } else {
                     VStack(spacing: 0) {
                         Image(systemName: entry.hitGoal ? "star.fill" : "checkmark")

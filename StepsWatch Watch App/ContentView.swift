@@ -178,6 +178,7 @@ struct ContentView: View {
     // After sunset is the default: apps can't read the Ultra's own Night Mode, so we go by the sun.
     @AppStorage("nightRedMode") private var nightRedMode: NightRedMode = .sunset
     @State private var page = 0   // which page the Crown is on (for the red page dots)
+    init() { NightRedMode.keepOldSwitch() }
     private let funUnit = FunUnit.walked
     // The ring color for the phone's style (Cozy pastel uses a gradient, see ringPage).
     private var accent: Color {
@@ -247,6 +248,7 @@ struct ContentView: View {
                 .overlay(alignment: .topTrailing) {
                     if red { PageDots(count: 5, current: page) }
                 }
+                .environment(\.nightRedOn, red)
                 .nightRed(red)
         }
         .task {
@@ -393,6 +395,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 4)
         }
+        .modifier(RedScrollBar())
         .task { watchWorkouts = await TodaysWorkouts.load() }
         // Read again each time you raise your wrist into the app (a workout may have ended since).
         .onChange(of: scenePhase) { _, phase in
@@ -453,6 +456,7 @@ struct ContentView: View {
                 }
             }
         }
+        .modifier(RedScrollBar())
     }
 }
 
@@ -523,9 +527,40 @@ enum TodaysWorkouts {
 }
 
 // Red after sunset: rough sunset and sunrise for today, worked out from the date and your time zone only
-// (no location needed; usually within ~30 min). "Dark" starts 15 min after sunset and ends 15 min before sunrise.
+// (no location needed). The time zone's city gives a rough spot on the map, so it also works south of the
+// equator and far north. "Dark" starts 15 min after sunset and ends 15 min before sunrise.
 enum SunClock {
-    private static let latitude = 37.0   // middle of the US; good enough for "is it dark yet"
+    // Rough latitude / longitude of the city each time zone is named after.
+    private static let cities: [String: (lat: Double, lon: Double)] = [
+        "America/Los_Angeles": (34, -118), "America/Denver": (40, -105), "America/Phoenix": (33, -112),
+        "America/Chicago": (42, -88), "America/New_York": (41, -74), "America/Anchorage": (61, -150),
+        "Pacific/Honolulu": (21, -158), "America/Toronto": (44, -79), "America/Vancouver": (49, -123),
+        "America/Edmonton": (53, -113), "America/Winnipeg": (50, -97), "America/Halifax": (45, -64),
+        "America/Mexico_City": (19, -99), "America/Bogota": (5, -74), "America/Lima": (-12, -77),
+        "America/Santiago": (-33, -71), "America/Sao_Paulo": (-24, -47), "America/Argentina/Buenos_Aires": (-35, -58),
+        "Europe/London": (51.5, 0), "Europe/Dublin": (53, -6), "Europe/Lisbon": (39, -9), "Europe/Madrid": (40, -4),
+        "Europe/Paris": (49, 2), "Europe/Amsterdam": (52, 5), "Europe/Brussels": (51, 4), "Europe/Berlin": (52.5, 13),
+        "Europe/Zurich": (47, 8.5), "Europe/Rome": (42, 12.5), "Europe/Vienna": (48, 16), "Europe/Warsaw": (52, 21),
+        "Europe/Stockholm": (59, 18), "Europe/Oslo": (60, 11), "Europe/Copenhagen": (56, 12.5), "Europe/Helsinki": (60, 25),
+        "Europe/Athens": (38, 24), "Europe/Istanbul": (41, 29), "Europe/Kyiv": (50, 30.5), "Europe/Moscow": (56, 37.5),
+        "Africa/Cairo": (30, 31), "Africa/Lagos": (6.5, 3.5), "Africa/Nairobi": (-1, 37), "Africa/Johannesburg": (-26, 28),
+        "Asia/Dubai": (25, 55), "Asia/Riyadh": (25, 47), "Asia/Jerusalem": (32, 35), "Asia/Karachi": (25, 67),
+        "Asia/Kolkata": (23, 79), "Asia/Calcutta": (23, 79), "Asia/Dhaka": (24, 90), "Asia/Bangkok": (14, 100.5),
+        "Asia/Jakarta": (-6, 107), "Asia/Singapore": (1, 104), "Asia/Kuala_Lumpur": (3, 102), "Asia/Manila": (14.5, 121),
+        "Asia/Hong_Kong": (22, 114), "Asia/Shanghai": (31, 121.5), "Asia/Taipei": (25, 121.5), "Asia/Seoul": (37.5, 127),
+        "Asia/Tokyo": (36, 140), "Australia/Perth": (-32, 116), "Australia/Adelaide": (-35, 138.5),
+        "Australia/Darwin": (-12.5, 131), "Australia/Brisbane": (-27.5, 153), "Australia/Sydney": (-34, 151),
+        "Australia/Melbourne": (-38, 145), "Australia/Hobart": (-43, 147), "Pacific/Auckland": (-37, 175),
+    ]
+    // Time zones not in the list: a typical latitude for that part of the world, in the middle of the zone.
+    private static func place(for tz: TimeZone, standardHours: Double) -> (lat: Double, lon: Double) {
+        if let c = cities[tz.identifier] { return c }
+        let id = tz.identifier
+        let lat: Double = id.hasPrefix("Europe/") ? 50 : id.hasPrefix("Australia/") ? -33
+            : id.hasPrefix("Africa/") ? 5 : id.hasPrefix("Asia/") ? 28
+            : id.hasPrefix("Pacific/") ? -15 : id.hasPrefix("Antarctica/") ? -70 : 37
+        return (lat, standardHours * 15)
+    }
 
     // Minutes after local midnight for sunrise and sunset on that day.
     static func times(on date: Date, in tz: TimeZone = .current) -> (rise: Double, set: Double) {
@@ -534,12 +569,14 @@ enum SunClock {
         let b = 2 * Double.pi / 365 * (day - 81)
         let declination = 23.44 * Double.pi / 180 * sin(b)
         let equationOfTime = 9.87 * sin(2 * b) - 7.53 * cos(b) - 1.5 * sin(b)   // minutes
-        let lat = latitude * Double.pi / 180
+        let dst = tz.daylightSavingTimeOffset(for: date) / 60                   // minutes
+        let standardHours = (Double(tz.secondsFromGMT(for: date)) / 60 - dst) / 60
+        let spot = place(for: tz, standardHours: standardHours)
+        let lat = spot.lat * Double.pi / 180
         let cosH = (sin(-0.833 * Double.pi / 180) - sin(lat) * sin(declination)) / (cos(lat) * cos(declination))
         let halfDay = acos(max(-1, min(1, cosH))) * 180 / Double.pi * 4   // minutes from solar noon
-        // Assume you're near the middle of your time zone, so solar noon ≈ 12:00 standard time (+1 h in summer time).
-        let dst = tz.daylightSavingTimeOffset(for: date) / 60
-        let noon = 720 - equationOfTime + dst
+        // Solar noon: 12:00 standard time in the middle of the zone, 4 min earlier per degree east of it.
+        let noon = 720 - equationOfTime - 4 * (spot.lon - standardHours * 15) + dst
         return (noon - halfDay, noon + halfDay)
     }
 
@@ -571,6 +608,54 @@ enum NightRedMode: String, CaseIterable, Identifiable {
         case .sunset: "After sunset"
         case .always: "Always"
         }
+    }
+
+    // Older builds had an on/off "Night red" switch: if it was on, keep the app red all the time.
+    static func keepOldSwitch() {
+        let d = UserDefaults.standard
+        if d.object(forKey: "nightRedMode") == nil, d.bool(forKey: "nightRed") {
+            d.set(NightRedMode.always.rawValue, forKey: "nightRedMode")
+        }
+    }
+}
+
+// True while the watch app is drawn in Night red (set at the top, read by the red scroll bar).
+private struct NightRedOnKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    var nightRedOn: Bool {
+        get { self[NightRedOnKey.self] }
+        set { self[NightRedOnKey.self] = newValue }
+    }
+}
+
+// watchOS hides its white scroll bar with the page dots while red, so long pages draw their own.
+struct RedScrollBar: ViewModifier {
+    @Environment(\.nightRedOn) private var red
+    @State private var info = Info()
+    struct Info: Equatable { var offset = 0.0, content = 0.0, visible = 1.0 }
+
+    func body(content: Content) -> some View {
+        content
+            .onScrollGeometryChange(for: Info.self) { g in
+                Info(offset: g.contentOffset.y + g.contentInsets.top, content: g.contentSize.height,
+                     visible: g.containerSize.height - g.contentInsets.top - g.contentInsets.bottom)
+            } action: { _, new in info = new }
+            .overlay(alignment: .trailing) {
+                if red && info.content > info.visible + 4 {
+                    let track = 34.0
+                    let thumb = max(10, track * info.visible / info.content)
+                    let progress = min(max(info.offset / (info.content - info.visible), 0), 1)
+                    Capsule().fill(Color.white.opacity(0.25))
+                        .frame(width: 3, height: track)
+                        .overlay(alignment: .top) {
+                            Capsule().fill(Color.white).frame(width: 3, height: thumb)
+                                .offset(y: (track - thumb) * progress)
+                        }
+                        .offset(x: -1.5, y: 34)
+                        .allowsHitTesting(false)
+                        .ignoresSafeArea()
+                }
+            }
     }
 }
 
