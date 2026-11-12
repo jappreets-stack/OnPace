@@ -174,10 +174,10 @@ struct ContentView: View {
     @AppStorage(Shared.lookKey, store: Shared.defaults) private var look: Look = .starter
     @AppStorage(Shared.appStyleKey, store: Shared.defaults) private var appStyle: AppStyle = .minimal
     @AppStorage(Shared.cozyPaletteKey, store: Shared.defaults) private var cozyPalette: CozyPalette = .peach   // redraws on change
-    // Watch only: everything in red on black, like the Ultra's Night Mode (switch on the last page).
-    @AppStorage("nightRed") private var nightRed = false
-    // Watch only: turn Night red on by itself after sunset (apps can't read the Ultra's Night Mode, so we use the sun).
-    @AppStorage("autoNightRed") private var autoNightRed = true
+    // Watch only: everything in red on black, like the Ultra's Night Mode (picked on the last page).
+    // After sunset is the default: apps can't read the Ultra's own Night Mode, so we go by the sun.
+    @AppStorage("nightRedMode") private var nightRedMode: NightRedMode = .sunset
+    @State private var page = 0   // which page the Crown is on (for the red page dots)
     private let funUnit = FunUnit.walked
     // The ring color for the phone's style (Cozy pastel uses a gradient, see ringPage).
     private var accent: Color {
@@ -223,12 +223,12 @@ struct ContentView: View {
 
     // Scroll the Digital Crown to move between pages.
     private var pages: some View {
-        TabView {
-            ringPage.id(cozyPalette)   // redraw when the phone sends new Cozy colors
-            statsPage
-            sessionsPage
-            weekPage
-            colorPage
+        TabView(selection: $page) {
+            ringPage.id(cozyPalette).tag(0)   // redraw when the phone sends new Cozy colors
+            statsPage.tag(1)
+            sessionsPage.tag(2)
+            weekPage.tag(3)
+            colorPage.tag(4)
         }
         .tabViewStyle(.verticalPage)
     }
@@ -238,15 +238,16 @@ struct ContentView: View {
         TimelineView(.everyMinute) { context in
             // Night red: every color in a shade of red. On with the switch on the last page, after sunset
             // (Red after sunset), or when the phone picks Cozy pastel → Night red.
-            let red = nightRed || (autoNightRed && SunClock.isDark(context.date))
+            let red = nightRedMode == .always || (nightRedMode == .sunset && SunClock.isDark(context.date))
                 || (appStyle == .cozy && cozyPalette == .nightRed)
             pages
-                .nightRed(red)
-                // watchOS draws the clock, page dots and scroll bars itself (the red filter can't reach them):
-                // hide the page dots and scroll bars while red. (The clock can't be hidden or recolored by apps.)
-                .persistentSystemOverlays(red ? .hidden : .automatic)
+                // watchOS draws its page dots in white and apps can't recolor them, so while red we hide
+                // them and draw our own (the red filter below turns them red). The clock can't be changed.
                 .scrollIndicators(red ? .hidden : .automatic)
-                .tint(red ? Cozy.nightRedTint : nil)
+                .overlay(alignment: .topTrailing) {
+                    if red { PageDots(count: 5, current: page) }
+                }
+                .nightRed(red)
         }
         .task {
             await store.start(goal: goal)
@@ -432,12 +433,15 @@ struct ContentView: View {
     private var colorPage: some View {
         List {
             Section {
-                Toggle("Night red", isOn: $nightRed)
-                Toggle("Red after sunset", isOn: $autoNightRed)
+                Picker("Night red", selection: $nightRedMode) {
+                    ForEach(NightRedMode.allCases) { Text($0.label).tag($0) }
+                }
             } footer: {
-                Text(autoNightRed
-                     ? "Everything in red, like Ultra Night Mode. Turns on by itself from about \(SunClock.tonight)."
-                     : "Everything in red, like Ultra Night Mode. Easy on your eyes in the dark.")
+                switch nightRedMode {
+                case .off: Text("Night red turns everything red on black, like Ultra Night Mode.")
+                case .sunset: Text("Red from about \(SunClock.tonight).")
+                case .always: Text("Red all the time.")
+                }
             }
             Section("Your mini-me") {
                 HStack(spacing: 10) {
@@ -554,5 +558,36 @@ enum SunClock {
         let off = midnight.addingTimeInterval((t.rise - 15) * 60)
         let f = Date.FormatStyle(date: .omitted, time: .shortened)
         return "\(on.formatted(f)) to \(off.formatted(f))"
+    }
+}
+
+// Night red choice on the last watch page.
+enum NightRedMode: String, CaseIterable, Identifiable {
+    case off, sunset, always
+    var id: Self { self }
+    var label: String {
+        switch self {
+        case .off: "Off"
+        case .sunset: "After sunset"
+        case .always: "Always"
+        }
+    }
+}
+
+// Our own page dots, shown in Night red instead of the white system ones.
+struct PageDots: View {
+    let count: Int
+    let current: Int
+    var body: some View {
+        VStack(spacing: 5) {
+            ForEach(0..<count, id: \.self) { i in
+                Circle()
+                    .fill(Color.white.opacity(i == current ? 1 : 0.35))
+                    .frame(width: 6, height: 6)
+            }
+        }
+        .padding(.top, 10)
+        .padding(.trailing, 2)
+        .allowsHitTesting(false)
     }
 }

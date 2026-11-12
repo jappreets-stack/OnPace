@@ -56,7 +56,7 @@ a hand-drawn animated character that reacts to how your day is going.
 **Apple Watch**
 - Ring page centered for the Ultra 2 screen, with your mini-me, step count, distance walked ("4.9 miles walked"), and pace
 - Mini-me walks when you walk (Core Motion), same moods as the phone
-- **Night red** (last page): everything in red on black, like the Ultra's Night Mode. **Red after sunset** (on by default) turns it on by itself from about 15 min after sunset to 15 min before sunrise, worked out from the date and time zone (no location; apps can't read the Ultra's own Night Mode)
+- **Night red** (last page): everything in red on black, like the Ultra's Night Mode, with red page dots. Choose Off, After sunset (default: about 15 min after sunset to 15 min before sunrise, worked out from the date and time zone, no location) or Always. Apps can't read the Ultra's own Night Mode or recolor the clock
 - Stats page (streak, pace, forecast, distance) and a 7-day bar chart, paged with the Digital Crown
 - **Synced from the iPhone:** goal, mini-me (outfit + whole look), style (Clean minimal, Cozy pastel ring, or 16-bit gold block ring + pixel mini-me), and with every refresh today's steps,
   distance, streak, last 7 days, your usual-day pace pattern, and today's sessions (the watch's own copy of Apple Health
