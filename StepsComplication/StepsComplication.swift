@@ -160,8 +160,8 @@ struct StepsComplicationView: View {
                 }
 
         case .accessoryInline:
-            // One line near the clock.
-            Text("\(entry.steps.formatted()) · \(entry.paceText)")
+            // One line near the clock. Each OnPace complication leads with something different here.
+            Text("\(entry.steps.formatted()) steps · \(Int(entry.progress * 100))%")
 
         default:
             // Rectangle: ring, steps, streak, pace.
@@ -213,7 +213,9 @@ struct NumberWithLineView: View {
                     Text(line).foregroundStyle(lineColor)
                 }
         } else if family == .accessoryInline {
-            Text("\(entry.steps.formatted()) · \(line)")
+            // Steps left leads with what's left (Steps leads with steps, Walk to catch up with minutes).
+            Text(entry.hitGoal ? "Goal hit · \(entry.steps.formatted()) steps"
+                               : "\((entry.goal - entry.steps).formatted()) steps to go")
         } else if family == .accessoryRectangular {
             VStack(alignment: .leading, spacing: 1) {
                 Text("\(entry.steps.formatted()) steps")
@@ -296,7 +298,7 @@ struct CatchUpView: View {
             }
 
         case .accessoryInline:
-            Text(behind ? "Walk \(minutes) min to catch up" : "\(headline) · \(entry.steps.formatted())")
+            Text(behind ? "Walk \(minutes) min to catch up" : entry.hitGoal ? "Goal hit ★" : "On pace ✓")
 
         case .accessoryRectangular:
             HStack(spacing: 8) {
