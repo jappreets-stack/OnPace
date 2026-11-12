@@ -453,6 +453,11 @@ extension StepStore {
             }
         }
 
+        // Remove accidental workouts that older versions already saved (under 2 minutes, or no steps).
+        let before = list.count
+        list.removeAll { $0.fromWorkout == true && ($0.steps == 0 || $0.end.timeIntervalSince($0.start) < 120) }
+        added += before - list.count
+
         if d.object(forKey: "importWorkouts") as? Bool ?? true {
             for w in result.addedSamples.sorted(by: { $0.startDate < $1.startDate }) {
                 guard let (kind, name) = Self.session(for: w.workoutActivityType) else { continue }
@@ -463,6 +468,8 @@ extension StepStore {
                 if liveStart > 0 && liveStart < w.endDate.timeIntervalSince1970 { continue }
 
                 let steps = await self.steps(from: w.startDate, to: w.endDate)
+                // Skip workouts that were started and stopped by accident (under 2 minutes, or no steps).
+                if w.endDate.timeIntervalSince(w.startDate) < 120 || steps == 0 { continue }
                 let meters = await WalkDistance.meters(health, from: w.startDate, to: w.endDate)
                 let hours = w.endDate.timeIntervalSince(w.startDate) / 3600
                 list.append(SessionRecord(id: w.uuid, start: w.startDate, end: w.endDate,
