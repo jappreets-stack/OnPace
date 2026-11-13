@@ -436,9 +436,23 @@ struct ContentView: View {
     private var colorPage: some View {
         List {
             Section {
-                Picker("Night red", selection: $nightRedMode) {
-                    ForEach(NightRedMode.allCases) { Text($0.label).tag($0) }
+                // All three choices sit on the page (no pop-up to open), with a check on the one in use.
+                ForEach(NightRedMode.allCases) { mode in
+                    Button {
+                        nightRedMode = mode
+                    } label: {
+                        HStack {
+                            Text(mode.label)
+                            Spacer()
+                            if nightRedMode == mode {
+                                Image(systemName: "checkmark").fontWeight(.semibold)
+                            }
+                        }
+                    }
+                    .accessibilityAddTraits(nightRedMode == mode ? .isSelected : [])
                 }
+            } header: {
+                Text("Night red")
             } footer: {
                 switch nightRedMode {
                 case .off: Text("Night red turns everything red on black, like Ultra Night Mode.")
