@@ -9,3 +9,8 @@ build/
 
 # Personal notes
 CLAUDE.md
+
+# Local tooling and QA output
+.claude/
+QA/
+Prototype/

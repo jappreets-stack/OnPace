@@ -177,7 +177,20 @@ struct ContentView: View {
     // Watch only: everything in red on black, like the Ultra's Night Mode (picked on the last page).
     // After sunset is the default: apps can't read the Ultra's own Night Mode, so we go by the sun.
     @AppStorage("nightRedMode") private var nightRedMode: NightRedMode = .sunset
+    #if DEBUG
+    @State private var page = UserDefaults.standard.integer(forKey: "startPage")   // Simulator: `-startPage 3` opens on that page (0–4)
+    #else
     @State private var page = 0   // which page the Crown is on (for the red page dots)
+    #endif
+    // Tap the ring: the number flips from steps taken to steps left (or steps past your goal), the mini-me
+    // does a tiny hop, and after 5 seconds it flips back by itself so a stray tap can't mislead you later.
+    #if DEBUG
+    @State private var showLeft = UserDefaults.standard.bool(forKey: "demoFlip")   // Simulator: `-demoFlip YES` starts flipped
+    #else
+    @State private var showLeft = false
+    #endif
+    @State private var hop = false
+    @State private var flipBack: Task<Void, Never>?
     init() { NightRedMode.keepOldSwitch() }
     private let funUnit = FunUnit.walked
     // The ring color for the phone's style (Cozy pastel uses a gradient, see ringPage).
@@ -305,20 +318,25 @@ struct ContentView: View {
                     CozyRing(progress: progress, hitGoal: hitGoal, lineWidth: line) { EmptyView() }
                 }
                 VStack(spacing: 0) {
-                    if retro {
-                        Retro16Sprite(look: look, avatar: avatar, mood: mood)
-                            .frame(width: d * 0.36, height: d * 0.41)
-                    } else {
-                        CharacterView(avatar: avatar, mood: mood, look: look)
-                            .frame(width: d * 0.36, height: d * 0.41)
+                    Group {
+                        if retro {
+                            Retro16Sprite(look: look, avatar: avatar, mood: mood)
+                                .frame(width: d * 0.36, height: d * 0.41)
+                        } else {
+                            CharacterView(avatar: avatar, mood: mood, look: look)
+                                .frame(width: d * 0.36, height: d * 0.41)
+                        }
                     }
-                    Text(store.today, format: .number)
+                    .offset(y: hop ? -d * 0.025 : 0)   // tiny hop when you tap: stays clear of the ring
+                    Text(showLeft ? abs(goal - store.today) : store.today, format: .number)
+                        .contentTransition(.numericText())
                         .font(.system(size: d * (retro ? 0.15 : 0.17), weight: retro ? .heavy : .bold, design: design))
                         .foregroundStyle(retro ? Retro16.goldLight : .white)
                         .monospacedDigit()
                         .minimumScaleFactor(0.6)
                     // How far you walked today ("4.9 miles walked").
-                    Text(funUnit.phrase(store.today, meters: store.todayMeters))
+                    Text(showLeft ? (store.today > goal ? "past your goal" : "left to goal")
+                         : funUnit.phrase(store.today, meters: store.todayMeters))
                         .font(.system(size: d * 0.065, weight: .medium, design: design))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -341,6 +359,25 @@ struct ContentView: View {
                 .offset(y: -d * 0.06)
             }
             .frame(width: d, height: d)
+            .contentShape(Circle())
+            .onTapGesture {
+                WKInterfaceDevice.current().play(.click)
+                withAnimation(.snappy(duration: 0.3)) { showLeft.toggle() }
+                flipBack?.cancel()
+                if showLeft {
+                    flipBack = Task {
+                        try? await Task.sleep(for: .seconds(5))
+                        if !Task.isCancelled { withAnimation(.snappy(duration: 0.3)) { showLeft = false } }
+                    }
+                }
+                withAnimation(.spring(duration: 0.18, bounce: 0.5)) { hop = true }
+                Task {
+                    try? await Task.sleep(for: .milliseconds(180))
+                    withAnimation(.spring(duration: 0.3, bounce: 0.6)) { hop = false }
+                }
+            }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint("Shows steps left to your goal for 5 seconds")
             // Center on the physical screen, not the app area (the page dots shift that left).
             .position(x: screen.width / 2 - geo.frame(in: .global).minX,
                       y: screen.height / 2 - geo.frame(in: .global).minY)

@@ -220,6 +220,33 @@ struct ContentView: View {
         return .everyday(walking: walking.isWalking, hitGoal: hitGoal, onPace: onPace)
     }
     @StateObject private var walking = WalkingDetector()   // walks while you walk (Walking.swift)
+
+    // Tap the ring (same as the watch): the number flips from steps taken to steps left (or steps past your goal),
+    // the mini-me does a tiny hop, and after 5 seconds it flips back by itself so a stray tap can't mislead you later.
+    #if DEBUG
+    @State private var showLeft = UserDefaults.standard.bool(forKey: "demoFlip")   // Simulator: `-demoFlip YES` starts flipped
+    #else
+    @State private var showLeft = false
+    #endif
+    @State private var hop = false
+    @State private var flipBack: Task<Void, Never>?
+    private var ringNumber: Int { showLeft ? abs(goal - store.today) : store.today }
+    private var ringLine: String {
+        showLeft ? "\(ringNumber == 1 ? "step" : "steps") \(store.today > goal ? "past your goal" : "left to goal")" : "of \(goal.formatted()) steps"
+    }
+    private func tapRing() {
+        withAnimation(.snappy(duration: 0.3)) { showLeft.toggle() }
+        withAnimation(.spring(duration: 0.18, bounce: 0.5)) { hop = true }
+        flipBack?.cancel()
+        let flipped = showLeft
+        flipBack = Task {
+            try? await Task.sleep(for: .milliseconds(180))
+            withAnimation(.spring(duration: 0.3, bounce: 0.6)) { hop = false }
+            guard flipped else { return }
+            try? await Task.sleep(for: .seconds(5))
+            if !Task.isCancelled { withAnimation(.snappy(duration: 0.3)) { showLeft = false } }
+        }
+    }
     private var nightRed: Bool { appStyle == .cozy && cozyPalette == .nightRed }
 
     var body: some View {
@@ -313,11 +340,12 @@ struct ContentView: View {
                     CozyRing(progress: progress, hitGoal: hitGoal) {
                         VStack(spacing: 2) {
                             miniMe(width: 72, height: 100)
-                            Text(store.today, format: .number)
+                            Text(ringNumber, format: .number)
+                                .contentTransition(.numericText())
                                 .font(.system(size: 44, weight: .heavy, design: .rounded).monospacedDigit())
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.6)
-                            Text("of \(goal.formatted()) steps")
+                            Text(ringLine)
                                 .font(.subheadline.weight(.medium))
                                 .opacity(0.7)
                             Text(funUnit.phrase(store.today, meters: store.todayMeters))
@@ -394,13 +422,14 @@ struct ContentView: View {
                     VStack(spacing: 10) {
                         Retro16SceneWindow(look: look, avatar: avatar, mood: mood, progress: progress)
                         VStack(spacing: 2) {
-                            Text(store.today, format: .number)
+                            Text(ringNumber, format: .number)
+                                .contentTransition(.numericText())
                                 .font(.system(size: min(retroNumberSize, 84), weight: .heavy, design: .rounded).monospacedDigit())
                                 .foregroundStyle(ink)
                                 .shadow(color: Retro16.textShadow(night: night), radius: 0, x: 2, y: 2)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.6)
-                            Text("of \(goal.formatted()) steps")
+                            Text(ringLine)
                                 .font(.headline)
                                 .foregroundStyle(ink.opacity(0.8))
                             Text(funUnit.phrase(store.today, meters: store.todayMeters))
@@ -435,11 +464,12 @@ struct ContentView: View {
             MinimalRing(progress: progress) {
                 VStack(spacing: 2) {
                     miniMe(width: 72, height: 100)
-                    Text(store.today, format: .number)
+                    Text(ringNumber, format: .number)
+                                .contentTransition(.numericText())
                         .font(.system(size: 44, weight: .bold, design: .rounded).monospacedDigit())
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
-                    Text("of \(goal.formatted()) steps")
+                    Text(ringLine)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Text(funUnit.phrase(store.today, meters: store.todayMeters))
@@ -484,13 +514,21 @@ struct ContentView: View {
         CharacterView(avatar: avatar, mood: mood, look: look,
                       prop: roundStart > 0 ? sessionKind.prop : nil)
             .frame(width: width, height: height)
+            .offset(y: hop ? -4 : 0)   // tiny hop when you tap the ring: stays clear of the ring
     }
 
     // VoiceOver reads the ring as one thing: steps, goal, distance. Shared by every style.
     private func ringLabel(_ ring: some View) -> some View {
         ring
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(store.today.formatted()) of \(goal.formatted()) steps. \(funUnit.phrase(store.today, meters: store.todayMeters)).")
+            .accessibilityLabel(showLeft
+                ? "\(ringNumber.formatted()) \(ringLine). \(funUnit.phrase(store.today, meters: store.todayMeters))."
+                : "\(store.today.formatted()) of \(goal.formatted()) steps. \(funUnit.phrase(store.today, meters: store.todayMeters)).")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint("Shows steps left to your goal for 5 seconds")
+            .contentShape(Rectangle())
+            .onTapGesture { tapRing() }
+            .sensoryFeedback(.impact(weight: .light), trigger: showLeft)
     }
 
     // Last 7 days, in each style's card.

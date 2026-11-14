@@ -28,6 +28,8 @@ a hand-drawn animated character that reacts to how your day is going.
   ("4.9 miles walked", or km where you use metric), then one card of rows: steps left, how far behind pace you are and
   the minutes of walking to catch up, the time you'll finish at this pace, and your streak.
   Distance is the real distance Apple Health measured with your own stride, golf workouts from the Workout app included
+- **Tap the ring** (iPhone and watch): the big number flips from steps taken to steps left to your goal, your mini-me
+  does a little hop, and after 5 seconds it flips back by itself
 - One **Count steps for an activity** button opens a "What are you doing?" sheet
 - **Styles:** Clean minimal (default: Apple-style grouped cards, one green ring, SF Symbols), 16-bit adventure
   (original pixel art drawn in code: mountains and a castle by day or under the stars, a gold block ring, a pixel
