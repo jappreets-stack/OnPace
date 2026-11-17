@@ -25,7 +25,11 @@ nonisolated enum Shared {
     static let streakKey = "phoneStreak"
     static let curveKey = "phoneCurve"     // your usual day (24 numbers), so the watch's forecast matches
     static let weekKey = "phoneWeek"       // last 7 days of steps, oldest first, ending today
-    static let liveKeys = [stepsKey, stepsDateKey, metersKey, sessionsKey, streakKey, curveKey, weekKey]
+    // When the phone last counted the streak, and the streak without that day (see PhoneStreak).
+    static let streakDateKey = "phoneStreakDate"
+    static let streakBaseKey = "phoneStreakBase"
+    static let liveKeys = [stepsKey, stepsDateKey, metersKey, sessionsKey, streakKey, curveKey, weekKey,
+                           streakDateKey, streakBaseKey]
     static let syncedKeys = [goalKey, avatarKey, lookKey, appStyleKey, cozyPaletteKey]
 
     // On the watch: the App Group storage both the app and the complications read.
@@ -35,6 +39,49 @@ nonisolated enum Shared {
     static var goal: Int {
         let g = defaults.integer(forKey: goalKey)
         return g > 0 ? g : 10_000
+    }
+}
+
+// Your streak on the watch when the iPhone app hasn't been opened today.
+// The phone has the full step history, so its last count is kept, and only the days since then
+// are counted from the watch's own Apple Health. (Counting every day on the watch came out too low:
+// it misses steps the phone counted alone.)
+nonisolated enum PhoneStreak {
+    struct Saved {
+        var day: Date        // start of the day the phone last counted
+        var base: Int        // the streak before that day
+        var streak: Int      // the streak the phone showed that day
+        var daySteps: Int    // that day's steps as the phone knew them
+    }
+
+    // The phone's last count (nil until a phone with this version has sent one).
+    static func saved() -> Saved? {
+        let d = Shared.defaults
+        guard let stamp = Double(d.string(forKey: Shared.streakDateKey) ?? ""),
+              let base = Int(d.string(forKey: Shared.streakBaseKey) ?? ""),
+              let streak = Int(d.string(forKey: Shared.streakKey) ?? "") else { return nil }
+        let week = (d.string(forKey: Shared.weekKey) ?? "").split(separator: ",").compactMap { Int($0) }
+        return Saved(day: Calendar.current.startOfDay(for: Date(timeIntervalSince1970: stamp)),
+                     base: base, streak: streak, daySteps: week.last ?? 0)
+    }
+
+    // The streak right now. today = today's steps on the watch; watchSteps = the watch's steps for
+    // a past day (nil if unknown). Returns nil when it can't tell, so the caller counts on its own.
+    static func current(_ saved: Saved, goal: Int, today: Int, todayStart: Date,
+                        watchSteps: (Date) -> Int?) -> Int? {
+        let hitToday = today >= goal ? 1 : 0
+        if saved.day == todayStart { return max(saved.streak, saved.base + hitToday) }
+        guard saved.day < todayStart else { return nil }
+        var streak = saved.base
+        var day = saved.day
+        while day < todayStart {
+            guard let own = watchSteps(day) else { return nil }
+            let steps = day == saved.day ? max(own, saved.daySteps) : own
+            streak = steps >= goal ? streak + 1 : 0
+            guard let next = Calendar.current.date(byAdding: .day, value: 1, to: day) else { return nil }
+            day = next
+        }
+        return streak + hitToday
     }
 }
 

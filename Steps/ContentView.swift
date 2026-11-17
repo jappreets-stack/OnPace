@@ -124,6 +124,9 @@ final class StepStore: ObservableObject {
             if let todayMeters { shared.set(todayMeters, forKey: Shared.metersKey) }
             // The watch shows the same streak, week and forecast as the phone.
             shared.set(streak, forKey: Shared.streakKey)
+            // So the watch can keep this streak going on days the phone app isn't opened (PhoneStreak).
+            shared.set(Date.now.timeIntervalSince1970, forKey: Shared.streakDateKey)
+            shared.set(streak - (healthToday >= goal ? 1 : 0), forKey: Shared.streakBaseKey)
             shared.set(week.map { "\($0.steps)" }.joined(separator: ","), forKey: Shared.weekKey)
             shared.set(curve.map { $0.map { "\($0)" }.joined(separator: ",") } ?? "", forKey: Shared.curveKey)
             shared.set(goal, forKey: Shared.goalKey)

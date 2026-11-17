@@ -72,6 +72,28 @@ struct StepsProvider: TimelineProvider {
         let fromPhoneToday = stamp.map { cal.isDateInToday(Date(timeIntervalSince1970: $0)) } ?? false
         let phoneStreak = Int(d.string(forKey: Shared.streakKey) ?? "")
         let phoneCurve = (d.string(forKey: Shared.curveKey) ?? "").split(separator: ",").compactMap { Double($0) }
+        // The phone's last streak count, kept going with the watch's own days since then (PhoneStreak),
+        // so the streak stays right on days the phone app isn't opened. Only those few days are read.
+        if let saved = PhoneStreak.saved(), saved.day <= todayStart,
+           let limit = cal.date(byAdding: .day, value: -60, to: todayStart), saved.day >= limit {
+            let query = HKStatisticsCollectionQueryDescriptor(
+                predicate: .quantitySample(type: stepType,
+                                           predicate: HKQuery.predicateForSamples(withStart: saved.day, end: .now)),
+                options: .cumulativeSum,
+                anchorDate: todayStart,
+                intervalComponents: DateComponents(day: 1))
+            if let collection = try? await query.result(for: health) {
+                let steps: (Date) -> Int = { Int(collection.statistics(for: $0)?.sumQuantity()?.doubleValue(for: .count()) ?? 0) }
+                let today = steps(todayStart) + (await LiveTopUp.extraSteps(health))
+                if let streak = PhoneStreak.current(saved, goal: goal, today: today, todayStart: todayStart,
+                                                    watchSteps: { steps($0) }) {
+                    // Your usual day: the phone's when it sent one today, else learned on the watch (as before).
+                    let curve = fromPhoneToday ? (phoneCurve.count == 24 ? phoneCurve : nil)
+                                               : await Pace.learnCurve(from: health)
+                    return StepsEntry(date: .now, steps: today, streak: streak, curve: curve, goal: goal)
+                }
+            }
+        }
         if fromPhoneToday, let phoneStreak {
             let query = HKStatisticsQueryDescriptor(
                 predicate: .quantitySample(type: stepType,

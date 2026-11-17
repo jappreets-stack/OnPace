@@ -25,6 +25,8 @@ final class WatchStepStore: ObservableObject {
     var liveQuery: HKObserverQuery?
     private var healthToday = 0        // today's steps exactly as Apple Health has saved them
     private let live = LiveSteps()     // + steps counted since Health's last save (see Walking.swift)
+    private var ownDays: [Date: Int] = [:]   // the watch's own steps per day (for the streak, see PhoneStreak)
+    private var goal = Shared.goal
 
     // App went to the background: stop the live step counter (it restarts on the next refresh).
     func pause() { live.stop() }
@@ -103,6 +105,8 @@ final class WatchStepStore: ObservableObject {
                 if d.steps >= goal { count += 1 } else { break }
             }
             streak = count
+            ownDays = Dictionary(days.map { ($0.date, $0.steps) }, uniquingKeysWith: { a, _ in a })
+            self.goal = goal
             curve = await Pace.learnCurve(from: health)
             applyPhone()   // the phone's streak, week and usual day win: it has the full step history
             error = nil
@@ -129,9 +133,20 @@ extension WatchStepStore {
     // The phone has the full step history, so past days, the streak and your usual day (which drives
     // "At this pace") come from it. Today's steps always come from the watch's own Health (see refresh).
     func applyPhone() {
+        // Streak: the phone's last count, kept going with the watch's own days since then,
+        // so it stays right on days the phone app isn't opened.
+        let saved = PhoneStreak.saved()
+        if let saved, !ownDays.isEmpty,
+           let s = PhoneStreak.current(saved, goal: goal, today: today,
+                                       todayStart: Calendar.current.startOfDay(for: .now),
+                                       watchSteps: { day in   // same calendar day (clock changes can shift midnight)
+                                           self.ownDays.first { Calendar.current.isDate($0.key, inSameDayAs: day) }?.value
+                                       }) {
+            streak = s
+        }
         guard let phone = Self.phoneToday() else { return }
         let d = Shared.defaults
-        if let s = Int(d.string(forKey: Shared.streakKey) ?? "") { streak = s }
+        if saved == nil, let s = Int(d.string(forKey: Shared.streakKey) ?? "") { streak = s }   // older phone app
         let phoneWeek = (d.string(forKey: Shared.weekKey) ?? "").split(separator: ",").compactMap { Int($0) }
         if phoneWeek.count == 7 {
             let start = Calendar.current.startOfDay(for: .now)
