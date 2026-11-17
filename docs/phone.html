@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en" data-style="minimal">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OnPace: step tracker for iPhone and Apple Watch</title>
+<meta name="description" content="OnPace is a free step tracker for iPhone and Apple Watch. It tells you if you are on pace for your goal, and how many minutes to walk if you are not.">
+<link rel="icon" type="image/png" href="icon-64.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="OnPace">
+<meta property="og:title" content="OnPace: the step tracker that tells you if you are on pace">
+<meta property="og:description" content="Free for iPhone and Apple Watch. See if you are on pace for your goal, and how many minutes to walk if you are not.">
+<meta property="og:url" content="https://onpacesteps.com/">
+<meta property="og:image" content="https://onpacesteps.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>if(/phone\.html$/.test(location.pathname)&&window.matchMedia&&matchMedia('(min-width: 701px)').matches&&!/[?&]phone/.test(location.search))location.replace('index.html'+location.hash);</script>
+<script>if(!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)&&!/[?&]still/.test(location.search))document.documentElement.classList.add('pre')</script>
+<style>
+
+/* Layout idea: one giant wordmark where the O is the step ring, a style picker
+   that restyles the whole page like the app does, then every feature as a small live tile. */
+:root{
+  color-scheme: light;
+  --paper:#f3f2ec;   /* page */
+  --ink:#1d1f24;     /* type */
+  --soft:#3d4046;    /* running text */
+  --mute:#7b7d80;    /* small labels */
+  --line:#cfcdc4;    /* hairlines, ring track */
+  --card:#ffffff;    /* tiles */
+  --go:#22c55e;      /* ring / on pace */
+  --behind:#e8492b;  /* behind pace */
+  --band:#1d1f24;    /* screenshot band */
+  --band-ink:#f3f2ec;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+/* the app's other looks, as page styles */
+[data-style="cozy"]{--paper:#fff1e6;--ink:#4b3a48;--soft:#6a5564;--mute:#a58f98;--line:#f1d6c6;--card:#fffaf5;--go:#f0876a;--behind:#c8527a;--band:#f7d9c9;--band-ink:#4b3a48}
+/* the page goes dark when the visitor's device is in dark mode (16-bit and Night red are dark already) */
+@media (prefers-color-scheme:dark){
+  :root{color-scheme:dark;--paper:#0e0f11;--ink:#f2f1eb;--soft:#c9c8c2;--mute:#8b8d91;--line:#303238;--card:#191b1f;--go:#22c55e;--behind:#ff6b4a;--band:#000000;--band-ink:#f2f1eb}
+  [data-style="cozy"]{--paper:#221a25;--ink:#fbe9e0;--soft:#dcc6cd;--mute:#a8929b;--line:#46364b;--card:#2d2231;--go:#f0876a;--behind:#f08aa8;--band:#170f19;--band-ink:#fbe9e0}
+}
+[data-style="retro"]{color-scheme:dark;--paper:#15172e;--ink:#f6edcf;--soft:#cfc9b4;--mute:#8f92bd;--line:#353965;--card:#1d2040;--go:#f5b921;--behind:#ff6b4a;--band:#0d0e1f;--band-ink:#f6edcf}
+[data-style="night"]{color-scheme:dark;--paper:#000000;--ink:#ff3b30;--soft:#d9342b;--mute:#99241d;--line:#4a120e;--card:#0d0202;--go:#ff3b30;--behind:#ff3b30;--band:#070000;--band-ink:#ff3b30}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--display);font-stretch:100%;-webkit-font-smoothing:antialiased;transition:background-color .35s,color .35s}
+a{color:inherit}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--go);outline-offset:3px}
+.mono{font-family:var(--mono);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase}
+.wrap{max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,48px)}
+
+.bar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 0;border-bottom:1px solid var(--line)}
+.bar nav{display:flex;gap:clamp(12px,3vw,32px)}
+.bar a{text-decoration:none}
+.bar a:hover{text-decoration:underline}
+.snd{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:.55em;border:1.5px solid var(--ink);border-radius:999px;padding:.35em .8em;font:inherit;letter-spacing:inherit;text-transform:inherit}
+.snd:focus-visible{outline:3px solid var(--go);outline-offset:3px}
+.snd[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.eq{display:inline-flex;align-items:flex-end;gap:2px;height:.9em}
+.eq i{width:3px;height:30%;background:currentColor;border-radius:1px}
+.snd[aria-pressed="true"] .eq i{animation:eq .7s ease-in-out infinite alternate}
+.snd.waiting .eq i{animation:none!important;height:30%}
+.snd[aria-pressed="true"] .eq i:nth-child(2){animation-delay:-.25s}
+.snd[aria-pressed="true"] .eq i:nth-child(3){animation-delay:-.5s}
+@keyframes eq{from{height:25%}to{height:100%}}
+.bar nav{align-items:center}
+.dot{display:inline-block;width:.6em;height:.6em;border-radius:50%;background:var(--go);margin-right:.5em}
+
+/* hero wordmark */
+.hero{padding-top:clamp(28px,6vw,72px);padding-bottom:clamp(24px,4vw,48px)}
+.word{--p:.64;margin:0;font-weight:900;font-stretch:125%;line-height:.82;letter-spacing:-.045em;font-size:clamp(4.4rem,23.5vw,20rem);text-transform:uppercase;display:flex;flex-direction:column;align-items:flex-start}
+.word .row{display:flex;align-items:center}
+.word .row2{align-self:flex-end}
+.word .l{display:inline-block;transition:color .35s}
+.lane{position:relative;display:block;width:100%;margin:clamp(6px,1vw,14px) 0}
+.rule{display:block;height:10px;border:1px solid var(--ink);border-radius:6px;background:repeating-linear-gradient(90deg,transparent 0 5px,var(--line) 5px 6px);position:relative;overflow:hidden}
+.rule i{position:absolute;inset:0 auto 0 0;width:calc(var(--p) * 100%);background:var(--go)}
+
+/* a second line under PACE: the letters land on it when the page opens */
+.rule.floor{width:100%;height:7px;margin-top:clamp(6px,1vw,14px);transform-origin:0 50%}
+/* opening: an empty page, then the wordmark drops in piece by piece, then the rest fades in */
+.pre .word .l,.pre .word .ringbtn,.pre .word .lane{visibility:hidden}
+.pre #floor{transform:scaleX(0)}
+header,.status,.picker,.lede{transition:opacity .6s ease}
+.wait header,.wait .status,.wait .picker,.wait .lede{opacity:0}
+
+/* O = the step ring; tap it like in the app */
+.ringbtn{all:unset;display:block;cursor:pointer;width:.86em;height:.86em;flex:none;margin-right:.02em;border-radius:50%}
+.ringbtn:focus-visible{outline:3px solid var(--ink);outline-offset:4px}
+.ring{width:100%;height:100%;display:block}
+.ring circle{fill:none;stroke-width:8.5}
+.ring .track{stroke:var(--line)}
+.ring .prog{stroke:var(--go);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;stroke-dasharray:287.5;stroke-dashoffset:calc(287.5 * (1 - var(--p)))}
+.ring text{font-family:var(--display);font-weight:800;font-stretch:100%;fill:var(--ink);letter-spacing:0}
+.ring .sub{font-weight:500;fill:var(--mute)}
+.ring .face{transform-origin:50% 55%;transition:transform .28s ease-in}
+.ring.flip .face{transform:scaleY(0)}
+
+/* the mini-me walks to today's progress, then keeps walking on the spot */
+.walker{position:absolute;bottom:3px;left:calc(var(--p) * 94% + 3%);height:clamp(72px,11vw,150px);aspect-ratio:100/140;transform:translateX(-50%);display:block}
+
+/* wordmark per style: minimal = solid ink, the others dress the letters */
+[data-style="cozy"] .word .l{background:linear-gradient(160deg,#ffc2a0 5%,#f59fbe 48%,#b6a4ee 96%);-webkit-background-clip:text;background-clip:text;color:transparent}
+[data-style="retro"] .word .l{background:
+  linear-gradient(90deg,rgba(0,0,0,.16) 1px,transparent 1px) 0 0/.085em .085em,
+  linear-gradient(rgba(0,0,0,.16) 1px,transparent 1px) 0 0/.085em .085em,
+  conic-gradient(from 90deg at 50% 50%,#f5b921 0 25%,#ffd95a 0 50%,#e79a0c 0 75%,#f5b921 0) 0 0/.17em .17em;
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+[data-style="retro"] .rule{border-radius:0;height:12px}
+[data-style="retro"] .ring .prog{stroke-linecap:butt}
+[data-style="retro"] .ring circle{stroke-width:8.5}
+[data-style="night"] .mm{filter:grayscale(1) brightness(.75) sepia(1) hue-rotate(-38deg) saturate(6)}
+
+.status{display:flex;flex-wrap:wrap;gap:8px 28px;justify-content:space-between;padding-top:14px}
+.status b{font-weight:500;color:var(--ink)}
+.status span{color:var(--mute)}
+.status .ok{color:var(--go)}
+[data-style="minimal"] .status .ok{color:#15803d}
+@media (prefers-color-scheme:dark){[data-style="minimal"] .status .ok{color:var(--go)}}
+
+/* style picker */
+.picker{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-top:clamp(18px,3vw,30px);padding-top:16px;border-top:1px solid var(--line)}
+.picker .lab{color:var(--mute)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--ink);background:transparent;border-radius:999px;padding:.5em .95em;cursor:pointer;display:inline-flex;align-items:center;gap:.55em;font-family:var(--mono);font-size:.78rem;letter-spacing:.05em;text-transform:uppercase}
+.chip i{width:.95em;height:.95em;border-radius:50%;border:1px solid rgba(0,0,0,.25)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+
+.lede{display:grid;grid-template-columns:1.2fr 1fr;gap:clamp(20px,5vw,72px);align-items:end;padding:clamp(28px,5vw,64px) 0}
+.lede>p{margin:0;font-size:clamp(1.25rem,2.4vw,1.9rem);line-height:1.25;font-weight:500;letter-spacing:-.015em;max-width:22ch;text-wrap:balance}
+.lede .side{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.lede .side p{margin:0;font-size:1rem;line-height:1.5;max-width:44ch;color:var(--soft)}
+.btn{display:inline-flex;align-items:center;gap:.6em;background:var(--ink);color:var(--paper);text-decoration:none;font-weight:700;padding:.85em 1.3em;border-radius:999px;font-size:1rem;border:1.5px solid var(--ink);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btns{display:flex;flex-wrap:wrap;gap:10px}
+
+/* the sentence */
+.say{border-top:1px solid var(--line);padding:clamp(48px,9vw,120px) 0}
+.say p{margin:0;font-weight:800;font-stretch:112%;letter-spacing:-.035em;line-height:.98;font-size:clamp(2.4rem,8.6vw,7.4rem);text-wrap:balance}
+.say span{color:var(--mute);transition:color .35s}
+.say span.on{color:var(--ink)}
+.say span.key.on{color:var(--go)}
+[data-style="night"] .say span{color:var(--line)}
+[data-style="night"] .say span.on{color:var(--ink)}
+
+h2{margin:0;font-weight:800;font-stretch:112%;letter-spacing:-.03em;font-size:clamp(1.8rem,4.6vw,3.6rem);line-height:1}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:clamp(20px,4vw,44px)}
+.head .mono{color:var(--mute)}
+
+/* build your mini-me */
+.build{background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:clamp(40px,7vw,96px) 0;transition:background-color .35s}
+.bgrid{display:grid;grid-template-columns:minmax(240px,.8fr) 1.4fr;gap:clamp(20px,4vw,56px);align-items:start}
+.stage{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.stage canvas{width:min(100%,190px);aspect-ratio:100/140;display:block}
+.opts{display:flex;flex-direction:column;gap:18px}
+.side2{display:flex;flex-direction:column;gap:18px;align-items:flex-start}
+.side2 .opts{align-self:stretch}
+.side2 .more{margin:0;color:var(--soft);font-size:1rem;line-height:1.5}
+.opt{display:grid;grid-template-columns:7.5rem 1fr;gap:10px 16px;align-items:center;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.opt:last-child{border-bottom:0}
+.opt .lab{color:var(--mute)}
+.sw{width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(128,128,128,.45);padding:0;cursor:pointer;position:relative}
+.sw[aria-pressed="true"]{outline:2.5px solid var(--ink);outline-offset:2px}
+.build .lead{max-width:52ch;color:var(--soft);font-size:1.05rem;line-height:1.5;margin:10px 0 0}
+@media (max-width:820px){.bgrid{grid-template-columns:1fr}.stage{position:static}.opt{grid-template-columns:1fr}}
+
+/* feature tiles */
+.feats{padding-top:clamp(48px,8vw,110px);padding-bottom:clamp(48px,8vw,110px)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(10px,1.6vw,20px)}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:clamp(16px,2vw,24px);display:flex;flex-direction:column;gap:10px;min-height:260px;transition:background-color .35s,border-color .35s}
+.tile .n{color:var(--mute)}
+.tile h3{margin:0;font-weight:800;font-stretch:112%;letter-spacing:-.025em;font-size:clamp(1.25rem,2vw,1.6rem);line-height:1.05}
+.tile p{margin:0;font-size:.96rem;line-height:1.45;color:var(--soft)}
+.demo{margin-top:auto;padding-top:14px;display:flex;align-items:flex-end;gap:10px;min-height:86px}
+.big{font-weight:900;font-stretch:118%;letter-spacing:-.04em;font-size:clamp(2.1rem,3.6vw,3rem);line-height:.9}
+.big small{display:block;font-family:var(--mono);font-size:.74rem;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-top:8px}
+.flipbtn{all:unset;cursor:pointer;border-radius:10px}
+.flipbtn:focus-visible{outline:3px solid var(--go);outline-offset:4px}
+.pill{font-family:var(--mono);font-size:.86rem;border:1px solid var(--line);border-radius:10px;padding:.5em .7em;background:var(--paper);color:var(--ink)}
+.pill i{font-style:normal;color:var(--behind)}
+.timeline{flex:1;position:relative;height:44px}
+.timeline:before{content:"";position:absolute;left:0;right:0;bottom:14px;height:6px;border-radius:3px;background:var(--line)}
+.timeline:after{content:"";position:absolute;left:0;width:58%;bottom:14px;height:6px;border-radius:3px;background:var(--go)}
+.timeline b{position:absolute;left:84%;bottom:8px;width:3px;height:18px;background:var(--ink)}
+.timeline em{position:absolute;left:84%;bottom:30px;transform:translateX(-50%);font:500 .74rem var(--mono);font-style:normal;white-space:nowrap}
+.timeline span{position:absolute;left:0;bottom:-6px;font:400 .68rem var(--mono);color:var(--mute)}
+.timeline span+span{left:auto;right:0}
+.curve{width:100%;height:84px;display:block;overflow:visible}
+.curve .area{fill:var(--go);opacity:.16}
+.curve .ln{fill:none;stroke:var(--go);stroke-width:2.5;stroke-linecap:round}
+.curve .usual{fill:none;stroke:var(--mute);stroke-width:1.5;stroke-dasharray:3 4}
+.curve circle{fill:var(--ink)}
+.bars{display:flex;align-items:flex-end;gap:7px;flex:1;height:84px}
+.bars div{flex:1;background:var(--line);border-radius:4px 4px 0 0;position:relative}
+.bars div.hit{background:var(--go)}
+.bars div span{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font:400 .64rem var(--mono);color:var(--mute)}
+.faces{display:flex;gap:10px;flex:1}
+.face{flex:1;aspect-ratio:1;max-width:84px;border-radius:50%;background:#0b0b0c;color:#fff;display:grid;place-items:center;text-align:center;font-weight:800;font-size:.95rem;line-height:1;position:relative}
+.face small{display:block;font:400 .52rem var(--mono);letter-spacing:.04em;text-transform:uppercase;color:#a9abae;margin-top:3px}
+.face.r{background:conic-gradient(var(--go) 0 64%,#3a3d44 0) ;}
+.face.r:before{content:"";position:absolute;inset:7px;border-radius:50%;background:#0b0b0c}
+.face.r>*{position:relative}
+[data-style="night"] .face{color:#ff3b30}
+[data-style="night"] .face small{color:#99241d}
+.tile .mini{height:104px;aspect-ratio:100/140;display:block;margin-bottom:-6px}
+.rows{flex:1;display:flex;flex-direction:column;gap:6px;font:400 .82rem var(--mono)}
+.rows div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.rows b{font-weight:500}
+.nightdemo{flex:1;background:#000;border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px;color:#ff3b30;font:500 .8rem var(--mono);border:1px solid #3a0d0a}
+.nightdemo svg{width:54px;height:54px;flex:none}
+.widget{width:96px;height:96px;border-radius:22px;background:var(--paper);border:1px solid var(--line);display:grid;place-items:center;text-align:center;font-weight:900;font-size:1.25rem;line-height:1}
+.widget small{display:block;font:400 .56rem var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin-top:4px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tags span{font:500 .78rem var(--mono);text-transform:uppercase;letter-spacing:.05em;border:1.5px solid var(--ink);border-radius:999px;padding:.4em .8em}
+
+/* screens */
+.screens{background:var(--band);color:var(--band-ink);padding:clamp(40px,7vw,96px) 0;transition:background-color .35s}
+.screens .head .mono{color:var(--band-ink);opacity:.65}
+.shots{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(12px,2.4vw,32px);align-items:start}
+.shots figure{margin:0;display:flex;flex-direction:column;gap:12px}
+.shots figure:nth-child(even){margin-top:clamp(0px,5vw,64px)}
+.shots img{width:100%;max-width:100%;height:auto;display:block;border-radius:clamp(14px,2.2vw,30px);border:1px solid rgba(128,128,128,.35);background:#000}
+.shots figcaption{font-family:var(--mono);font-size:.78rem;letter-spacing:.04em;line-height:1.4;opacity:.8}
+.shots figcaption b{display:block;font-weight:500;text-transform:uppercase;opacity:1}
+
+.head.sub{margin-top:clamp(36px,6vw,80px);padding-top:clamp(20px,3vw,36px);border-top:1px solid rgba(128,128,128,.35)}
+.head.sub h3{margin:0;font-weight:800;font-stretch:112%;letter-spacing:-.025em;font-size:clamp(1.4rem,3vw,2.3rem);line-height:1}
+.head.sub{align-items:center}
+.head.sub.first{margin-top:0;border-top:0;padding-top:0}
+.head.sub .mono{margin-right:auto}
+.chip.onband{border-color:var(--band-ink);color:var(--band-ink)}
+.shots.set figure:nth-child(even){margin-top:0}
+.shots.set figure.w{align-self:center}
+.shots.set figure.w img{border-radius:22%/18%}
+
+/* end */
+.end{padding-top:clamp(40px,7vw,90px);padding-bottom:28px}
+.end .huge{margin:0 0 22px;font-weight:900;font-stretch:125%;letter-spacing:-.045em;line-height:.86;text-transform:uppercase;font-size:clamp(3rem,13vw,11rem)}
+.end .huge em{font-style:normal;color:var(--go)}
+.foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 24px;margin-top:clamp(32px,6vw,72px);padding-top:16px;border-top:1px solid var(--line);color:var(--mute)}
+.foot a{text-underline-offset:3px}
+
+@media (max-width:980px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:820px){
+  .lede{grid-template-columns:1fr}
+  .shots{grid-template-columns:repeat(2,1fr)}
+  .shots figure:nth-child(even){margin-top:28px}
+  .bar nav a.hide-s{display:none}
+}
+.short{display:none}
+.swipehint{display:none}
+@media (max-width:640px){
+  .full{display:none}.short{display:inline}
+  .bar nav{gap:10px}
+  .bar nav a{display:none}
+  .bar{white-space:nowrap}
+  /* hero: one status line, one row of styles, one sentence */
+  .status{justify-content:space-between;flex-wrap:nowrap;gap:10px}
+  .st-time,.st-mi,.st-fore{display:none}
+  .picker{border-top:0;padding-top:4px;margin-top:14px}
+  .picker .lab{display:none}
+  .picker .chips{flex-wrap:nowrap;width:100%;justify-content:space-between;gap:6px}
+  .picker .chip{padding:.5em .7em;font-size:.72rem;gap:.4em}
+  .lede{padding:22px 0 8px;gap:16px}
+  .lede .side p{display:none}
+  .say{padding:40px 0}
+  /* mini-me: the character and the choices, no extra copy */
+  .build{padding:36px 0}
+  .build .lead,.build .head .mono,.side2 .more{display:none}
+  .head{margin-bottom:16px}
+  .bgrid{gap:14px}
+  .stage{flex-direction:row;justify-content:space-between;padding:8px 16px}
+  .stage canvas{width:110px}
+  .opts{gap:12px}.opt{padding-bottom:12px;gap:8px}
+  .sw{width:28px;height:28px}
+  /* features and screens: swipe sideways instead of one long column */
+  .swipehint{display:inline;color:var(--mute)}
+  .feats{padding-top:40px;padding-bottom:40px}
+  .feats .head .mono:not(.swipehint){display:none}
+  .grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin:0 calc(-1 * clamp(16px,4vw,48px));padding:0 clamp(16px,4vw,48px) 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .grid::-webkit-scrollbar{display:none}
+  .tile{flex:0 0 78%;scroll-snap-align:center;min-height:250px}
+  .tile p{font-size:.92rem}
+  .screens{padding:36px 0}
+  .screens .head .mono{display:none}
+  .head.sub{margin-top:28px;padding-top:18px;flex-wrap:nowrap}
+  .head.sub h3{margin-right:auto}
+  .shots.set{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin:0 calc(-1 * clamp(16px,4vw,48px));padding:0 clamp(16px,4vw,48px) 6px;scrollbar-width:none;align-items:center}
+  .shots.set::-webkit-scrollbar{display:none}
+  .shots.set,.grid{scroll-padding-inline:clamp(16px,4vw,48px)}
+  .tile{scroll-snap-align:start}
+  .shots.set figure{flex:0 0 46%;scroll-snap-align:start;margin-top:0!important;gap:8px}
+  .shots.set figure.w{flex-basis:42%}
+  .shots.set figcaption{font-size:.68rem}
+  .shots.set figcaption b{display:inline}
+  .shots.set figcaption{font-size:0;line-height:1.3}
+  .shots.set figcaption b{font-size:.68rem}
+  .end .btns .ghost{display:none}
+  /* a phone visitor gets the short version: 4 key features, the screens of the style they picked, the mini-me with one button */
+  .tile:not(.key){display:none}
+  .tile{flex-basis:80%;min-height:0}
+  .opts,.side2{display:none}
+  .stage{padding:6px 18px}
+  .stage canvas{width:104px}
+  .build .head{margin-bottom:12px}
+  .screens .head.sub{display:none}
+  .screens .shots.set{display:none}
+  [data-style="minimal"] .screens .row-minimal.shots,[data-style="cozy"] .screens .row-cozy.shots,[data-style="retro"] .screens .row-retro.shots,[data-style="night"] .screens .row-night.shots{display:flex}
+  .screens .head{margin-bottom:14px}
+  .say{padding:32px 0}
+  .say p{font-size:clamp(2rem,9.5vw,3rem)}
+  .foot{gap:6px 16px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .curve circle,.eq i{animation:none!important}
+  .say span,.ring .face,body{transition:none}
+}
+
+</style>
+<style>
+/* Phone layout idea: the whole site is one screen, like an app. Things drop in instead of scrolling by. */
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body.one{position:relative;display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.one .full{display:none}.one .short{display:inline}
+.back{all:unset;cursor:pointer;position:absolute;left:14px;top:12px;z-index:6;font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;border:1.5px solid var(--ink);border-radius:999px;padding:.35em .8em;background:var(--paper);display:none}
+.back:focus-visible{outline:3px solid var(--go);outline-offset:3px}
+.away .back{display:inline-flex}
+.snd.float{position:absolute;right:14px;top:12px;z-index:6;font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;background:var(--paper)}
+.snd.float[aria-pressed="true"]{background:var(--ink)}
+.views{flex:1;position:relative;overflow:hidden;min-height:0}
+.view{position:absolute;inset:0;padding:56px 16px 10px;display:flex;flex-direction:column;visibility:hidden;transform:translateY(-104%);overflow:hidden}
+.view.on{visibility:visible;transform:none}
+.view.in{animation:viewdrop .62s cubic-bezier(.3,1.25,.5,1) both}
+@keyframes viewdrop{0%{transform:translateY(-104%)}62%{transform:translateY(0)}78%{transform:translateY(-2.2%)}100%{transform:none}}
+
+/* nothing but the wordmark until it has landed; then the rest fades in */
+.late{opacity:0;transition:opacity .6s ease}
+.ready .late{opacity:1}
+
+/* bottom buttons swap the screen */
+.tabs{flex:none;display:flex;gap:6px;justify-content:center;padding:10px 12px calc(10px + env(safe-area-inset-bottom));position:relative;z-index:5}
+.tabs button{all:unset;cursor:pointer;font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;padding:.85em 1.25em;border-radius:8px;background:var(--ink);color:var(--paper);text-align:center}
+.tabs button[aria-pressed="true"]{background:var(--go);color:#10130f;border-radius:999px}
+[data-style="night"] .tabs button[aria-pressed="true"]{color:#000}
+.tabs button:focus-visible{outline:3px solid var(--go);outline-offset:3px}
+
+/* home: the wordmark, then one thing at a time below it */
+.one .view.hero{padding:56px 16px 6px}
+.one .word{font-size:min(21.6vw,104px);position:relative;z-index:1;flex:none}
+.one .walker{height:72px}
+.one .rule.floor{width:100%;height:7px;margin-top:clamp(6px,1vw,14px);transform-origin:0 50%}
+.one .status{flex:none;flex-wrap:nowrap;gap:10px;justify-content:space-between;padding-top:12px}
+.one .st-time,.one .st-mi,.one .st-fore{display:none}
+.slot{flex:1;min-height:0;display:grid;place-items:center;position:relative;z-index:3;padding:10px 0 4px}
+.slot>*{grid-area:1/1;width:100%;will-change:transform}
+.one .slot .tile{display:flex;min-height:0;height:min(100%,272px);padding:18px 20px;box-shadow:0 10px 30px -18px rgba(0,0,0,.35)}
+.one .slot .tile h3{font-size:1.6rem}
+.one .slot .tile p{font-size:.98rem}
+.one .slot .demo{min-height:64px;padding-top:8px}
+.pitchcard{margin:0;font-size:clamp(1.4rem,6.3vw,1.8rem);line-height:1.16;font-weight:600;letter-spacing:-.02em;text-wrap:balance;align-self:center;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px 20px;box-shadow:0 10px 30px -18px rgba(0,0,0,.35);transition:background-color .35s,border-color .35s}
+.pitchcard em{font-style:normal;color:var(--go)}
+[data-style="minimal"] .pitchcard em{color:#15803d}
+@media (prefers-color-scheme:dark){[data-style="minimal"] .pitchcard em{color:var(--go)}}
+.store{display:none}
+.pre .word .dl,.pre .word .walker{visibility:hidden}
+.pre #floor{transform:scaleX(0)}
+.hint{flex:none;align-self:center;display:inline-flex;gap:.9em;align-items:center;border:1.5px solid var(--ink);border-radius:8px;padding:.7em 1em;background:var(--card);white-space:nowrap;margin-bottom:2px;position:relative;z-index:4}
+.hint b{font-weight:400;color:var(--mute)}
+
+/* looks */
+.one .picker{border-top:0;padding-top:0;margin-top:0;flex:none}
+.one .picker .lab{display:none}
+.one .picker .chips{flex-wrap:nowrap;width:100%;justify-content:space-between;gap:6px}
+.one .picker .chip{padding:.55em .7em;font-size:.72rem;gap:.4em}
+.lshots{flex:1;min-height:0;display:flex;align-items:center;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;margin:12px -16px 0;padding:0 16px;scroll-padding-inline:16px;scrollbar-width:none}
+.lshots::-webkit-scrollbar{display:none}
+.lshots figure{margin:0;flex:none;height:100%;display:flex;flex-direction:column;gap:6px;justify-content:center;scroll-snap-align:start}
+.lshots img{display:block;height:calc(100% - 24px);width:auto;max-height:520px;border-radius:22px;border:1px solid rgba(128,128,128,.35);background:#000}
+.lshots figure.w img{height:auto;width:150px;border-radius:22%/18%}
+.lshots figcaption{font-family:var(--mono);font-size:.66rem;letter-spacing:.05em;text-transform:uppercase;color:var(--mute);height:18px}
+.merow{flex:none;display:flex;align-items:center;gap:12px;margin:0 0 12px;padding:8px 12px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.merow canvas{width:50px;height:70px;display:block;flex:none}
+.merow p{margin:0;font-size:.9rem;line-height:1.3;color:var(--soft);flex:1}
+.merow .btn{font-size:.86rem;padding:.7em 1em;white-space:nowrap}
+
+/* get it */
+#v-get{justify-content:center}
+.one .view.end{padding:56px 16px 10px}
+.one .huge{font-size:21vw;font-size:min(21vw,100px);margin:0 0 20px}
+.getline{margin:0 0 20px;font-size:1.1rem;line-height:1.35;color:var(--soft);max-width:24ch}
+.one .foot{margin-top:28px}
+[data-style="night"] .tabs button:not([aria-pressed="true"]){background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.one .slot .tile{overflow:hidden}
+.one .slot .timeline em{left:auto;right:0;transform:none}
+.one .slot .tile .mini{height:84px}
+/* short phones: everything a size smaller so each card still fits */
+@media (max-height:700px){
+  .one .slot .tile{padding:16px 18px;gap:8px}
+  .one .slot .tile h3{font-size:1.4rem}
+  .one .slot .tile p{font-size:.92rem;line-height:1.38}
+  .one .slot .demo{min-height:0;padding-top:4px}
+  .one .slot .tile .mini{height:72px}
+}
+@media (max-height:600px){
+  .one .view.hero{padding-top:48px}
+  .one .word{font-size:min(18.5vw,104px)}
+  .one .walker{height:54px}
+  .one .status{padding-top:8px}
+  .slot{padding:6px 0 2px}
+  .one .slot .tile{padding:12px 14px;gap:5px}
+  .one .slot .tile h3{font-size:1.15rem}
+  .one .slot .tile p{font-size:.82rem;line-height:1.32}
+  .one .slot .tile .n{font-size:.66rem}
+  .one .slot .tile .mini{height:54px}
+  .one .slot .bars,.one .slot .curve{height:46px}
+  .one .slot .widget{width:62px;height:62px;border-radius:15px;font-size:.9rem}
+  .one .slot .face{max-width:56px;font-size:.72rem}
+  .one .slot .nightdemo{padding:7px 10px}.one .slot .nightdemo svg{width:34px;height:34px}
+  .one .slot .rows{font-size:.72rem;gap:3px}.one .slot .rows div{padding-bottom:3px}
+  .one .slot .tags span,.one .slot .chip,.one .slot .pill{font-size:.66rem}
+  .one .slot .timeline{height:36px}
+  .pitchcard{padding:16px 14px;font-size:1.2rem}
+  .hint{padding:.55em .8em;font-size:.68rem}
+  .tabs{padding-top:6px}.tabs button{padding:.7em 1.1em}
+}
+@media (max-width:350px){.one .picker .chip{font-size:.62rem;padding:.5em .5em;gap:.3em}.merow p{font-size:.8rem}.merow .btn{font-size:.78rem;padding:.6em .8em}}
+@media (prefers-reduced-motion:reduce){.view.in{animation:none}.late{transition:none}}
+</style>
+</head>
+<body class="one">
+
+<button class="back" type="button" id="back" aria-label="Back to Home">← Home</button>
+<button class="snd float late" type="button" id="snd" aria-pressed="true"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span id="sndLab">Sound on</span></button>
+
+<main class="views">
+  <section class="view on hero" id="v-home" aria-label="Home">
+    <h1 class="word" id="word" aria-label="OnPace">
+      <span class="row">
+        <button class="ringbtn dl" id="ringBtn" type="button" aria-label="Step ring: 6,400 of 10,000 steps. Tap to see steps left.">
+          <svg class="ring" id="ring" viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="track" cx="50" cy="50" r="45.75"/>
+            <circle class="prog" cx="50" cy="50" r="45.75"/>
+            <g class="face">
+              <text x="50" y="53" text-anchor="middle" font-size="15" id="ringNum">6,400</text>
+              <text class="sub" x="50" y="65" text-anchor="middle" font-size="6.2" id="ringSub">of 10,000</text>
+            </g>
+          </svg>
+        </button><span class="l dl" aria-hidden="true">N</span>
+      </span>
+      <span class="lane dl" id="lane" aria-hidden="true">
+        <span class="rule"><i></i></span>
+        <canvas class="walker mm" id="walker"></canvas>
+      </span>
+      <span class="row row2" aria-hidden="true"><span class="l dl">P</span><span class="l dl">A</span><span class="l dl">C</span><span class="l dl">E</span></span>
+      <span class="rule floor" id="floor" aria-hidden="true"></span>
+    </h1>
+    <div class="status mono late" id="status">
+      <span class="st-steps"><b id="stSteps">6,400</b> steps</span>
+      <span class="st-pace"><b class="ok" id="stPace">On pace</b></span>
+    </div>
+    <div class="slot late" id="slot">
+      <p class="pitchcard" id="pitch">A step tracker that tells you if you are <em>on pace</em>, and how long to walk if you are not.</p>
+    </div>
+    <span class="hint mono late" id="hint">Tap to drop <b id="count">12 things it does</b></span>
+    <div class="store" id="store">
+<article class="tile key"><span class="n mono">01 · Catch up</span><h3>Steps turned into minutes</h3><p>Behind? It says by how much and how long a walk fixes it.</p>
+        <div class="demo"><span class="pill"><i>843 behind</i> · walk 9 min</span></div></article>
+
+      <article class="tile key"><span class="n mono">02 · Forecast</span><h3>When you will get there</h3><p>The time you reach your goal at today's pace, or how short you would fall.</p>
+        <div class="demo"><div class="timeline"><b></b><em>10,000 by 8:40 PM</em><span>7 AM</span><span>10 PM</span></div></div></article>
+
+      <article class="tile"><span class="n mono">03 · Steps left</span><h3>Tap the ring</h3><p>The number flips from steps taken to steps left, then flips back.</p>
+        <div class="demo"><button class="flipbtn" id="flipBtn" type="button" aria-label="Flip between steps taken and steps left"><span class="big"><span id="flipNum">6,400</span><small id="flipSub">steps today · tap me</small></span></button></div></article>
+
+      <article class="tile"><span class="n mono">04 · Pace curve</span><h3>It learns your day</h3><p>Your own 24-hour curve, built from your last 30 days of steps.</p>
+        <div class="demo"><svg class="curve" viewBox="0 0 240 84" preserveAspectRatio="none" role="img" aria-label="Today's steps tracking just above your usual curve">
+          <path class="usual" d="M0 80 C40 78 60 60 90 52 S150 30 180 16 S225 6 240 4"/>
+          <path class="area" d="M0 80 C36 76 58 54 88 46 S128 30 146 26 L146 84 L0 84Z"/>
+          <path class="ln" d="M0 80 C36 76 58 54 88 46 S128 30 146 26"/>
+          <circle cx="146" cy="26" r="4.5"/></svg></div></article>
+
+      <article class="tile"><span class="n mono">05 · Workouts</span><h3>Count the steps of anything</h3><p>Finished Apple Watch workouts show up with their steps. Or start a session: a hike, a dog walk, a theme park day.</p>
+        <div class="demo"><div class="rows"><div><b>Hike</b><span>4,210 steps · 2.0 mi</span></div><div><b>Dog walk</b><span>1,380 steps · 0.7 mi</span></div></div></div></article>
+
+      <article class="tile"><span class="n mono">06 · Mini-me</span><h3>Make it look like you</h3><p>Pick your skin tone, hair, outfit, glasses and colors. It walks when you walk, celebrates at your goal and slumps when you are behind.</p>
+        <div class="demo"><canvas class="mini mm" id="miniTile" aria-hidden="true"></canvas><a class="pill" href="#minime" style="text-decoration:none">Meet more →</a></div></article>
+
+      <article class="tile"><span class="n mono">07 · Styles</span><h3>Three looks, 8 color sets</h3><p>Clean minimal, Cozy pastel or 16-bit adventure. Your watch follows your phone.</p>
+        <div class="demo"><div class="chips"><button class="chip" type="button" data-set="minimal"><i style="background:#22c55e"></i>Minimal</button><button class="chip" type="button" data-set="cozy"><i style="background:linear-gradient(135deg,#ffc2a0,#b6a4ee)"></i>Cozy</button><button class="chip" type="button" data-set="retro"><i style="background:#f5b921;border-radius:2px"></i>16-bit</button></div></div></article>
+
+      <article class="tile"><span class="n mono">08 · Night red</span><h3>Night red</h3><p>The whole app and watch in red on black. On Apple Watch it turns on by itself after sunset.</p>
+        <div class="demo"><div class="nightdemo"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="40" fill="none" stroke="#3a0d0a" stroke-width="14"/><circle cx="50" cy="50" r="40" fill="none" stroke="#ff3b30" stroke-width="14" stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="90" transform="rotate(-90 50 50)"/></svg><button class="chip" type="button" data-set="night" style="border-color:#ff3b30;color:#ff3b30">Try it on this page</button></div></div></article>
+
+      <article class="tile key"><span class="n mono">09 · Apple Watch</span><h3>On your watch face</h3><p>Three widgets: steps, steps left, and walk to catch up. No app to open.</p>
+        <div class="demo"><div class="faces"><div class="face r"><span>6.4K<small>steps</small></span></div><div class="face"><span>3,600<small>left</small></span></div><div class="face"><span>9 min<small>walk</small></span></div></div></div></article>
+
+      <article class="tile"><span class="n mono">10 · Streak</span><h3>Your last 7 days</h3><p>Days at goal, your average, and a streak that counts today once you hit it.</p>
+        <div class="demo" style="padding-bottom:18px"><div class="bars" role="img" aria-label="Seven days, four at goal">
+          <div style="height:62%"><span>M</span></div><div class="hit" style="height:100%"><span>T</span></div><div style="height:74%"><span>W</span></div><div class="hit" style="height:96%"><span>T</span></div><div class="hit" style="height:100%"><span>F</span></div><div class="hit" style="height:92%"><span>S</span></div><div style="height:64%"><span>S</span></div></div></div></article>
+
+      <article class="tile"><span class="n mono">11 · iPhone widget</span><h3>On your home screen</h3><p>A small widget with today's steps, so you do not even need to open the app.</p>
+        <div class="demo"><div class="widget"><span>6,400<small>of 10,000</small></span></div></div></article>
+
+      <article class="tile key"><span class="n mono">12 · Private</span><h3>It stays on your devices</h3><p>OnPace reads your steps from Apple Health and keeps everything on your iPhone and Apple Watch.</p>
+        <div class="demo"><div class="tags"><span>No account</span><span>No ads</span><span>No tracking</span></div></div></article>
+    </div>
+  </section>
+
+  <section class="view" id="v-looks" aria-label="Looks">
+    <div class="merow">
+      <canvas class="mm" id="stageCv" role="img" aria-label="Your mini-me"></canvas>
+      <p>Meet a new mini-me. Build your own in the app.</p>
+      <button class="btn" type="button" id="shuffle">Surprise me</button>
+    </div>
+    <div class="picker">
+      <div class="chips" role="group" aria-label="App style">
+        <button class="chip" type="button" data-set="minimal" aria-pressed="true"><i style="background:#22c55e"></i>Minimal</button>
+        <button class="chip" type="button" data-set="cozy" aria-pressed="false"><i style="background:linear-gradient(135deg,#ffc2a0,#b6a4ee)"></i>Cozy</button>
+        <button class="chip" type="button" data-set="retro" aria-pressed="false"><i style="background:#f5b921;border-radius:2px"></i>16-bit</button>
+        <button class="chip" type="button" data-set="night" aria-pressed="false"><i style="background:#ff3b30"></i>Night</button>
+      </div>
+    </div>
+    <div class="lshots" id="lshots"></div>
+  </section>
+
+  <section class="view end" id="v-get" aria-label="Get OnPace">
+    <p class="huge">Stay <em>on pace.</em></p>
+    <p class="getline">Free for iPhone and Apple Watch. No account, no ads.</p>
+    <div class="btns"><a class="btn" href="https://github.com/jappreets-stack/OnPace">On the App Store December 2</a></div>
+    <div class="foot mono">
+      <span><a href="support.html">Support</a> · <a href="privacy.html">Privacy</a></span>
+      <span>© 2026 OnPace</span>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs late" aria-label="Sections">
+  <button type="button" data-view="home" aria-pressed="true">Home</button>
+  <button type="button" data-view="looks" aria-pressed="false">Looks</button>
+  <button type="button" data-view="get" aria-pressed="false">Get it</button>
+</nav>
+
+<script src="minime.js"></script>
+<script>
+(function(){
+  var root=document.documentElement, $=function(id){ return document.getElementById(id); };
+  var q=new URLSearchParams(location.search);
+  var reduce=(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)||q.has('still');
+  function fmt(n){ return n.toLocaleString('en-US'); }
+  function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+
+  // ---- mini-me (the app's own drawing code)
+  var M=window.MiniMe, O=M.options;
+  function ids(a){ return a.map(function(x){return x.id}); }
+  function randomLook(first){
+    var body=pick(['male','female']), L=M.defaultLook(body);
+    var hairs=O.hairFor[body]; if(first) hairs=hairs.filter(function(h){return h!=='turban'&&h!=='hijab'});
+    L.skin=pick(ids(O.skin)); L.hair=pick(hairs); L.hairColor=pick(ids(O.hairColor));
+    L.main=pick(ids(O.swatch).filter(function(x){return x!=='white'&&x!=='gray'})); L.accent=M.partner(L.main);
+    L.hat=pick(ids(O.swatch).filter(function(x){return x!=='white'})); L.hatTrim=null;
+    L.glasses=Math.random()<.25?'glasses':'none';
+    L.beard=(body==='male'&&Math.random()<.3)?pick(['stubble','full']):'none';
+    return L;
+  }
+  var me={ look:randomLook(true), avatar:Math.random()<.75?'golfer':'ripped' };
+  var heroMood='walk', walker=$('walker');
+  M.mount(walker,function(){ return {avatar:me.avatar,mood:heroMood,look:me.look}; });
+  M.mount($('miniTile'),function(){ return {avatar:me.avatar,mood:'walk',look:me.look}; });
+  M.mount($('stageCv'),function(){ return {avatar:me.avatar,mood:'celebrate',look:me.look}; });
+  $('shuffle').addEventListener('click',function(){ me.look=randomLook(); me.avatar=pick(['golfer','golfer','ripped','baller']); });
+
+  var sound=(function(){
+    var ac=null, master=null, tone=null, wow=null, echo=null, echoIn=null, crackle=null, on=false, timer=null, nextT=0, step=0, nextFoot=0, noiseBuf=null;
+    function hz(m){ return 440*Math.pow(2,(m-69)/12); }
+    var MUSIC={
+      // light synth pop: a bouncy bass, a bright rising pattern, a soft steady kick
+      minimal:{bpm:110,cut:3800,chords:[[60,64,67,71],[57,60,64,67],[53,57,60,64],[55,59,62,67]],roots:[36,33,29,31]},
+      // lo-fi: dusty swung drums, jazzy ninth chords on a wobbly electric piano, vinyl crackle
+      cozy:{bpm:76,cut:1700,swing:0.34,chords:[[50,53,57,60,64],[43,53,57,59,64],[48,52,55,59,62],[45,52,55,59,60]],roots:[38,43,36,33],
+        mel:[{4:69,7:72,10:76},{2:74,12:71},{0:72,6:67,10:64},{4:69,12:67}]},
+      retro:{bpm:132,cut:6500,roots:[48,43,45,41],minor:[0,0,1,0]},
+      night:{bpm:60,cut:1500,mel:[{0:69},{8:72},{4:76},{0:74,12:69}]}
+    };
+    function cur(){ return MUSIC[root.getAttribute('data-style')]||MUSIC.minimal; }
+    function note(m,t,dur,type,g,att,rel,o2){
+      var o=ac.createOscillator(), v=ac.createGain(); o.type=type; o.frequency.value=hz(m); o2=o2||{};
+      if(o2.detune) o.detune.value=o2.detune;
+      if(o2.wow) wow.connect(o.detune);
+      v.gain.setValueAtTime(0.0001,t); v.gain.linearRampToValueAtTime(g,t+att);
+      v.gain.setValueAtTime(g,t+Math.max(att,dur-rel)); v.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+      o.connect(v); v.connect(tone); if(o2.echo) v.connect(echoIn); o.start(t); o.stop(t+dur+0.05);
+    }
+    function noise(t,dur,g,freq,type){
+      var n=ac.createBufferSource(), f=ac.createBiquadFilter(), v=ac.createGain(); n.buffer=noiseBuf;
+      f.type=type||'bandpass'; f.frequency.value=freq; f.Q.value=0.8;
+      v.gain.setValueAtTime(g,t); v.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+      n.connect(f); f.connect(v); v.connect(master); n.start(t,Math.random()*0.2); n.stop(t+dur+0.02);
+    }
+    function kick(t,g){
+      var o=ac.createOscillator(), v=ac.createGain(); o.type='sine';
+      o.frequency.setValueAtTime(125,t); o.frequency.exponentialRampToValueAtTime(42,t+0.13);
+      v.gain.setValueAtTime(g,t); v.gain.exponentialRampToValueAtTime(0.0001,t+0.28);
+      o.connect(v); v.connect(master); o.start(t); o.stop(t+0.3);
+    }
+    function snare(t,g){ noise(t,0.16,g,1700,'bandpass'); note(57,t,0.09,'triangle',g*0.5,0.002,0.08); }
+    function foot(t){ // a soft step: a low thump plus a little grit
+      var o=ac.createOscillator(), v=ac.createGain(); o.type='sine';
+      o.frequency.setValueAtTime(110,t); o.frequency.exponentialRampToValueAtTime(55,t+0.07);
+      v.gain.setValueAtTime(0.07,t); v.gain.exponentialRampToValueAtTime(0.0001,t+0.1);
+      o.connect(v); v.connect(master); o.start(t); o.stop(t+0.12); noise(t,0.05,0.018,900);
+    }
+    function schedule(){
+      if(!on||!ac) return;
+      var S=cur(), sd=60/S.bpm/4, style=root.getAttribute('data-style')||'minimal';
+      tone.frequency.setTargetAtTime(S.cut,ac.currentTime,0.3);
+      crackle.gain.setTargetAtTime(style==='cozy'?0.05:0.0001,ac.currentTime,0.4);
+      echo.delayTime.setTargetAtTime(sd*3,ac.currentTime,0.2);
+      while(nextT<ac.currentTime+0.25){
+        var bar=Math.floor(step/16)%4, s16=step%16, t=nextT, barDur=sd*16;
+        if(S.swing&&s16%4===2) t+=sd*S.swing;            // late off-beats: the lo-fi shuffle
+        if(style==='minimal'){
+          var c=S.chords[bar], r0=S.roots[bar]+12;
+          if(s16%2===0) note((s16%4===0?r0:r0+12),t,sd*1.6,'triangle',0.11,0.004,0.08);
+          note(c[s16%4]+12,t,sd*1.1,'square',0.018,0.004,0.06,{echo:(s16%4===3)});
+          if(s16%4===0) kick(t,0.2); if(s16%4===2) noise(t,0.03,0.016,7500,'highpass'); if(s16===4||s16===12) noise(t,0.07,0.028,1700,'bandpass');
+        } else if(style==='cozy'){
+          var ch=S.chords[bar];
+          if(s16===0||s16===6) ch.forEach(function(m,i){ var tt=t+i*0.018, g=(s16===0?0.05:0.035);
+            note(m,tt,(s16===0?sd*5.5:sd*8),'triangle',g,0.012,0.9,{wow:1,detune:-6}); note(m,tt,(s16===0?sd*5.5:sd*8),'sine',g*0.8,0.012,0.9,{wow:1,detune:7}); });
+          if(s16===0||s16===10) note(S.roots[bar],t,sd*(s16===0?5:3),'sine',0.15,0.02,0.3);
+          if(S.mel[bar][s16]!==undefined) note(S.mel[bar][s16],t,0.75,'sine',0.055,0.02,0.6,{wow:1,echo:1});
+          if(s16===0||s16===7||s16===10) kick(t,s16===7?0.2:0.3);
+          if(s16===4||s16===12) snare(t,0.075);
+          if(s16%2===0) noise(t,0.03,(s16%4===0?0.016:0.024),7500,'highpass');
+        } else if(style==='retro'){
+          var r=S.roots[bar], third=S.minor[bar]?3:4, arp=[r+24,r+24+third,r+31,r+36];
+          note(arp[s16%4],t,sd*0.9,'square',0.028,0.004,0.05);
+          if(s16%8===0) note(r,t,sd*3,'triangle',0.11,0.005,0.1); else if(s16%8===4) note(r+12,t,sd*2,'triangle',0.09,0.005,0.1);
+          if(s16%4===2) noise(t,0.03,0.018,7000);
+        } else { // night
+          if(s16===0){ note(45,t,barDur*1.2,'sine',0.06,1.2,2.0); note(52,t,barDur*1.2,'sine',0.035,1.5,2.0); }
+          if(S.mel[bar][s16]!==undefined) note(S.mel[bar][s16],t,3.0,'sine',0.045,0.05,2.8,{echo:1});
+        }
+        nextT+=sd; step++;
+      }
+      // footsteps follow the walk cycle (two steps per 1.047 s), only while the mini-me is walking
+      while(nextFoot<ac.currentTime+0.25){ if(heroMood==='walk'&&!document.hidden) foot(Math.max(nextFoot,ac.currentTime)); nextFoot+=0.5235; }
+    }
+    function start(){
+      if(!ac){
+        var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return false;
+        ac=new AC(); master=ac.createGain(); master.gain.value=0.0001; master.connect(ac.destination);
+        tone=ac.createBiquadFilter(); tone.type='lowpass'; tone.frequency.value=2400; tone.connect(master);
+        noiseBuf=ac.createBuffer(1,ac.sampleRate*0.3,ac.sampleRate); var d=noiseBuf.getChannelData(0); for(var i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+        // tape wobble for the lo-fi keys
+        var lfo=ac.createOscillator(); lfo.frequency.value=0.45; wow=ac.createGain(); wow.gain.value=9; lfo.connect(wow); lfo.start();
+        // a soft echo for plucks
+        echoIn=ac.createGain(); echoIn.gain.value=0.5; echo=ac.createDelay(1.5); echo.delayTime.value=0.45;
+        var fb=ac.createGain(); fb.gain.value=0.36; var ef=ac.createBiquadFilter(); ef.type='lowpass'; ef.frequency.value=1800;
+        echoIn.connect(echo); echo.connect(ef); ef.connect(fb); fb.connect(echo); ef.connect(master);
+        // vinyl crackle: quiet hiss with random little pops, looped
+        var cb=ac.createBuffer(1,ac.sampleRate*3,ac.sampleRate), cd=cb.getChannelData(0);
+        for(var j=0;j<cd.length;j++){ cd[j]=(Math.random()*2-1)*0.12; if(Math.random()<0.00035) cd[j]=(Math.random()<0.5?-1:1)*(0.5+Math.random()*0.5); }
+        var cs=ac.createBufferSource(); cs.buffer=cb; cs.loop=true; var cf=ac.createBiquadFilter(); cf.type='highpass'; cf.frequency.value=1100;
+        crackle=ac.createGain(); crackle.gain.value=0.0001; cs.connect(cf); cf.connect(crackle); crackle.connect(master); cs.start();
+      }
+      if(ac.state==='suspended') ac.resume();
+      on=true; nextT=ac.currentTime+0.08; nextFoot=ac.currentTime+0.2; step=0;
+      master.gain.cancelScheduledValues(ac.currentTime); master.gain.setTargetAtTime(0.55,ac.currentTime,0.25);
+      clearInterval(timer); timer=setInterval(schedule,60); schedule(); return true;
+    }
+    function stop(){ on=false; if(!ac) return; clearInterval(timer); master.gain.cancelScheduledValues(ac.currentTime); master.gain.setTargetAtTime(0.0001,ac.currentTime,0.08); }
+    document.addEventListener('visibilitychange',function(){ if(!ac) return; if(document.hidden) ac.suspend(); else if(on){ try{ ac.resume(); }catch(e){} nextT=ac.currentTime+0.08; nextFoot=ac.currentTime+0.2; } });
+    var btn=document.getElementById('snd'), lab=document.getElementById('sndLab');
+    function running(){ return !!ac&&ac.state==='running'; }
+    function paint(){
+      btn.setAttribute('aria-pressed',String(on));
+      btn.classList.toggle('waiting',on&&!running());
+      lab.textContent=!on?'Sound off':(running()?'Sound on':(window.innerWidth<640?'Tap for sound':'Sound on · tap anywhere'));
+    }
+    function go(){ // must run inside a tap, click or key press
+      var ok=false; try{ ok=start(); if(ok&&!ac.__w){ ac.__w=1; ac.addEventListener('statechange',paint); } }catch(e){ ok=false; }
+      if(!ok){ on=false; lab.textContent='Sound not available'; btn.setAttribute('aria-pressed','false'); return; }
+      paint(); setTimeout(paint,250); setTimeout(paint,900);
+    }
+    btn.addEventListener('click',function(){ if(on){ on=false; stop(); paint(); } else { on=true; go(); } });
+    // Sound is on by default, but browsers (iPhone most strictly) only allow it from the visitor's first touch.
+    // So it waits, armed, and the first tap, click or key anywhere starts it.
+    function wake(e){
+      if(e.target&&e.target.closest&&e.target.closest('#snd')) return;
+      if(on&&!running()) go();
+    }
+    ['pointerup','touchend','click','keydown'].forEach(function(ev){ document.addEventListener(ev,wake,true); });
+    on=true; paint();
+    window.__snd={ style:function(){ if(on&&ac){ step=Math.ceil(step/16)*16; } } };
+    return {
+      goal:function(){ if(!on||!running()) return; var t=ac.currentTime+0.02; [84,88,91,96].forEach(function(m,i){ note(m,t+i*0.11,1.4,'sine',0.09,0.005,1.3); }); },
+      tap:function(){ if(!on||!running()) return; var t=ac.currentTime+0.01; note(88,t,0.18,'triangle',0.08,0.004,0.15); note(93,t+0.07,0.22,'triangle',0.06,0.004,0.18); },
+      isOn:function(){ return on; },
+      thud:function(g){ if(!on||!running()) return; var t=ac.currentTime+0.005, o=ac.createOscillator(), v=ac.createGain(); o.type='sine'; o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(48,t+0.12); v.gain.setValueAtTime(0.22*g,t); v.gain.exponentialRampToValueAtTime(0.0001,t+0.2); o.connect(v); v.connect(master); o.start(t); o.stop(t+0.22); noise(t,0.04,0.03*g,1400); }
+    };
+  })();
+
+  // ---- styles
+  var SHOTS=[['today','iPhone · today',0],['goal','iPhone · goal hit',0],['watch','Watch · steps',1],['watch-flip','Watch · steps left',1]];
+  // the screenshots match the page: dark app screens when the visitor's device is in dark mode
+  var darkMQ=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
+  function paintShots(s){
+    var box=$('lshots'); box.textContent='';
+    SHOTS.forEach(function(x){
+      var f=document.createElement('figure'); if(x[2]) f.className='w';
+      var im=new Image(); im.src='img/'+s+'-'+x[0]+((!x[2]&&(s==='retro'||(darkMQ&&darkMQ.matches&&(s==='minimal'||s==='cozy'))))?'-dark':'')+'.jpg'; im.alt='OnPace, '+x[1]; f.appendChild(im);
+      var c=document.createElement('figcaption'); c.textContent=x[1]; f.appendChild(c); box.appendChild(f);
+    });
+    box.scrollLeft=0;
+  }
+  function setStyle(s){
+    root.setAttribute('data-style',s); if(window.__snd) window.__snd.style(s);
+    document.querySelectorAll('.picker .chip').forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-set')===s)); });
+    paintShots(s);
+  }
+  document.querySelectorAll('[data-set]').forEach(function(b){ b.addEventListener('click',function(){ setStyle(b.getAttribute('data-set')); }); });
+  if(darkMQ&&darkMQ.addEventListener) darkMQ.addEventListener('change',function(){ paintShots(root.getAttribute('data-style')||'minimal'); });
+  var h0=location.hash.replace('#',''); setStyle(['cozy','retro','night'].indexOf(h0)>=0?h0:'minimal');
+
+  // ---- screens: the bottom buttons swap what you see; the new one drops in from the top
+  var current='home';
+  function go(v){
+    if(v===current) return; current=v; document.body.classList.toggle('away',v!=='home');
+    document.querySelectorAll('.view').forEach(function(el){ var on=el.id==='v-'+v; el.classList.toggle('on',on); el.classList.remove('in'); if(on&&!reduce){ void el.offsetWidth; el.classList.add('in'); } });
+    document.querySelectorAll('.tabs button').forEach(function(b){ b.setAttribute('aria-pressed',String(b.getAttribute('data-view')===v)); });
+    sound.thud(0.5);
+  }
+  document.querySelectorAll('.tabs button').forEach(function(b){ b.addEventListener('click',function(){ go(b.getAttribute('data-view')); }); });
+  $('back').addEventListener('click',function(){ go('home'); });
+  document.addEventListener('click',function(e){ var a=e.target.closest&&e.target.closest('a[href="#minime"]'); if(a){ e.preventDefault(); go('looks'); } });
+
+  // ---- ring + walk (same as the big page)
+  var ring=$('ring'), num=$('ringNum'), sub=$('ringSub'), fnum=$('flipNum'), fsub=$('flipSub');
+  var left=false, ftimer=null, cheer=null, atGoal=false, GOAL=10000, steps=6400, word=$('word'), lane=$('lane');
+  var stSteps=$('stSteps'), stPace=$('stPace');
+  function show(){
+    var done=steps>=GOAL, v=left?Math.max(0,GOAL-steps):steps;
+    num.textContent=fmt(v); sub.textContent=left?(done?'goal reached':'left to goal'):'of 10,000';
+    if(fnum){ fnum.textContent=fmt(v); fsub.textContent=left?'left to goal':'steps today · tap me'; }
+    stSteps.textContent=fmt(steps); stPace.textContent=done?'Goal reached':'On pace';
+  }
+  var walking=false, p=0.64;
+  if(!reduce){
+    var last=null, hold=0;
+    (function walk(t){
+      if(last===null) last=t; var dt=Math.min(.1,(t-last)/1000); last=t;
+      if(walking){
+        var SPEED=(0.42*walker.clientHeight/1.047)/Math.max(200,lane.clientWidth);
+        if(hold>0){ hold-=dt; if(hold<=0){ p=0.05; atGoal=false; heroMood='walk'; } }
+        else{ p+=dt*SPEED; if(p>=1){ p=1; hold=3.2; atGoal=true; heroMood='celebrate'; sound.goal(); } }
+        word.style.setProperty('--p',p.toFixed(4));
+        var sNew=Math.round(p*GOAL/10)*10; if(sNew!==steps){ steps=sNew; show(); }
+      }
+      requestAnimationFrame(walk);
+    })(performance.now());
+  }
+  function flip(){
+    left=!left; clearTimeout(ftimer); sound.tap();
+    if(reduce){ show(); } else {
+      ring.classList.add('flip'); setTimeout(function(){ show(); ring.classList.remove('flip'); },280);
+      if(heroMood==='walk'){ heroMood='celebrate'; clearTimeout(cheer); cheer=setTimeout(function(){ if(atGoal===false) heroMood='walk'; },1100); }
+    }
+    if(left) ftimer=setTimeout(function(){ if(left) flip(); },5000);
+  }
+  $('ringBtn').addEventListener('click',function(e){ e.stopPropagation(); flip(); });
+  if($('flipBtn')) $('flipBtn').addEventListener('click',flip);
+
+  // ---- falling: one small gravity animation used for the letters and the cards
+  var G=4600;
+  function fall(el,o){ // o: from (px above its place), dx, rot, delay, bounce, base (css transform to keep), land()
+    var y=-o.from, v=0, t0=null, last=null, hits=0, dist=o.from, base=o.base||'';
+    function put(){ var k=Math.min(1,-y/dist); el.style.transform=base+' translate('+((o.dx||0)*k).toFixed(1)+'px,'+y.toFixed(1)+'px) rotate('+((o.rot||0)*k).toFixed(2)+'deg)'; }
+    put();
+    requestAnimationFrame(function frame(t){
+      if(t0===null){ t0=t; last=t; }
+      if(t-t0<(o.delay||0)){ last=t; return requestAnimationFrame(frame); }
+      if(el.style.visibility!=='visible') el.style.visibility='visible';
+      var dt=Math.min(.034,(t-last)/1000); last=t; v+=G*dt; y+=v*dt;
+      if(y>=0){ y=0; hits++; if(hits===1&&o.land) o.land();
+        if(hits>2||Math.abs(v)<300){ el.style.transform=base; if(o.done) o.done(); return; }
+        v=-v*(o.bounce||.22); }
+      put(); requestAnimationFrame(frame);
+    });
+  }
+  function fallAway(el,done){ // drops out through the bottom of the screen
+    var y=0, v=-420, last=null, rot=(Math.random()<.5?-1:1)*(4+Math.random()*6), H=window.innerHeight;
+    requestAnimationFrame(function frame(t){
+      if(last===null) last=t; var dt=Math.min(.034,(t-last)/1000); last=t; v+=G*dt; y+=v*dt;
+      el.style.transform='translateY('+y.toFixed(1)+'px) rotate('+(rot*Math.min(1,Math.abs(y)/300)).toFixed(2)+'deg)';
+      if(y>H){ el.style.transform=''; done(); return; } requestAnimationFrame(frame);
+    });
+  }
+
+  // ---- 1. an empty screen, then the wordmark builds itself: a line draws, PACE lands on it letter by letter,
+  //         the second line drops on top, then O and N, then the mini-me. Only after that does anything else show.
+  var floor=$('floor'), home=$('v-home');
+  function ready(){ document.body.classList.add('ready'); }
+  function intro(){
+    // the wordmark builds in the middle of the empty screen, then moves up to make room
+    var wr=word.getBoundingClientRect(), vr=home.getBoundingClientRect(), lift=Math.max(0,Math.round(vr.top+(vr.height-wr.height)/2-wr.top-20));
+    word.style.transform='translateY('+lift+'px)';
+    var pace=[].slice.call(document.querySelectorAll('.row2 .dl')), on=[].slice.call(document.querySelectorAll('.row:not(.row2) .dl'));
+    pace.concat(on,[lane]).forEach(function(el){ el.style.visibility='hidden'; });
+    walker.style.visibility='hidden'; word.style.setProperty('--p','0'); steps=0; show(); root.classList.remove('pre');
+    floor.style.transform='scaleX(0)';
+    setTimeout(function(){ floor.style.transition='transform .55s cubic-bezier(.2,.7,.2,1)'; floor.style.transform='scaleX(1)'; },250);
+    var t=900;
+    function cascade(list,rise){
+      list.forEach(function(el,i){
+        var from=el.getBoundingClientRect().bottom+140+i*rise;
+        fall(el,{from:from,dx:14+i*10,rot:6+i*3,delay:t+i*120,bounce:.2,land:function(){ sound.thud(.8); }});
+      });
+      t+=list.length*120+520;
+    }
+    cascade(pace,70);
+    fall(lane,{from:lane.getBoundingClientRect().bottom+100,delay:t,bounce:.16,land:function(){ sound.thud(.6); }}); t+=560;
+    cascade(on,90);
+    setTimeout(function(){
+      fall(walker,{from:walker.getBoundingClientRect().bottom+100,base:'translateX(-50%)',bounce:.18,land:function(){ sound.thud(.5); },
+        done:function(){ walker.style.transform=''; p=0.04; walking=true; setTimeout(function(){ word.style.transition='transform .75s cubic-bezier(.3,.8,.2,1)'; word.style.transform='translateY(0)'; setTimeout(ready,450); },500); }});
+    },t-150);
+    setTimeout(function(){ if(!document.body.classList.contains('ready')){ root.classList.remove('pre'); word.style.transform=''; [].slice.call(document.querySelectorAll('.dl')).concat([walker]).forEach(function(el){ el.style.visibility='visible'; }); if(!walking){ p=0.04; walking=true; } ready(); } },t+4500); // safety net
+  }
+  if(reduce){ ready(); }
+  else if(document.fonts&&document.fonts.ready){ var started=false, kick=function(){ if(!started){ started=true; intro(); } }; document.fonts.ready.then(kick); setTimeout(kick,1200); }
+  else intro();
+
+  // ---- 3. tap to drop: one thing at a time. A tap drops the card you see out of the screen and the next one lands in its place.
+  var slot=$('slot'), store=$('store'), count=$('count'), pitch=$('pitch');
+  var cards=[pitch].concat([].slice.call(store.querySelectorAll('.tile'))), at=0, busy=false;
+  function two(n){ return (n<10?'0':'')+n; }
+  function dropNext(){
+    if(busy) return; busy=true;
+    var old=cards[at]; at=(at+1)%cards.length; var nu=cards[at];
+    fallAway(old,function(){ if(old!==pitch) store.appendChild(old); else old.style.display='none'; });
+    nu.style.visibility='hidden'; nu.style.display=''; slot.appendChild(nu);
+    var from=nu.getBoundingClientRect().bottom+40;
+    fall(nu,{from:from,rot:(Math.random()<.5?-1:1)*5,delay:140,bounce:.24,land:function(){ sound.thud(1); },done:function(){ nu.style.transform=''; busy=false; }});
+    count.textContent=at===0?'12 things it does':two(at)+' / 12';
+  }
+  home.addEventListener('click',function(e){
+    if(current!=='home'||!document.body.classList.contains('ready')) return;
+    if(e.target.closest&&e.target.closest('button,a')) return;
+    dropNext();
+  });
+  $('hint').addEventListener('click',function(){ if(document.body.classList.contains('ready')) dropNext(); });
+  window.__one={ go:go, drop:dropNext, at:function(){ return at; } };
+  show();
+})();
+</script>
+</body>
+</html>
