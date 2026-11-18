@@ -398,6 +398,10 @@ body.one{position:relative;display:flex;flex-direction:column;height:100dvh;max-
 .one .huge{font-size:21vw;font-size:min(21vw,100px);margin:0 0 20px}
 .getline{margin:0 0 20px;font-size:1.1rem;line-height:1.35;color:var(--soft);max-width:24ch}
 .one .foot{margin-top:28px}
+.one .foot a{display:inline-block;padding:14px 8px}
+/* the ring is small on a phone: one big number inside, its label moves to the line below the wordmark */
+.one .ring .sub{display:none}
+.one #ringNum{font-size:20px;transform:translateY(4px)}
 [data-style="night"] .tabs button:not([aria-pressed="true"]){background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
 .one .slot .tile{overflow:hidden}
 .one .slot .timeline em{left:auto;right:0;transform:none}
@@ -464,7 +468,7 @@ body.one{position:relative;display:flex;flex-direction:column;height:100dvh;max-
       <span class="rule floor" id="floor" aria-hidden="true"></span>
     </h1>
     <div class="status mono late" id="status">
-      <span class="st-steps"><b id="stSteps">6,400</b> steps</span>
+      <span class="st-steps"><b id="stSteps">6,400</b> <span id="stLab">of 10,000 steps</span></span>
       <span class="st-pace"><b class="ok" id="stPace">On pace</b></span>
     </div>
     <div class="slot late" id="slot">
@@ -494,7 +498,7 @@ body.one{position:relative;display:flex;flex-direction:column;height:100dvh;max-
       <article class="tile"><span class="n mono">06 · Mini-me</span><h3>Make it look like you</h3><p>Pick your skin tone, hair, outfit, glasses and colors. It walks when you walk, celebrates at your goal and slumps when you are behind.</p>
         <div class="demo"><canvas class="mini mm" id="miniTile" aria-hidden="true"></canvas><a class="pill" href="#minime" style="text-decoration:none">Meet more →</a></div></article>
 
-      <article class="tile"><span class="n mono">07 · Styles</span><h3>Three looks, 8 color sets</h3><p>Clean minimal, Cozy pastel or 16-bit adventure. Your watch follows your phone.</p>
+      <article class="tile"><span class="n mono">07 · Styles</span><h3>Pick your look</h3><p>Clean minimal, 16-bit adventure, or Cozy pastel in 8 color sets. One of them is Night red. Your watch follows your phone.</p>
         <div class="demo"><div class="chips"><button class="chip" type="button" data-set="minimal"><i style="background:#22c55e"></i>Minimal</button><button class="chip" type="button" data-set="cozy"><i style="background:linear-gradient(135deg,#ffc2a0,#b6a4ee)"></i>Cozy</button><button class="chip" type="button" data-set="retro"><i style="background:#f5b921;border-radius:2px"></i>16-bit</button></div></div></article>
 
       <article class="tile"><span class="n mono">08 · Night red</span><h3>Night red</h3><p>The whole app and watch in red on black. On Apple Watch it turns on by itself after sunset.</p>
@@ -747,12 +751,14 @@ body.one{position:relative;display:flex;flex-direction:column;height:100dvh;max-
   // ---- ring + walk (same as the big page)
   var ring=$('ring'), num=$('ringNum'), sub=$('ringSub'), fnum=$('flipNum'), fsub=$('flipSub');
   var left=false, ftimer=null, cheer=null, atGoal=false, GOAL=10000, steps=6400, word=$('word'), lane=$('lane');
-  var stSteps=$('stSteps'), stPace=$('stPace');
+  var stSteps=$('stSteps'), stLab=$('stLab'), stPace=$('stPace');
+  // where the walk starts: just past the ring, so the mini-me never stands on the step number
+  function p0(){ var w=lane.clientWidth||1; return Math.min(.4,Math.max(.05,($('ringBtn').offsetWidth+walker.clientWidth*.42)/w)); }
   function show(){
     var done=steps>=GOAL, v=left?Math.max(0,GOAL-steps):steps;
     num.textContent=fmt(v); sub.textContent=left?(done?'goal reached':'left to goal'):'of 10,000';
     if(fnum){ fnum.textContent=fmt(v); fsub.textContent=left?'left to goal':'steps today · tap me'; }
-    stSteps.textContent=fmt(steps); stPace.textContent=done?'Goal reached':'On pace';
+    stSteps.textContent=fmt(v); stLab.textContent=left?(done?'goal reached':'left to goal'):'of 10,000 steps'; stPace.textContent=done?'Goal reached':'On pace';
   }
   var walking=false, p=0.64;
   if(!reduce){
@@ -761,7 +767,7 @@ body.one{position:relative;display:flex;flex-direction:column;height:100dvh;max-
       if(last===null) last=t; var dt=Math.min(.1,(t-last)/1000); last=t;
       if(walking){
         var SPEED=(0.42*walker.clientHeight/1.047)/Math.max(200,lane.clientWidth);
-        if(hold>0){ hold-=dt; if(hold<=0){ p=0.05; atGoal=false; heroMood='walk'; } }
+        if(hold>0){ hold-=dt; if(hold<=0){ p=p0(); atGoal=false; heroMood='walk'; } }
         else{ p+=dt*SPEED; if(p>=1){ p=1; hold=3.2; atGoal=true; heroMood='celebrate'; sound.goal(); } }
         word.style.setProperty('--p',p.toFixed(4));
         var sNew=Math.round(p*GOAL/10)*10; if(sNew!==steps){ steps=sNew; show(); }
@@ -816,7 +822,7 @@ body.one{position:relative;display:flex;flex-direction:column;height:100dvh;max-
     word.style.transform='translateY('+lift+'px)';
     var pace=[].slice.call(document.querySelectorAll('.row2 .dl')), on=[].slice.call(document.querySelectorAll('.row:not(.row2) .dl'));
     pace.concat(on,[lane]).forEach(function(el){ el.style.visibility='hidden'; });
-    walker.style.visibility='hidden'; word.style.setProperty('--p','0'); steps=0; show(); root.classList.remove('pre');
+    walker.style.visibility='hidden'; p=p0(); word.style.setProperty('--p',p.toFixed(4)); steps=Math.round(p*GOAL/10)*10; show(); root.classList.remove('pre');
     floor.style.transform='scaleX(0)';
     setTimeout(function(){ floor.style.transition='transform .55s cubic-bezier(.2,.7,.2,1)'; floor.style.transform='scaleX(1)'; },250);
     var t=900;
@@ -832,7 +838,7 @@ body.one{position:relative;display:flex;flex-direction:column;height:100dvh;max-
     cascade(on,90);
     setTimeout(function(){
       fall(walker,{from:walker.getBoundingClientRect().bottom+100,base:'translateX(-50%)',bounce:.18,land:function(){ sound.thud(.5); },
-        done:function(){ walker.style.transform=''; p=0.04; walking=true; setTimeout(function(){ word.style.transition='transform .75s cubic-bezier(.3,.8,.2,1)'; word.style.transform='translateY(0)'; setTimeout(ready,450); },500); }});
+        done:function(){ walker.style.transform=''; walking=true; setTimeout(function(){ word.style.transition='transform .75s cubic-bezier(.3,.8,.2,1)'; word.style.transform='translateY(0)'; setTimeout(ready,450); },500); }});
     },t-150);
     setTimeout(function(){ if(!document.body.classList.contains('ready')){ root.classList.remove('pre'); word.style.transform=''; [].slice.call(document.querySelectorAll('.dl')).concat([walker]).forEach(function(el){ el.style.visibility='visible'; }); if(!walking){ p=0.04; walking=true; } ready(); } },t+4500); // safety net
   }
