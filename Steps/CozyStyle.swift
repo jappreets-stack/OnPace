@@ -5,7 +5,7 @@ import SwiftUI
 // Shared with the watch (ring colors only).
 enum CozyPalette: String, CaseIterable, Identifiable {
     // Each set is its own hue, in rainbow order in Settings. (The saved names stay the same for old settings.)
-    case peach, butter, matcha, mint, rain, lilac, dusk, nightRed
+    case peach, butter, matcha, mint, rain, lilac, dusk, fall
     var id: String { rawValue }
     var name: String {
         switch self {
@@ -16,7 +16,7 @@ enum CozyPalette: String, CaseIterable, Identifiable {
         case .rain: "Rainy blue"
         case .lilac: "Lilac & violet"
         case .dusk: "Lo-fi sunset"
-        case .nightRed: "Night red"
+        case .fall: "Fall leaves"
         }
     }
     typealias RGB = (Double, Double, Double)
@@ -31,11 +31,12 @@ enum CozyPalette: String, CaseIterable, Identifiable {
         case .lilac: [(0.86, 0.76, 1.00), (0.72, 0.58, 0.98), (0.56, 0.42, 0.92)]
         // Lo-fi evening: indigo sky, magenta clouds, warm orange lamp.
         case .dusk: [(0.40, 0.38, 0.82), (0.88, 0.42, 0.70), (1.00, 0.64, 0.36)]
-        case .nightRed: [(0.75, 0.75, 0.75), (0.90, 0.90, 0.90), (1.00, 1.00, 1.00)]   // turned red by the Night red tint
+        // Autumn trees: golden yellow, pumpkin orange, rust red.
+        case .fall: [(0.98, 0.78, 0.30), (0.93, 0.52, 0.20), (0.72, 0.26, 0.16)]
         }
     }
     // The little ring shown for this set in Settings.
-    var swatch: [RGB] { self == .nightRed ? [(0.55, 0.04, 0.04), (0.85, 0.10, 0.08), (1.00, 0.22, 0.16)] : ring }
+    var swatch: [RGB] { ring }
     // Icons, the gear and the "Daily average" number.
     var accent: RGB {
         switch self {
@@ -46,21 +47,19 @@ enum CozyPalette: String, CaseIterable, Identifiable {
         case .rain: (0.30, 0.50, 0.90)
         case .lilac: (0.58, 0.44, 0.90)
         case .dusk: (0.80, 0.40, 0.66)
-        case .nightRed: (1.00, 1.00, 1.00)
+        case .fall: (0.82, 0.40, 0.16)
         }
     }
     // Goal hit: the ring, bars and "Days at goal" turn this color (never the same hue as the set).
     var done: RGB {
         switch self {
         case .matcha, .mint: (1.00, 0.70, 0.40)
-        case .nightRed: (1.00, 1.00, 1.00)
         default: (0.45, 0.80, 0.64)
         }
     }
     var doneDeep: RGB {   // readable on the page
         switch self {
         case .matcha, .mint: (0.84, 0.46, 0.16)
-        case .nightRed: (1.00, 1.00, 1.00)
         default: (0.24, 0.62, 0.46)
         }
     }
@@ -74,7 +73,7 @@ enum CozyPalette: String, CaseIterable, Identifiable {
         case .rain: ((0.94, 0.97, 1.00), (0.88, 0.92, 1.00))
         case .lilac: ((0.98, 0.95, 1.00), (0.93, 0.90, 1.00))
         case .dusk: ((0.94, 0.92, 1.00), (1.00, 0.89, 0.86))
-        case .nightRed: ((0, 0, 0), (0, 0, 0))
+        case .fall: ((1.00, 0.96, 0.89), (0.99, 0.90, 0.80))
         }
     }
     var pageDark: (RGB, RGB) {
@@ -86,7 +85,7 @@ enum CozyPalette: String, CaseIterable, Identifiable {
         case .rain: ((0.06, 0.09, 0.20), (0.09, 0.13, 0.29))
         case .lilac: ((0.13, 0.10, 0.24), (0.19, 0.13, 0.32))
         case .dusk: ((0.11, 0.09, 0.26), (0.30, 0.13, 0.26))
-        case .nightRed: ((0, 0, 0), (0, 0, 0))
+        case .fall: ((0.18, 0.10, 0.06), (0.27, 0.12, 0.07))
         }
     }
 }
@@ -121,12 +120,10 @@ enum Cozy {
     // Light pastel page by day, a deep tinted page by night (per palette).
     static var pageTop: Color { adaptive(light: ui(palette.pageLight.0), dark: ui(palette.pageDark.0)) }
     static var pageBottom: Color { adaptive(light: ui(palette.pageLight.1), dark: ui(palette.pageDark.1)) }
-    static var card: Color {
-        palette == .nightRed ? Color(white: 0.13) : adaptive(light: .white, dark: UIColor(white: 1, alpha: 0.08))
-    }
+    static var card: Color { adaptive(light: .white, dark: UIColor(white: 1, alpha: 0.08)) }
     static var ink: Color {
-        palette == .nightRed ? .white : adaptive(light: UIColor(red: 0.36, green: 0.26, blue: 0.22, alpha: 1),
-                                                 dark: UIColor(red: 0.99, green: 0.93, blue: 0.90, alpha: 1))
+        adaptive(light: UIColor(red: 0.36, green: 0.26, blue: 0.22, alpha: 1),
+                 dark: UIColor(red: 0.99, green: 0.93, blue: 0.90, alpha: 1))
     }
     static var track: Color { adaptive(light: ui(palette.ring[0]).withAlphaComponent(0.22), dark: UIColor(white: 1, alpha: 0.10)) }
     #else
@@ -177,7 +174,7 @@ extension View {
     }
 }
 
-// Night red: everything in shades of red on black, like the Ultra's Night Mode (phone and watch).
+// Night red: everything in shades of red on black, like the Ultra's Night Mode (watch only).
 extension Cozy {
     static let nightRedTint = Color(red: 1, green: 0.12, blue: 0.08)
 }

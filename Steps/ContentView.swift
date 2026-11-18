@@ -250,7 +250,6 @@ struct ContentView: View {
             if !Task.isCancelled { withAnimation(.snappy(duration: 0.3)) { showLeft = false } }
         }
     }
-    private var nightRed: Bool { appStyle == .cozy && cozyPalette == .nightRed }
 
     var body: some View {
         TabView(selection: $tab) {
@@ -268,9 +267,7 @@ struct ContentView: View {
         .onAppear { if let t = UserDefaults.standard.string(forKey: "startTab") { tab = t } }
         #endif
         .tint(Color.primary)
-        // Cozy pastel → Night red: the whole app in red on black, like the Ultra's Night Mode.
-        .nightRed(nightRed)
-        .preferredColorScheme(nightRed ? .dark : theme.scheme)
+        .preferredColorScheme(theme.scheme)
         .sheet(isPresented: $showSettings) {
             SettingsView(goal: $goal, theme: $theme, avatar: $avatar, look: $look)
         }

@@ -265,10 +265,8 @@ struct ContentView: View {
     var body: some View {
         // Checks once a minute whether the sun has set (Red after sunset).
         TimelineView(.everyMinute) { context in
-            // Night red: every color in a shade of red. On with the switch on the last page, after sunset
-            // (Red after sunset), or when the phone picks Cozy pastel → Night red.
+            // Night red: every color in a shade of red. Picked on the last page: Always, or After sunset.
             let red = nightRedMode == .always || (nightRedMode == .sunset && SunClock.isDark(context.date))
-                || (appStyle == .cozy && cozyPalette == .nightRed)
             pages
                 // watchOS draws its page dots in white and apps can't recolor them, so while red we hide
                 // them and draw our own (the red filter below turns them red). The clock can't be changed.
