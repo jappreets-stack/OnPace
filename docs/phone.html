@@ -239,6 +239,7 @@ h2{margin:0;font-weight:800;font-stretch:112%;letter-spacing:-.03em;font-size:cl
 .chip.onband{border-color:var(--band-ink);color:var(--band-ink)}
 .shots.set figure:nth-child(even){margin-top:0}
 .shots.set figure.w{align-self:center}
+.shots.set.row-night figure.w{align-self:start}
 .shots.set figure.w img{border-radius:22%/18%}
 
 /* end */
@@ -295,6 +296,7 @@ h2{margin:0;font-weight:800;font-stretch:112%;letter-spacing:-.03em;font-size:cl
   .head.sub h3{margin-right:auto}
   .shots.set{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin:0 calc(-1 * clamp(16px,4vw,48px));padding:0 clamp(16px,4vw,48px) 6px;scrollbar-width:none;align-items:center}
   .shots.set::-webkit-scrollbar{display:none}
+  .shots.set.row-night{align-items:flex-start}
   .shots.set,.grid{scroll-padding-inline:clamp(16px,4vw,48px)}
   .tile{scroll-snap-align:start}
   .shots.set figure{flex:0 0 46%;scroll-snap-align:start;margin-top:0!important;gap:8px}
@@ -498,10 +500,10 @@ body.one{position:relative;display:flex;flex-direction:column;height:100dvh;max-
       <article class="tile"><span class="n mono">06 · Mini-me</span><h3>Make it look like you</h3><p>Pick your skin tone, hair, outfit, glasses and colors. It walks when you walk, celebrates at your goal and slumps when you are behind.</p>
         <div class="demo"><canvas class="mini mm" id="miniTile" aria-hidden="true"></canvas><a class="pill" href="#minime" style="text-decoration:none">Meet more →</a></div></article>
 
-      <article class="tile"><span class="n mono">07 · Styles</span><h3>Pick your look</h3><p>Clean minimal, 16-bit adventure, or Cozy pastel in 8 color sets. One of them is Night red. Your watch follows your phone.</p>
+      <article class="tile"><span class="n mono">07 · Styles</span><h3>Pick your look</h3><p>Clean minimal, 16-bit adventure, or Cozy pastel in 8 color sets. Your watch follows your phone.</p>
         <div class="demo"><div class="chips"><button class="chip" type="button" data-set="minimal"><i style="background:#22c55e"></i>Minimal</button><button class="chip" type="button" data-set="cozy"><i style="background:linear-gradient(135deg,#ffc2a0,#b6a4ee)"></i>Cozy</button><button class="chip" type="button" data-set="retro"><i style="background:#f5b921;border-radius:2px"></i>16-bit</button></div></div></article>
 
-      <article class="tile"><span class="n mono">08 · Night red</span><h3>Night red</h3><p>The whole app and watch in red on black. On Apple Watch it turns on by itself after sunset.</p>
+      <article class="tile"><span class="n mono">08 · Night red</span><h3>Night red</h3><p>Your Apple Watch in red on black, easy on your eyes after dark. It can turn on by itself after sunset.</p>
         <div class="demo"><div class="nightdemo"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="40" fill="none" stroke="#3a0d0a" stroke-width="14"/><circle cx="50" cy="50" r="40" fill="none" stroke="#ff3b30" stroke-width="14" stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="90" transform="rotate(-90 50 50)"/></svg><button class="chip" type="button" data-set="night" style="border-color:#ff3b30;color:#ff3b30">Try it on this page</button></div></div></article>
 
       <article class="tile key"><span class="n mono">09 · Apple Watch</span><h3>On your watch face</h3><p>Three widgets: steps, steps left, and walk to catch up. No app to open.</p>
@@ -526,7 +528,7 @@ body.one{position:relative;display:flex;flex-direction:column;height:100dvh;max-
       <button class="btn" type="button" id="shuffle">Surprise me</button>
     </div>
     <div class="picker">
-      <div class="chips" role="group" aria-label="App style">
+      <div class="chips" role="group" aria-label="Page style">
         <button class="chip" type="button" data-set="minimal" aria-pressed="true"><i style="background:#22c55e"></i>Minimal</button>
         <button class="chip" type="button" data-set="cozy" aria-pressed="false"><i style="background:linear-gradient(135deg,#ffc2a0,#b6a4ee)"></i>Cozy</button>
         <button class="chip" type="button" data-set="retro" aria-pressed="false"><i style="background:#f5b921;border-radius:2px"></i>16-bit</button>
@@ -716,11 +718,13 @@ body.one{position:relative;display:flex;flex-direction:column;height:100dvh;max-
 
   // ---- styles
   var SHOTS=[['today','iPhone · today',0],['goal','iPhone · goal hit',0],['watch','Watch · steps',1],['watch-flip','Watch · steps left',1]];
+  // Night red is on Apple Watch only: four watch screens
+  var NIGHT_SHOTS=[['watch','Watch · steps',1],['watch-flip','Watch · steps left',1],['watch-stats','Watch · pace',1],['watch-week','Watch · last 7 days',1]];
   // the screenshots match the page: dark app screens when the visitor's device is in dark mode
   var darkMQ=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
   function paintShots(s){
     var box=$('lshots'); box.textContent='';
-    SHOTS.forEach(function(x){
+    (s==='night'?NIGHT_SHOTS:SHOTS).forEach(function(x){
       var f=document.createElement('figure'); if(x[2]) f.className='w';
       var im=new Image(); im.src='img/'+s+'-'+x[0]+((!x[2]&&(s==='retro'||(darkMQ&&darkMQ.matches&&(s==='minimal'||s==='cozy'))))?'-dark':'')+'.jpg'; im.alt='OnPace, '+x[1]; f.appendChild(im);
       var c=document.createElement('figcaption'); c.textContent=x[1]; f.appendChild(c); box.appendChild(f);

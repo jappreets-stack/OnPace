@@ -242,6 +242,7 @@ h2{margin:0;font-weight:800;font-stretch:112%;letter-spacing:-.03em;font-size:cl
 .chip.onband{border-color:var(--band-ink);color:var(--band-ink)}
 .shots.set figure:nth-child(even){margin-top:0}
 .shots.set figure.w{align-self:center}
+.shots.set.row-night figure.w{align-self:start}
 .shots.set figure.w img{border-radius:22%/18%}
 
 /* end */
@@ -298,6 +299,7 @@ h2{margin:0;font-weight:800;font-stretch:112%;letter-spacing:-.03em;font-size:cl
   .head.sub h3{margin-right:auto}
   .shots.set{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin:0 calc(-1 * clamp(16px,4vw,48px));padding:0 clamp(16px,4vw,48px) 6px;scrollbar-width:none;align-items:center}
   .shots.set::-webkit-scrollbar{display:none}
+  .shots.set.row-night{align-items:flex-start}
   .shots.set,.grid{scroll-padding-inline:clamp(16px,4vw,48px)}
   .tile{scroll-snap-align:start}
   .shots.set figure{flex:0 0 46%;scroll-snap-align:start;margin-top:0!important;gap:8px}
@@ -374,7 +376,7 @@ h2{margin:0;font-weight:800;font-stretch:112%;letter-spacing:-.03em;font-size:cl
     </div>
 
     <div class="picker">
-      <span class="lab mono">Pick a style, like in the app</span>
+      <span class="lab mono">Pick a look for this page</span>
       <div class="chips" role="group" aria-label="Page style">
         <button class="chip" type="button" data-set="minimal" aria-pressed="true"><i style="background:#22c55e"></i><span class="full">Clean minimal</span><span class="short">Minimal</span></button>
         <button class="chip" type="button" data-set="cozy" aria-pressed="false"><i style="background:linear-gradient(135deg,#ffc2a0,#b6a4ee)"></i><span class="full">Cozy pastel</span><span class="short">Cozy</span></button>
@@ -444,10 +446,10 @@ h2{margin:0;font-weight:800;font-stretch:112%;letter-spacing:-.03em;font-size:cl
       <article class="tile"><span class="n mono">06 · Mini-me</span><h3>Make it look like you</h3><p>Pick your skin tone, hair, outfit, glasses and colors. It walks when you walk, celebrates at your goal and slumps when you are behind.</p>
         <div class="demo"><canvas class="mini mm" id="miniTile" aria-hidden="true"></canvas><a class="pill" href="#minime" style="text-decoration:none">Build yours ↑</a></div></article>
 
-      <article class="tile"><span class="n mono">07 · Styles</span><h3>Pick your look</h3><p>Clean minimal, 16-bit adventure, or Cozy pastel in 8 color sets. One of them is Night red. Your watch follows your phone.</p>
+      <article class="tile"><span class="n mono">07 · Styles</span><h3>Pick your look</h3><p>Clean minimal, 16-bit adventure, or Cozy pastel in 8 color sets. Your watch follows your phone.</p>
         <div class="demo"><div class="chips"><button class="chip" type="button" data-set="minimal"><i style="background:#22c55e"></i>Minimal</button><button class="chip" type="button" data-set="cozy"><i style="background:linear-gradient(135deg,#ffc2a0,#b6a4ee)"></i>Cozy</button><button class="chip" type="button" data-set="retro"><i style="background:#f5b921;border-radius:2px"></i>16-bit</button></div></div></article>
 
-      <article class="tile"><span class="n mono">08 · Night red</span><h3>Night red</h3><p>The whole app and watch in red on black. On Apple Watch it turns on by itself after sunset.</p>
+      <article class="tile"><span class="n mono">08 · Night red</span><h3>Night red</h3><p>Your Apple Watch in red on black, easy on your eyes after dark. It can turn on by itself after sunset.</p>
         <div class="demo"><div class="nightdemo"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="40" fill="none" stroke="#3a0d0a" stroke-width="14"/><circle cx="50" cy="50" r="40" fill="none" stroke="#ff3b30" stroke-width="14" stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="90" transform="rotate(-90 50 50)"/></svg><button class="chip" type="button" data-set="night" style="border-color:#ff3b30;color:#ff3b30">Try it on this page</button></div></div></article>
 
       <article class="tile key"><span class="n mono">09 · Apple Watch</span><h3>On your watch face</h3><p>Three widgets: steps, steps left, and walk to catch up. No app to open.</p>
@@ -468,34 +470,34 @@ h2{margin:0;font-weight:800;font-stretch:112%;letter-spacing:-.03em;font-size:cl
 
   <section class="screens" id="screens">
     <div class="wrap">
-      <div class="head"><h2>One look, then go.</h2><span class="mono">Real screens · every style on iPhone and Apple Watch</span></div>
-      <div class="row-minimal head sub first"><h3>Clean minimal</h3><span class="mono">Big type, one green ring</span><button class="chip onband" type="button" data-set="minimal"><span class="full">Try this style on the page</span><span class="short">Try it</span></button></div>
+      <div class="head"><h2>One look, then go.</h2><span class="mono">Real screens · iPhone and Apple Watch</span></div>
+      <div class="row-minimal head sub first"><h3>Clean minimal</h3><span class="mono">Big type, one green ring</span><button class="chip onband" type="button" data-set="minimal"><span class="full">Try this look on the page</span><span class="short">Try it</span></button></div>
       <div class="row-minimal shots set">
         <figure><picture><source srcset="img/minimal-today-dark.jpg" media="(prefers-color-scheme: dark)"><img src="img/minimal-today.jpg" width="414" height="900" alt="OnPace on iPhone in Clean minimal: the ring at 6,400 steps with the pace rows" loading="lazy"></picture><figcaption><b>iPhone · today</b>Ring, pace, forecast and streak.</figcaption></figure>
         <figure><picture><source srcset="img/minimal-goal-dark.jpg" media="(prefers-color-scheme: dark)"><img src="img/minimal-goal.jpg" width="414" height="900" alt="OnPace on iPhone in Clean minimal at the goal: 0 steps left, goal hit" loading="lazy"></picture><figcaption><b>iPhone · goal hit</b>Tap the ring: 0 steps left.</figcaption></figure>
         <figure class="w"><img src="img/minimal-watch.jpg" width="422" height="514" alt="OnPace on Apple Watch in Clean minimal: 6,400 steps, behind pace, walk 4 min" loading="lazy"><figcaption><b>Apple Watch · steps</b>With catch-up minutes.</figcaption></figure>
         <figure class="w"><img src="img/minimal-watch-flip.jpg" width="422" height="514" alt="OnPace on Apple Watch in Clean minimal: 3,600 steps left to goal" loading="lazy"><figcaption><b>Apple Watch · steps left</b>Tap the ring on the watch too.</figcaption></figure>
       </div>
-      <div class="row-cozy head sub"><h3>Cozy pastel</h3><span class="mono">Soft colors, 8 color sets</span><button class="chip onband" type="button" data-set="cozy"><span class="full">Try this style on the page</span><span class="short">Try it</span></button></div>
+      <div class="row-cozy head sub"><h3>Cozy pastel</h3><span class="mono">Soft colors, 8 color sets</span><button class="chip onband" type="button" data-set="cozy"><span class="full">Try this look on the page</span><span class="short">Try it</span></button></div>
       <div class="row-cozy shots set">
         <figure><picture><source srcset="img/cozy-today-dark.jpg" media="(prefers-color-scheme: dark)"><img src="img/cozy-today.jpg" width="414" height="900" alt="OnPace on iPhone in Cozy pastel: the ring at 6,400 steps with the pace rows" loading="lazy"></picture><figcaption><b>iPhone · today</b>Ring, pace, forecast and streak.</figcaption></figure>
         <figure><picture><source srcset="img/cozy-goal-dark.jpg" media="(prefers-color-scheme: dark)"><img src="img/cozy-goal.jpg" width="414" height="900" alt="OnPace on iPhone in Cozy pastel at the goal: 0 steps left, goal hit" loading="lazy"></picture><figcaption><b>iPhone · goal hit</b>Tap the ring: 0 steps left.</figcaption></figure>
         <figure class="w"><img src="img/cozy-watch.jpg" width="422" height="514" alt="OnPace on Apple Watch in Cozy pastel: 6,400 steps, behind pace, walk 4 min" loading="lazy"><figcaption><b>Apple Watch · steps</b>With catch-up minutes.</figcaption></figure>
         <figure class="w"><img src="img/cozy-watch-flip.jpg" width="422" height="514" alt="OnPace on Apple Watch in Cozy pastel: 3,600 steps left to goal" loading="lazy"><figcaption><b>Apple Watch · steps left</b>Tap the ring on the watch too.</figcaption></figure>
       </div>
-      <div class="row-retro head sub"><h3>16-bit adventure</h3><span class="mono">A pixel castle and a gold block ring</span><button class="chip onband" type="button" data-set="retro"><span class="full">Try this style on the page</span><span class="short">Try it</span></button></div>
+      <div class="row-retro head sub"><h3>16-bit adventure</h3><span class="mono">A pixel castle and a gold block ring</span><button class="chip onband" type="button" data-set="retro"><span class="full">Try this look on the page</span><span class="short">Try it</span></button></div>
       <div class="row-retro shots set">
         <figure><img src="img/retro-today-dark.jpg" width="414" height="900" alt="OnPace on iPhone in 16-bit adventure: the ring at 6,400 steps with the pace rows" loading="lazy"><figcaption><b>iPhone · today</b>Ring, pace, forecast and streak.</figcaption></figure>
         <figure><img src="img/retro-goal-dark.jpg" width="414" height="900" alt="OnPace on iPhone in 16-bit adventure at the goal: 0 steps left, goal hit" loading="lazy"><figcaption><b>iPhone · goal hit</b>Tap the ring: 0 steps left.</figcaption></figure>
         <figure class="w"><img src="img/retro-watch.jpg" width="422" height="514" alt="OnPace on Apple Watch in 16-bit adventure: 6,400 steps, behind pace, walk 4 min" loading="lazy"><figcaption><b>Apple Watch · steps</b>With catch-up minutes.</figcaption></figure>
         <figure class="w"><img src="img/retro-watch-flip.jpg" width="422" height="514" alt="OnPace on Apple Watch in 16-bit adventure: 3,600 steps left to goal" loading="lazy"><figcaption><b>Apple Watch · steps left</b>Tap the ring on the watch too.</figcaption></figure>
       </div>
-      <div class="row-night head sub"><h3>Night red</h3><span class="mono">Red on black. On Apple Watch it turns on by itself after sunset</span><button class="chip onband" type="button" data-set="night"><span class="full">Try this style on the page</span><span class="short">Try it</span></button></div>
+      <div class="row-night head sub"><h3>Night red</h3><span class="mono">On Apple Watch: red on black, on by itself after sunset</span><button class="chip onband" type="button" data-set="night"><span class="full">Try this look on the page</span><span class="short">Try it</span></button></div>
       <div class="row-night shots set">
-        <figure><img src="img/night-today.jpg" width="414" height="900" alt="OnPace on iPhone in Night red: the ring at 6,400 steps with the pace rows" loading="lazy"><figcaption><b>iPhone · today</b>Ring, pace, forecast and streak.</figcaption></figure>
-        <figure><img src="img/night-goal.jpg" width="414" height="900" alt="OnPace on iPhone in Night red at the goal: 0 steps left, goal hit" loading="lazy"><figcaption><b>iPhone · goal hit</b>Tap the ring: 0 steps left.</figcaption></figure>
         <figure class="w"><img src="img/night-watch.jpg" width="422" height="514" alt="OnPace on Apple Watch in Night red: 6,400 steps, behind pace, walk 4 min" loading="lazy"><figcaption><b>Apple Watch · steps</b>With catch-up minutes.</figcaption></figure>
         <figure class="w"><img src="img/night-watch-flip.jpg" width="422" height="514" alt="OnPace on Apple Watch in Night red: 3,600 steps left to goal" loading="lazy"><figcaption><b>Apple Watch · steps left</b>Tap the ring on the watch too.</figcaption></figure>
+        <figure class="w"><img src="img/night-watch-stats.jpg" width="422" height="514" alt="OnPace on Apple Watch in Night red: left to goal, pace, forecast and streak" loading="lazy"><figcaption><b>Apple Watch · pace</b>Left to goal, pace, forecast, streak.</figcaption></figure>
+        <figure class="w"><img src="img/night-watch-week.jpg" width="422" height="514" alt="OnPace on Apple Watch in Night red: the last 7 days as bars, 4 of 7 at goal" loading="lazy"><figcaption><b>Apple Watch · last 7 days</b>Flags mark the days you hit your goal.</figcaption></figure>
       </div>
     </div>
   </section>

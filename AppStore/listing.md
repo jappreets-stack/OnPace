@@ -1,6 +1,6 @@
 # OnPace: App Store listing (version 1.0)
 
-Copy each block into App Store Connect. Screenshots: `AppStore/iphone-1206x2622/` (6.3" box, in this order: styles, Night red on iPhone + Watch, catch-up minutes, workouts, Apple Watch) and `AppStore/watch/` (Ultra 422×514: Night red first, then Cozy, Clean minimal, 16-bit).
+Copy each block into App Store Connect. Screenshots: `AppStore/iphone-1206x2622/` (6.3" box, in this order: styles, Night red on Apple Watch, catch-up minutes, workouts, Apple Watch) and `AppStore/watch/` (Ultra 422×514: Night red first, then Cozy, Clean minimal, 16-bit).
 
 ## App Information
 - **Name:** OnPace Step Tracker
@@ -27,12 +27,12 @@ OnPace answers one question at a glance: are you on pace for today's step goal?
 • A mini-me you design (skin tone, hair, outfit, glasses and more) that walks when you walk and celebrates when you hit your goal
 • Workouts you finish on Apple Watch show up with the steps you took during them
 • Count the steps of anything: a hike, a dog walk, shopping, a theme park day
-• Night red: the whole app and watch in red on black, easy on your eyes after dark. On Apple Watch it turns on by itself after sunset
 • Three styles (Clean minimal, Cozy pastel, 16-bit adventure) and 8 color sets
 
 APPLE WATCH
 • The same ring and pace on your wrist, in your style
 • Watch face complications for steps, steps left, and pace
+• Night red: your watch in red on black, easy on your eyes after dark. It can turn on by itself after sunset
 • Numbers match Apple Health exactly
 
 PRIVATE BY DESIGN
